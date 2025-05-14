@@ -14,65 +14,100 @@
         string first_name
         string last_name
         date date_of_birth
-        string avatar_filename_NULLABLE
-        string nickname_NULLABLE
-        string about_me_NULLABLE
+        string avatar_filename_(NULLABLE)
+        string nickname_(NULLABLE)
+        string about_me_(NULLABLE)
         string privacy(private_public)
+        string role(admin_groupmoderator_regularuser)
+        string status(active_inactive)
         datetime created_at
         datetime updated_at
-        }
+        int updater_user_id FK
+    }
 
-     %% --- Sessions ---
+    %% --- Sessions ---
     SESSIONS {
         string session_uuid PK
         int user_id FK
+        string status(active_inactive)
         datetime created_at
         datetime expires_at
         datetime updated_at
+        int updater_user_id FK
     }
 
-    %% --- Posts (do we combine regular posts and group posts?) ---
+    %% --- Files (Polymorphic Association: parent_id will depend on / is associated with parent_type) ---
+    FILES {
+        int file_id PK
+        int uploader_user_id FK
+        string parent_type(post_comment_group_event_chat)
+        int parent_id FK
+        string status(active_inactive)
+        datetime created_at
+        datetime updated_at
+        int updater_user_id FK
+    }
+
+    %% --- Posts (group_id NULL for regular posts) ---
     POSTS {
         int post_id PK
-        int user_id FK
-        int category_id FK
+        string post_uuid
+        int poster_user_id FK
+        int group_id FK
         string content
-        string image_filename_NULLABLE
+        string image_filename_(NULLABLE)
         string privacy(public_semi-private_private)
-        int like_count
-        int dislike_count
+        string status(active_inactive)
         datetime created_at
         datetime updated_at
+        int updater_user_id FK
     }
 
-    %% --- Comments (combine with group comments?) ---
+    %% --- Comments (group_id NULL for regular post comments) ---
     COMMENTS {
         int comment_id PK
+        int commenter_user_id FK
         int post_id FK
-        int user_id FK
+        int group_id FK
         string content
-        string image_filename_NULLABLE
+        string image_filename_(NULLABLE)
         string post_privacy(public_semi-private_private) FK
-        int like_count
-        int dislike_count
+        string status(active_inactive)
         datetime created_at
         datetime updated_at
+        int updater_user_id FK
     }
 
-    %% --- Post Categories (do we provide a set of cats or do we enable users to add more cats?) ---
+    %% --- Post Categories ---
     POST_CATEGORIES {
         int category_id PK
+        int creator_user_id FK
+        int post_id FK
         string category_name
+        string status(active_inactive)
         datetime created_at
         datetime updated_at
+        int updater_user_id FK
     }
 
-    %% --- Follows (if followed_user_id is public, status auto accepted) ---
+    %% --- Interactions ---
+    INTERACTIONS {
+        int interactions_id PK
+        int user_id FK
+        int post_id FK
+        string interaction_type(like_dislike_cancelled)
+        string status(active_inactive)
+        datetime created_at
+        datetime updated_at
+        int updater_user_id FK
+    }
+
+    %% --- REVIEW STARTING HERE:::: Follows (if followed_user_id is public, status is auto accepted) ---
     FOLLOWS {
         int follow_id PK
         int followed_user_id FK
         int follower_user_id FK
-        string status(pending_accepted_declined_unfollowed)
+        string status(pending_accepted_declined_cancelled)
         datetime created_at
         datetime updated_at
     }
@@ -82,7 +117,7 @@
         int group_id PK
         string title
         string description
-        string banner_filename_NULLABLE
+        string banner_filename_(NULLABLE)
         int creator_user_id FK
         datetime created_at
         datetime updated_at
@@ -92,10 +127,10 @@
     GROUP_MEMBERS {
         int group_membership_id PK
         int inviter_user_id FK
-        int invited_requester_user_id FK
+        int member_user_id FK
         int group_id FK
-        string status(invited_requested_accepted_declined)
-        boolean is_creator
+        string status(invited_requested_accepted_declined_cancelled)
+        boolean inviter_is_creator
         datetime created_at
         datetime updated_at
     }
@@ -106,7 +141,7 @@
         int group_id FK
         int user_id FK
         string content
-        string image_filename_NULLABLE
+        string image_filename_(NULLABLE)
         int like_count
         int dislike_count
         datetime created_at
@@ -119,7 +154,7 @@
         int group_id FK
         int user_id FK
         string content
-        string image_filename_NULLABLE
+        string image_filename_(NULLABLE)
         int like_count
         int dislike_count
         datetime created_at
@@ -130,10 +165,11 @@
     EVENTS {
         int event_id PK
         int group_id FK
+        int creator_user_id FK
         string title
         string description
         datetime start_date_time
-        string image_filename_NULLABLE
+        string image_filename_(NULLABLE)
         string status(upcoming_ongoing_completed_cancelled)
         datetime created_at
         datetime updated_at
