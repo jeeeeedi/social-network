@@ -39,6 +39,7 @@
     FILES {
         int file_id PK
         int uploader_user_id FK
+        string filename
         string parent_type(profile_post_comment_group_event_chat)
         int parent_id FK
         string status(active_inactive)
@@ -93,6 +94,8 @@
         int user_id FK
         int post_id FK
         string interaction_type(like_dislike_cancelled)
+        string parent_type(post_comment)
+        int parent_id FK
         string status(active_inactive)
         datetime created_at
         datetime updated_at
@@ -171,9 +174,25 @@
         int updater_user_id FK
     }
 
+    %% --- Notifications (should we combine intractions and notifications???) ---
+    NOTIFICATIONS {
+        int notification_id PK
+        int receiver_user_id FK
+        int actor_user_id FK
+        string action_type(like_dislike_comment_followrequest_newmessage_groupinvite_grouprequest_newevent)
+        string parent_type(follow_post_comment_chat_group_event)
+        int parent_id FK
+        string content
+        string status(read_unread_inactive)
+        datetime created_at
+        datetime updated_at
+        int updater_user_id FK
+    }
+
     %% --- Relationships ---
     USERS ||--o{ SESSIONS : start
     USERS ||--o{ FOLLOWS : follow
+    USERS ||--o{ NOTIFICATIONS : receive
     USERS ||--o{ POSTS : post
     POSTS ||--o{ COMMENTS : have
     GROUP_MEMBERS ||--o{ COMMENTS : comment

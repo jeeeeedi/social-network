@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS "sessions" (
 CREATE TABLE IF NOT EXISTS "files" (
     file_id INTEGER PRIMARY KEY AUTOINCREMENT,
     uploader_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
     parent_type TEXT CHECK(parent_type IN ('profile', 'post', 'comment', 'group', 'event', 'chat')) NOT NULL,
     parent_id INTEGER NOT NULL,
     status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',
@@ -43,6 +44,10 @@ CREATE TABLE IF NOT EXISTS "files" (
     FOREIGN KEY(uploader_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+/*
+parent_id FK: polymorphic FK not supported — you cannot reference multiple tables with a single FK constraint.
+handle data integrity at application level; check it in your backend when inserting or updating data.
+*/
 
 CREATE TABLE IF NOT EXISTS "posts" (
     post_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +100,9 @@ CREATE TABLE IF NOT EXISTS "interactions" (
     interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     post_id INTEGER NOT NULL,
-    type TEXT CHECK(type IN ('like', 'dislike', 'cancelled')) NOT NULL,
+    interaction_type TEXT CHECK(interaction_type IN ('like', 'dislike', 'cancelled')) NOT NULL,
+    parent_type TEXT CHECK(parent_type IN ('post', 'comment')) NOT NULL,
+    parent_id INTEGER NOT NULL,
     status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
@@ -192,5 +199,21 @@ CREATE TABLE IF NOT EXISTS "chat_messages" (
     FOREIGN KEY(sender_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(receiver_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+    FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "notifications" (
+    notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    receiver_id INTEGER NOT NULL,
+    actor_id INTEGER NOT NULL,
+    action_type TEXT CHECK(action_type IN ('like', 'dislike', 'comment', 'follow_request', 'follow_accepted', 'group_invitation', 'group_join_request', 'group_event')) NOT NULL,
+    parent_type TEXT CHECK(parent_type IN ('follow', 'post', 'comment', 'chat', 'group', 'event')) NOT NULL,
+    parent_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    updater_id INTEGER,
+    FOREIGN KEY(receiver_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(actor_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
