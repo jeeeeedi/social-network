@@ -1,0 +1,218 @@
+1. Authentication Flow
+
+User registration with validation
+Login with secure sessions
+Persistent sessions with cookies
+Logout functionality
+
+Backend
+1. Create routes for auth endpoints:
+   - POST /api/auth/register
+   - POST /api/auth/login
+   - GET /api/auth/me (get current user)
+   - POST /api/auth/logout
+
+2. Implement password hashing with bcrypt
+
+3. Create session management:
+   - Generate session tokens
+   - Store sessions in database
+   - Set secure HTTP-only cookies
+
+4. Create middleware to protect routes
+
+Front-end
+
+1. Create forms:
+   - Registration form
+   - Login form
+
+2. Implement client-side validation
+
+3. Create auth context for state management
+
+4. Set up protected routes
+
+Commands:
+
+//Creating React app:
+npx create-react-app frontend
+//installing additional packages
+npm install react-router-dom axios
+
+
+Step 1: What is Context and Why Use It?
+In React, Context provides a way to share data between components without passing 
+props down manually through every level of the component tree.
+Think of Context as a global state that any component in your app can access. 
+For authentication, this means storing the logged-in user information in a way that 
+any page or component can check if a user is logged in.
+Without Context, you'd have to pass user data through props from parent to child 
+repeatedly, which becomes messy.
+
+
+import { createContext, useState, useEffect } from 'react';
+import axios from 'axios';
+
+These import statements bring in necessary functionality:
+createContext: React function to create a context object
+useState: React hook for managing state in functional components
+useEffect: React hook for handling side effects (like API calls)
+axios: Library for making HTTP requests to your backend
+
+
+export const AuthContext = createContext();
+
+
+This line creates a new React Context object called AuthContext.
+The createContext() function comes from React and creates a Context object that
+ components can subscribe to. When React renders a component that subscribes to this Context, 
+ it will read the current context value from the closest matching Provider above it in the tree.
+Think of this line as creating a special "channel" through which data can flow to any 
+component that wants to listen.
+
+export const AuthProvider = ({ children }) => {
+
+};
+The AuthProvider is a component that:
+Wraps parts of your application that need access to the authentication context
+Accepts children as a prop (these are the components inside the provider)
+Will contain all the state and functions related to authentication
+Makes authentication data and functions available to all components inside it
+We export it so we can wrap our application with this provider in App.js.
+
+The AuthProvider provides:
+These three state variables, which track important information:
+
+const [currentUser, setCurrentUser] = useState(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
+
+currentUser: Stores the logged-in user's data or null if no one is logged in
+loading: Tracks whether we're still checking if a user is logged in (true during checking, false when finished)
+error: Stores any error messages from login/registration attempts
+Each state has a corresponding setter function (e.g., setCurrentUser) that we'll use to update the state.
+
+
+useEffect hook:
+Runs once when the component mounts (empty dependency array [])
+Defines an async function checkLoggedIn that will:
+Try to get the current user's information (placeholder for now)
+Update the loading and currentUser states based on the result
+Immediately calls the checkLoggedIn function
+
+What is a Hook in React?
+Hooks are special functions in React that let you "hook into" React features from function components.
+Key Points About Hooks:
+Purpose: Hooks allow you to use state and other React features without writing a class component
+Function-Based: Hooks only work in function components (not class components)
+Built-in Hooks: React comes with several built-in hooks:
+useState: Adds state to function components
+useEffect: Handles side effects (API calls, DOM updates, etc.)
+useContext: Accesses React context
+And others like useRef, useReducer, etc.
+Rules of Hooks:
+Only call hooks at the top level of your component (not inside loops, conditions, or nested functions)
+Only call hooks from React function components or custom hooks
+Custom Hooks: You can create your own hooks to reuse logic between components (must start with "use")
+
+const loginUser = async (ElementInternals, password) => {
+
+This function:
+Takes email and password parameters
+Clears any previous errors
+Will eventually make an API call to log in the user (placeholder for now)
+Returns the login result or throws an error
+
+const authContextValue = {
+
+Contains all the data and functions we want to make available to components
+Will be passed to the Context Provider
+Includes the current user state, loading state, error state, and all authentication functions
+Makes these values accessible to any component that consumes this context
+
+
+return <AuthContext.Provider value={authContextValue}>{children}</AuthContext.Provider>;
+
+Returns a React component - the AuthContext.Provider
+Sets its value prop to our authContextValue object
+Places children inside the provider (these are the components that will be wrapped by this provider)
+Special/Required Names:
+AuthContext.Provider: This is a special React pattern - it must match the name of your context object
+value: This prop name cannot be changed - React specifically looks for a prop named "value" on the Context.Provider
+children: This is a special React prop that represents any components nested inside this provider
+This is how the context is made available to all nested components. Any component inside 
+this provider can access the authentication state and functions.
+
+
+Create Authentication Components
+
+
+Install React Router
+
+cd frontend
+npm install react-router-dom
+
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+
+⌘K to generate a command
+should I install it in a root directory?
+
+You should install it in the frontend directory, where your package.json file is located:
+Apply to Workplan.txt
+Run
+dom
+This ensures the dependency gets added to your frontend project's package.json and the 
+modules get installed in the frontend's node_modules folder.
+ok. Break setup of the router on smaller parts and explain each line of the code.
+
+Setting Up React Router - Step by Step
+Let's update your App.js file to include the router. I'll break it down line by line:
+Step 1: Update the imports in App.js
+Apply to Workplan.txt
+;
+These imports bring in:
+BrowserRouter: The router component that uses the HTML5 history API
+Routes: A container for all your Route components
+Route: Defines a path and what component to render at that path
+AuthProvider: Your authentication context provider
+LoginForm and RegisterForm: Your authentication components
+Should I just this component or replace something in my app.js?
+
+
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+Let's go through the router setup in App.js one line at a time:
+Apply to Workplan.txt
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+This imports three components from react-router-dom:
+BrowserRouter: Creates a router that uses the HTML5 history API (pushState, replaceState) to keep UI in sync with the URL
+Routes: A container for all your route definitions
+Route: Defines what component should be rendered at a specific URL path
+
+import { AuthProvider } from './contexts/AuthContext';
+
+This imports your authentication context provider that you created 
+earlier - it will wrap your entire app to provide authentication state to all components.
+
+
+Login form
+
+import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../contexts/AuthContext';
+
+const LoginForm = () => {
+  // Component code will go here
+  return (
+    <div>Login Form</div>
+  );
+};
+
+export default LoginForm;
+
+Imports useState hook for form state
+Imports useContext to access the auth context
+Imports useNavigate to redirect after login
+Exports a basic component that just displays "Login Form"
