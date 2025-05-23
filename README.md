@@ -1,4 +1,72 @@
-﻿# social-network
+﻿# Social Network
+
+A Facebook-like social network application with authentication, profiles, posts, groups, notifications and chat functionality.
+
+## Quick Start
+
+We've included a setup script to get you up and running quickly:
+
+```bash
+# Make the setup script executable
+chmod +x setup.sh
+
+# Run the setup script
+./setup.sh
+```
+
+This script will:
+1. Check for required dependencies
+2. Install necessary packages for both frontend and backend
+3. Set up the database with migrations
+4. Provide instructions for starting the applications
+
+## Manual Setup
+
+If you prefer to set up manually:
+
+### Prerequisites
+- Node.js (v14.0.0 or newer)
+- npm
+- SQLite3
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### Backend Setup
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### Database Setup
+```bash
+make migrateup
+```
+
+## Project Structure
+
+- `/frontend` - React-based frontend application
+- `/backend` - Node.js Express backend API
+- `/db` - SQLite database and migrations
+
+## Features
+
+- User authentication with sessions
+- User profiles with privacy settings
+- Posts with privacy controls
+- Groups and events
+- Real-time notifications
+- Private and group chat
+- Follower system
+
+## Database Schema
+
+See the Entity-Relationship Diagram below:
 
 ### WIP: ERD
 
