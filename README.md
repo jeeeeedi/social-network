@@ -15,7 +15,7 @@ chmod +x setup.sh
 ```
 
 This script will:
-1. Check for required dependencies
+1. Check for required dependencies (Node.js for frontend, Go for backend)
 2. Install necessary packages for both frontend and backend
 3. Set up the database with migrations
 4. Provide instructions for starting the applications
@@ -25,8 +25,9 @@ This script will:
 If you prefer to set up manually:
 
 ### Prerequisites
-- Node.js (v14.0.0 or newer)
-- npm
+- Node.js (v14.0.0 or newer) - for frontend
+- npm - for frontend
+- Go (v1.21 or newer) - for backend
 - SQLite3
 
 ### Frontend Setup
@@ -38,9 +39,11 @@ npm start
 
 ### Backend Setup
 ```bash
-cd backend
-npm install
-npm run dev
+# Install Go dependencies
+go mod tidy
+
+# Start the backend server
+go run main.go
 ```
 
 ### Database Setup
@@ -51,8 +54,9 @@ make migrateup
 ## Project Structure
 
 - `/frontend` - React-based frontend application
-- `/backend` - Node.js Express backend API
+- `/backend` - Go backend API server
 - `/db` - SQLite database and migrations
+- `main.go` - Backend entry point
 
 ## Features
 
@@ -63,6 +67,13 @@ make migrateup
 - Real-time notifications
 - Private and group chat
 - Follower system
+
+## Technology Stack
+
+- **Frontend**: React, React Router, Axios
+- **Backend**: Go, Gorilla Mux, SQLite3
+- **Database**: SQLite with migrations
+- **Authentication**: Session-based with secure cookies
 
 ## Database Schema
 

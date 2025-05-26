@@ -1,18 +1,19 @@
 # Social Network Backend
 
-This is the backend server for the Social Network application.
+This is the Go backend server for the Social Network application.
 
 ## Prerequisites
 
-- Node.js (v14.0.0 or newer)
-- npm
+- Go (v1.21 or newer)
 - SQLite3
+- CGO enabled (for SQLite driver)
 
 ## Setup
 
-1. Install dependencies:
+1. Install Go dependencies:
    ```bash
-   npm install
+   # From the project root
+   go mod tidy
    ```
 
 2. Set up the database:
@@ -23,37 +24,88 @@ This is the backend server for the Social Network application.
 
 3. Start the development server:
    ```bash
-   npm run dev
+   # From the project root
+   go run main.go
    ```
 
-4. For production:
+4. For production build:
    ```bash
-   npm start
+   go build -o social-network main.go
+   ./social-network
    ```
 
-## Available Scripts
+## Project Structure
 
-- `npm run dev`: Starts the development server with hot-reload using nodemon
-- `npm start`: Starts the server in production mode
-- `npm test`: Runs tests (when implemented)
+```
+backend/
+├── handlers/       # HTTP request handlers
+├── middleware/     # HTTP middleware functions
+├── models/         # Data models and database operations
+└── utils/          # Utility functions
+```
+
+## Dependencies
+
+This project uses only approved Go packages:
+
+- `github.com/gorilla/mux` - HTTP router and URL matcher
+- `github.com/gorilla/websocket` - WebSocket implementation
+- `github.com/mattn/go-sqlite3` - SQLite3 driver
+- `github.com/gofrs/uuid` - UUID generation
+- `golang.org/x/crypto/bcrypt` - Password hashing
+- Standard Go library packages
 
 ## Environment Variables
 
-Create a `.env` file in the backend directory with the following variables:
+Create a `.env` file in the project root (optional):
 
 ```
 PORT=8000
-NODE_ENV=development
-JWT_SECRET=your_jwt_secret
-COOKIE_SECRET=your_cookie_secret
+DB_PATH=./db/socnet.db
 ```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register`: Register a new user
-- `POST /api/auth/login`: Login a user
-- `GET /api/auth/me`: Get current user information
-- `POST /api/auth/logout`: Logout a user
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login a user  
+- `GET /api/auth/me` - Get current user information
+- `POST /api/auth/logout` - Logout a user
 
-More endpoints will be documented as they are implemented. 
+### Users
+- `GET /api/users/{id}` - Get user profile
+- `PUT /api/users/{id}` - Update user profile
+
+### Posts
+- `GET /api/posts` - Get user feed
+- `POST /api/posts` - Create a new post
+- `GET /api/posts/{id}` - Get specific post
+- `POST /api/posts/{id}/comments` - Add comment to post
+
+### Groups
+- `GET /api/groups` - List groups
+- `POST /api/groups` - Create a group
+- `GET /api/groups/{id}` - Get group details
+- `POST /api/groups/{id}/join` - Join a group
+
+### WebSocket
+- `/ws` - WebSocket endpoint for real-time features
+
+More endpoints will be documented as they are implemented.
+
+## Development
+
+### Running Tests
+```bash
+go test ./...
+```
+
+### Code Formatting
+```bash
+go fmt ./...
+```
+
+### Building
+```bash
+go build -o bin/social-network main.go
+``` 
