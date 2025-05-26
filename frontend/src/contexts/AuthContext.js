@@ -1,5 +1,4 @@
 import {createContext, useState, useEffect} from 'react';
-import axios from 'axios';
 
 export const AuthContext = createContext();
 
@@ -12,7 +11,7 @@ export const AuthProvider = ({children}) => {
         const checkLoggedIn = async () =>{
             try {
 
-                // temporary setting , have to replace with real API !!!!!! for now setting to false and null
+                // TODO: temporary setting , have to replace with real API !!!!!! for now setting to false and null
 
                 setLoading(false);
                 setCurrentUser(null);
@@ -29,7 +28,7 @@ export const AuthProvider = ({children}) => {
         try {
             setError(null);
 
-            // temporary setting!!! Have to be replaced with actual API call!!!!
+            // TODO: temporary setting!!! Have to be replaced with actual API call!!!!
 
             console.log("Register: ", userData);
             return null;
@@ -43,10 +42,19 @@ export const AuthProvider = ({children}) => {
         try {
             setError(null);
 
-            // temporary setting!!! Have to be replaced with actual API call!!!!
-
+            // TODO: temporary setting!!! Have to be replaced with actual API call!!!!
             console.log("Login:", email, password);
-            return null;
+            
+            // TODO: just for testing , remove when registration is created
+            const mockUser = {
+                id: 1,
+                email: email,
+                first_name: "John",
+                last_name: "Doe"
+            };
+            
+            setCurrentUser(mockUser);
+            return mockUser;
         } catch (err) {
             setError("Login failed");
             throw err;

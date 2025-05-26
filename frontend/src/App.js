@@ -6,13 +6,11 @@ import Home from './pages/Home';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm'
 
-import './App.css';
-
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="App">
+        <div>
           <Routes>
             <Route path="/login" element={<LoginForm />} />
             <Route path="/register" element={<RegisterForm />} />
