@@ -10,15 +10,21 @@ echo -e "${GREEN}=== Social Network Setup Script ===${NC}"
 echo -e "${YELLOW}This script will set up both frontend and backend components${NC}"
 echo ""
 
-# Check if Node.js is installed
+# Check if Node.js is installed (for frontend)
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}Node.js is not installed. Please install Node.js first.${NC}"
+    echo -e "${RED}Node.js is not installed. Please install Node.js for the frontend.${NC}"
     exit 1
 fi
 
-# Check if npm is installed
+# Check if npm is installed (for frontend)
 if ! command -v npm &> /dev/null; then
-    echo -e "${RED}npm is not installed. Please install npm first.${NC}"
+    echo -e "${RED}npm is not installed. Please install npm for the frontend.${NC}"
+    exit 1
+fi
+
+# Check if Go is installed (for backend)
+if ! command -v go &> /dev/null; then
+    echo -e "${RED}Go is not installed. Please install Go for the backend.${NC}"
     exit 1
 fi
 
@@ -37,12 +43,9 @@ npm install
 cd ..
 
 # Setup backend
-echo -e "${GREEN}Setting up backend...${NC}"
-mkdir -p backend
-cd backend || { echo -e "${RED}Backend directory not found!${NC}"; exit 1; }
-echo "Installing backend dependencies..."
-npm install
-cd ..
+echo -e "${GREEN}Setting up backend (Go)...${NC}"
+echo "Installing Go dependencies..."
+go mod tidy
 
 # Run database migrations
 echo -e "${GREEN}Setting up database...${NC}"
@@ -53,6 +56,6 @@ echo ""
 echo -e "${GREEN}Setup complete!${NC}"
 echo -e "You can now start the applications:"
 echo -e "${YELLOW}Frontend:${NC} cd frontend && npm start"
-echo -e "${YELLOW}Backend:${NC} cd backend && npm run dev"
+echo -e "${YELLOW}Backend:${NC} go run main.go"
 echo ""
 echo -e "${GREEN}Happy coding!${NC}" 
