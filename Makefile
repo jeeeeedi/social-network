@@ -1,4 +1,5 @@
-DB_URL=sqlite3://db/socnet.db?cache=shared&mode=rwc
+DB_URL=sqlite://db/socnet.db?cache=shared&mode=rwc
+name=socnet
 
 migrateup:
 	migrate -path db/migrations -database "$(DB_URL)" -verbose up

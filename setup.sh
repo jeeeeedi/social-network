@@ -42,7 +42,7 @@ echo "Installing frontend dependencies..."
 npm install
 cd ..
 
-# Setup backend
+# Setup backend (Go project in root)
 echo -e "${GREEN}Setting up backend (Go)...${NC}"
 echo "Installing Go dependencies..."
 go mod tidy

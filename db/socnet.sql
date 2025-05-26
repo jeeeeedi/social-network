@@ -217,3 +217,7 @@ CREATE TABLE IF NOT EXISTS "notifications" (
     FOREIGN KEY(actor_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+/* Set up DB (you have to be in db folder):
+sqlite3 socnet.db < socnet.sql
+*/
