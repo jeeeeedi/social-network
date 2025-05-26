@@ -99,7 +99,6 @@ CREATE TABLE IF NOT EXISTS "post_categories" (
 CREATE TABLE IF NOT EXISTS "interactions" (
     interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    post_id INTEGER NOT NULL,
     interaction_type TEXT CHECK(interaction_type IN ('like', 'dislike', 'cancelled')) NOT NULL,
     parent_type TEXT CHECK(parent_type IN ('post', 'comment')) NOT NULL,
     parent_id INTEGER NOT NULL,
@@ -108,7 +107,6 @@ CREATE TABLE IF NOT EXISTS "interactions" (
     updated_at DATETIME,
     updater_id INTEGER,
     FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
     FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
@@ -130,6 +128,7 @@ CREATE TABLE IF NOT EXISTS "groups" (
     group_id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
+    status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',
     creator_id INTEGER NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
@@ -144,7 +143,7 @@ CREATE TABLE IF NOT EXISTS "group_members" (
     member_id INTEGER NOT NULL,
     group_id INTEGER NOT NULL,
     status TEXT CHECK(status IN ('invited', 'requested', 'accepted', 'declined', 'cancelled')) NOT NULL,
-    inviter_is_creator BOOLEAN NOT NULL DEFAULT 0,
+    inviter_is_creator BOOLEAN NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     updater_id INTEGER,
@@ -174,7 +173,7 @@ CREATE TABLE IF NOT EXISTS "event_rsvp" (
     rsvp_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
     responder_id INTEGER NOT NULL,
-    response TEXT CHECK(response IN ('going', 'notgoing')) NOT NULL,
+    response TEXT CHECK(response IN ('going', 'not_going')) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     updater_id INTEGER,
@@ -193,6 +192,7 @@ CREATE TABLE IF NOT EXISTS "chat_messages" (
     receiver_id INTEGER,
     group_id INTEGER,
     content TEXT NOT NULL,
+    status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     updater_id INTEGER,
@@ -210,6 +210,7 @@ CREATE TABLE IF NOT EXISTS "notifications" (
     parent_type TEXT CHECK(parent_type IN ('follow', 'post', 'comment', 'chat', 'group', 'event')) NOT NULL,
     parent_id INTEGER NOT NULL,
     content TEXT NOT NULL,
+    status TEXT CHECK(status IN ('read', 'unread', 'inactive')) NOT NULL DEFAULT 'unread',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     updater_id INTEGER,
