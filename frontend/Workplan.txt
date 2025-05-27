@@ -216,3 +216,17 @@ Imports useState hook for form state
 Imports useContext to access the auth context
 Imports useNavigate to redirect after login
 Exports a basic component that just displays "Login Form"
+
+27.05.25
+
+Parse JSON request body - Get email/password from frontend
+Connect to database - Use your peer's database tools
+Validate credentials - Check password against stored hash
+Create session - Generate session UUID and store in database
+Set HTTP cookie - Send session cookie to browser
+Return user data - Send user info back to frontend
+Key concepts we'll use:
+JSON marshaling/unmarshaling - Convert between Go structs and JSON
+Database queries - Using your existing User and Session structs
+Password hashing - Using bcrypt for security
+HTTP cookies - Secure session management

@@ -42,21 +42,29 @@ export const AuthProvider = ({children}) => {
         try {
             setError(null);
 
-            // TODO: temporary setting!!! Have to be replaced with actual API call!!!!
-            console.log("Login:", email, password);
-            
-            // TODO: just for testing , remove when registration is created
-            const mockUser = {
-                id: 1,
-                email: email,
-                first_name: "John",
-                last_name: "Doe"
-            };
-            
-            setCurrentUser(mockUser);
-            return mockUser;
+            // Make real API call to backend
+            const response = await fetch('http://localhost:8080/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setCurrentUser(data.user);
+                    return data.user;
+                } else {
+                    throw new Error('Login failed');
+                }
+            } else {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
         } catch (err) {
-            setError("Login failed");
+            setError(err.message);
             throw err;
         }
     };

@@ -25,3 +25,4 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, `{"message": "Create post endpoint - ready for implementation"}`)
 }
+ 
