@@ -1,6 +1,6 @@
 package dbTools
 
-import "social_network/backendUtils"
+import "social_network/backend/backendUtils"
 
 func (db *DB) InsertUser(u *User) (UserID int, err error) {
 
