@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"social_network/db/dbTools"
+	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
 	"time"

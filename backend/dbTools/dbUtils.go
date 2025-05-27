@@ -2,8 +2,6 @@ package dbTools
 
 import (
 	"database/sql"
-	"fmt"
-	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -16,20 +14,18 @@ type DB struct {
 }
 
 func (d *DB) OpenDBWithMigration() error {
-	cwd, _ := os.Getwd()
-	fmt.Printf("Current working directory: %s\n", cwd)
-	db, err := sql.Open("sqlite3", "db/socnet.db")
+	db, err := sql.Open("sqlite3", "../db/socnet.db")
 	if err != nil {
 		return err
 	}
-	// defer db.Close() // Commented out for debugging: keep DB connection open
+	defer db.Close()
 
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 	if err != nil {
 		return err
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("file://db/migrations", "sqlite3", driver)
+	m, err := migrate.NewWithDatabaseInstance("../db/migrations", "sqlite3", driver)
 	if err != nil {
 		return err
 	}
@@ -54,4 +50,13 @@ func (d *DB) WithTransaction(fn func(*sql.Tx) error) error {
 	}
 
 	return tx.Commit()
+}
+
+
+func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
+	return d.db.QueryRow(query, args...)
+}
+
+func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+    return d.db.Exec(query, args...)
 }
