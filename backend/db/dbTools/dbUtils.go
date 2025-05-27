@@ -13,8 +13,17 @@ type DB struct {
 	db *sql.DB
 }
 
+func OpenDB() (*DB, error) {
+	db, err := sql.Open("sqlite3", "./db/socnet.db")
+	if err != nil {
+		return nil, err
+	}
+
+	return &DB{db: db}, nil
+}
+
 func (d *DB) OpenDBWithMigration() error {
-	db, err := sql.Open("sqlite3", "../db/socnet.db")
+	db, err := sql.Open("sqlite3", "./db/socnet.db")
 	if err != nil {
 		return err
 	}
@@ -25,7 +34,7 @@ func (d *DB) OpenDBWithMigration() error {
 		return err
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("../db/migrations", "sqlite3", driver)
+	m, err := migrate.NewWithDatabaseInstance("./db/migrations", "sqlite3", driver)
 	if err != nil {
 		return err
 	}
