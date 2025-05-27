@@ -2,14 +2,14 @@ package dbTools
 
 import (
 	"database/sql"
-	"social_network/backend"
+	"github.com/yourusername/social-network/backend/backendUtils"
 )
 
 func (db *DB) InsertSession(s *Session) (*Session, error) {
 
 	// Generate UUID for the session if not already set
 	if s.SessionUUID == "" {
-		uuid, err := backend.GenerateUUID()
+		uuid, err := backendUtils.GenerateUUID()
 		if err != nil {
 			return nil, err
 		}

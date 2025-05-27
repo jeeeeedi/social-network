@@ -1,12 +1,12 @@
 package dbTools
 
-import "social_network/backend"
+import "social_network/backendUtils"
 
 func (db *DB) InsertUser(u *User) (UserID int, err error) {
 
 	// Generate UUID for the user if not already set
 	if u.UserUUID == "" {
-		uuid, err := backend.GenerateUUID()
+		uuid, err := backendUtils.GenerateUUID()
 		if err != nil {
 			return -1, err
 		}
