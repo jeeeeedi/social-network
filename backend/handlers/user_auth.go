@@ -64,7 +64,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := &dbTools.DB{}
-	if err := db.OpenDBWithMigration(); err != nil {
+	if _, err := db.OpenDB(); err != nil {
 		fmt.Printf("DB connection error: %v\n", err)
 		http.Error(w, "DB connection failed", http.StatusInternalServerError)
 		return

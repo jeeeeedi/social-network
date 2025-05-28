@@ -13,6 +13,14 @@ type DB struct {
 	db *sql.DB
 }
 
+func (d *DB) OpenDB() (*DB, error) {
+	db, err := sql.Open("sqlite3", "./db/socnet.db")
+	if err != nil {
+		return nil, err
+	}
+
+	return &DB{db: db}, nil
+}
 func (d *DB) OpenDBWithMigration() error {
 	db, err := sql.Open("sqlite3", "../db/socnet.db")
 	if err != nil {
@@ -52,11 +60,10 @@ func (d *DB) WithTransaction(fn func(*sql.Tx) error) error {
 	return tx.Commit()
 }
 
-
 func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 	return d.db.QueryRow(query, args...)
 }
 
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
-    return d.db.Exec(query, args...)
+	return d.db.Exec(query, args...)
 }

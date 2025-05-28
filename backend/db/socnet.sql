@@ -140,11 +140,11 @@ CREATE TABLE IF NOT EXISTS "groups" (
 
 CREATE TABLE IF NOT EXISTS "group_members" (
     membership_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    inviter_id INTEGER NOT NULL,
+    inviter_id INTEGER,
     member_id INTEGER NOT NULL,
     group_id INTEGER NOT NULL,
     status TEXT CHECK(status IN ('invited', 'requested', 'accepted', 'declined', 'cancelled')) NOT NULL,
-    inviter_is_creator BOOLEAN NOT NULL DEFAULT 0,
+    /* inviter_is_creator BOOLEAN NOT NULL DEFAULT 0, */
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     updater_id INTEGER,

@@ -2,7 +2,7 @@ package dbTools
 
 import (
 	"database/sql"
-	"social_network/backend/backendUtils"
+	"social_network/backendUtils"
 )
 
 func (db *DB) InsertSession(s *Session) (*Session, error) {
