@@ -28,10 +28,20 @@ export const AuthProvider = ({children}) => {
         try {
             setError(null);
 
-            // TODO: temporary setting!!! Have to be replaced with actual API call!!!!
+            const response = await fetch('http://localhost:8080/api/register', {
+            method: 'POST',
+            body: userData,
+        });
 
-            console.log("Register: ", userData);
-            return null;
+        console.log("Register: ", userData);
+        if (response.ok) {
+            const data = await response.json();
+            return data;
+      } else {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Registration failed');
+      }
+            //return null;
         } catch (err) {
             setError("Please try again. Registration failed.")
             throw err;
