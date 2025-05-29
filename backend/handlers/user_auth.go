@@ -4,15 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
-
-	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
+	"strings"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -28,14 +27,9 @@ type LoginResponse struct {
 	User    User `json:"user,omitempty"`
 }
 
-type User struct {
-	UserID    int    `json:"user_id"`
-	UserUUID  string `json:"user_uuid"`
-	Email     string `json:"email"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Nickname  string `json:"nickname,omitempty"`
-	Privacy   string `json:"privacy"`
+type SessionResponse struct {
+	Success bool  `json:"success"`
+	User    *User `json:"user,omitempty"`
 }
 
 // LoginHandler handles user login
@@ -80,13 +74,15 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Find user by email
 	var user User
 	var hashedPassword string
-	query := `SELECT user_id, user_uuid, email, password, first_name, last_name, 
-	          COALESCE(nickname, '') as nickname, privacy 
+	query := `SELECT user_id, user_uuid, email, password, first_name, last_name, date_of_birth,
+	          COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
+	          COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
 	          FROM users WHERE email = ? AND status = 'active'`
 
 	err = db.QueryRow(query, loginReq.Email).Scan(
 		&user.UserID, &user.UserUUID, &user.Email, &hashedPassword,
-		&user.FirstName, &user.LastName, &user.Nickname, &user.Privacy,
+		&user.FirstName, &user.LastName, &user.DateOfBirth, &user.Nickname,
+		&user.AboutMe, &user.Avatar, &user.Privacy, &user.Role, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {
@@ -247,6 +243,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Handle avatar upload
 	file, handler, err := r.FormFile("avatar")
 	if err == nil {
+		// Create upload directory if it doesn't exist
+		uploadDir := "public/uploads"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			fmt.Printf("Failed to create upload directory: %v\n", err)
+			http.Error(w, "Failed to save avatar", http.StatusInternalServerError)
+			return
+		}
+
 		defer file.Close()
 		ext := strings.ToLower(filepath.Ext(handler.Filename))
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" {
@@ -260,7 +264,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		filename := avatarUUID.String() + ext
-		dst, err := os.Create(filepath.Join("public/uploads", filename))
+		dst, err := os.Create(filepath.Join(uploadDir, filename))
 		if err != nil {
 			fmt.Printf("Avatar save error: %v\n", err)
 			http.Error(w, "Failed to save avatar", http.StatusInternalServerError)
@@ -352,13 +356,19 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare user response
 	user := User{
-		UserID:    int(userID),
-		UserUUID:  userUUID.String(),
-		Email:     registerReq.Email,
-		FirstName: registerReq.FirstName,
-		LastName:  registerReq.LastName,
-		Nickname:  registerReq.Nickname,
-		Privacy:   "private",
+		UserID:      int(userID),
+		UserUUID:    userUUID.String(),
+		Email:       registerReq.Email,
+		FirstName:   registerReq.FirstName,
+		LastName:    registerReq.LastName,
+		DateOfBirth: registerReq.DOB,
+		Nickname:    registerReq.Nickname,
+		AboutMe:     registerReq.AboutMe,
+		Avatar:      registerReq.Avatar,
+		Privacy:     "private",
+		Role:        "user",
+		CreatedAt:   currentTime.Format(time.RFC3339),
+		UpdatedAt:   currentTime.Format(time.RFC3339),
 	}
 
 	// Return success response
@@ -378,7 +388,44 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Fprintf(w, `{"message": "Logout endpoint - ready for implementation"}`)
+
+	// Get session cookie
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		http.Error(w, "No active session", http.StatusUnauthorized)
+		return
+	}
+
+	db := &dbTools.DB{}
+	db, err = db.OpenDB()
+	if err != nil {
+		fmt.Printf("DB connection error: %v\n", err)
+		http.Error(w, "DB connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.CloseDB()
+
+	// Invalidate session
+	query := `UPDATE sessions SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE session_uuid = ? AND status = 'active'`
+	_, err = db.Exec(query, cookie.Value)
+	if err != nil {
+		fmt.Printf("Session invalidation error: %v\n", err)
+		http.Error(w, "Failed to logout", http.StatusInternalServerError)
+		return
+	}
+
+	// Clear cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	})
+
+	fmt.Fprintf(w, `{"success": true, "message": "Logged out successfully"}`)
 }
 
 // SessionCheckHandler checks if user is logged in
@@ -388,5 +435,49 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Fprintf(w, `{"message": "Session check endpoint - ready for implementation"}`)
+
+	// Get session cookie
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		http.Error(w, "No active session", http.StatusUnauthorized)
+		return
+	}
+
+	db := &dbTools.DB{}
+	db, err = db.OpenDB()
+	if err != nil {
+		fmt.Printf("DB connection error: %v\n", err)
+		http.Error(w, "DB connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.CloseDB()
+
+	// Check session
+	var user User
+	query := `
+		SELECT u.user_id, u.user_uuid, u.email, u.first_name, u.last_name, u.date_of_birth,
+		       COALESCE(u.nickname, '') as nickname, COALESCE(u.about_me, '') as about_me,
+		       COALESCE(u.avatar, '') as avatar, u.privacy, u.role, u.created_at, u.updated_at
+		FROM users u
+		JOIN sessions s ON u.user_id = s.user_id
+		WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > CURRENT_TIMESTAMP
+	`
+
+	err = db.QueryRow(query, cookie.Value).Scan(
+		&user.UserID, &user.UserUUID, &user.Email, &user.FirstName, &user.LastName,
+		&user.DateOfBirth, &user.Nickname, &user.AboutMe, &user.Avatar, &user.Privacy,
+		&user.Role, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		fmt.Printf("Session check error: %v\n", err)
+		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	response := SessionResponse{
+		Success: true,
+		User:    &user,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
