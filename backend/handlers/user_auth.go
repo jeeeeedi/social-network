@@ -3,11 +3,16 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
-	"time"
 
 	"github.com/gofrs/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -19,9 +24,8 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Success bool   `json:"success"`
-	User    User   `json:"user,omitempty"`
-	Message string `json:"message,omitempty"`
+	Success bool `json:"success"`
+	User    User `json:"user,omitempty"`
 }
 
 type User struct {
@@ -64,11 +68,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := &dbTools.DB{}
-	if _, err := db.OpenDB(); err != nil {
+	var err error
+	db, err = db.OpenDB()
+	if err != nil {
 		fmt.Printf("DB connection error: %v\n", err)
 		http.Error(w, "DB connection failed", http.StatusInternalServerError)
 		return
 	}
+	defer db.CloseDB()
 
 	// Find user by email
 	var user User
@@ -77,7 +84,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	          COALESCE(nickname, '') as nickname, privacy 
 	          FROM users WHERE email = ? AND status = 'active'`
 
-	err := db.QueryRow(query, loginReq.Email).Scan(
+	err = db.QueryRow(query, loginReq.Email).Scan(
 		&user.UserID, &user.UserUUID, &user.Email, &hashedPassword,
 		&user.FirstName, &user.LastName, &user.Nickname, &user.Privacy,
 	)
@@ -104,9 +111,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert session into database
-	expiresAt := time.Now().Add(24 * time.Hour) // 24 hour session
-	sessionQuery := `INSERT INTO sessions (session_uuid, user_id, status, created_at, expires_at) 
-	                 VALUES (?, ?, 'active', CURRENT_TIMESTAMP, ?)`
+	expiresAt := time.Now().Add(24 * time.Hour)
+	sessionQuery := `INSERT INTO sessions (session_uuid, user_id, status, created_at, expires_at, updated_at) 
+	                 VALUES (?, ?, 'active', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
 
 	_, err = db.Exec(sessionQuery, sessionUUID.String(), user.UserID, expiresAt)
 	if err != nil {
@@ -140,11 +147,228 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 // RegisterHandler handles user registration
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Fprintf(w, `{"message": "Register endpoint - ready for implementation"}`)
+
+	// Parse multipart form data
+	err := r.ParseMultipartForm(10 << 20) // 10MB max
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
+
+	// Extract form fields
+	registerReq := struct {
+		Email     string
+		Password  string
+		FirstName string
+		LastName  string
+		DOB       string
+		Nickname  string
+		AboutMe   string
+		Avatar    string
+	}{
+		Email:     strings.TrimSpace(r.FormValue("email")),
+		Password:  strings.TrimSpace(r.FormValue("password")),
+		FirstName: strings.TrimSpace(r.FormValue("firstName")),
+		LastName:  strings.TrimSpace(r.FormValue("lastName")),
+		DOB:       strings.TrimSpace(r.FormValue("dob")),
+		Nickname:  strings.TrimSpace(r.FormValue("nickname")),
+		AboutMe:   strings.TrimSpace(r.FormValue("aboutMe")),
+	}
+
+	// Validate required fields
+	if registerReq.Email == "" || registerReq.Password == "" || registerReq.FirstName == "" ||
+		registerReq.LastName == "" || registerReq.DOB == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	// Validate email and password
+	if err := utils.ValidateEmail(registerReq.Email); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := utils.ValidatePassword(registerReq.Password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Validate DOB format (YYYY-MM-DD)
+	if _, err := time.Parse("2006-01-02", registerReq.DOB); err != nil {
+		http.Error(w, "Invalid date of birth format (use YYYY-MM-DD)", http.StatusBadRequest)
+		return
+	}
+
+	// Open database connection
+	db := &dbTools.DB{}
+	db, err = db.OpenDB()
+	if err != nil {
+		fmt.Printf("DB connection error: %v\n", err)
+		http.Error(w, "DB connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.CloseDB()
+
+	// Check if email already exists
+	var count int
+	query := `SELECT COUNT(*) FROM users WHERE email = ? AND status = 'active'`
+	err = db.QueryRow(query, registerReq.Email).Scan(&count)
+	if err != nil {
+		fmt.Printf("Email check error: %v\n", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if count > 0 {
+		http.Error(w, "Email already registered", http.StatusBadRequest)
+		return
+	}
+
+	// Check if first name already exists
+	query = `SELECT COUNT(*) FROM users WHERE first_name = ? AND status = 'active'`
+	err = db.QueryRow(query, registerReq.FirstName).Scan(&count)
+	if err != nil {
+		fmt.Printf("First name check error: %v\n", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if count > 0 {
+		http.Error(w, "First name already registered", http.StatusBadRequest)
+		return
+	}
+
+	// Handle avatar upload
+	file, handler, err := r.FormFile("avatar")
+	if err == nil {
+		defer file.Close()
+		ext := strings.ToLower(filepath.Ext(handler.Filename))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" {
+			http.Error(w, "Invalid file type. Only JPEG, PNG, and GIF are allowed", http.StatusBadRequest)
+			return
+		}
+		avatarUUID, err := uuid.NewV4()
+		if err != nil {
+			fmt.Printf("Avatar upload error: %v\n", err)
+			http.Error(w, "Failed to process avatar", http.StatusInternalServerError)
+			return
+		}
+		filename := avatarUUID.String() + ext
+		dst, err := os.Create(filepath.Join("public/uploads", filename))
+		if err != nil {
+			fmt.Printf("Avatar save error: %v\n", err)
+			http.Error(w, "Failed to save avatar", http.StatusInternalServerError)
+			return
+		}
+		defer dst.Close()
+		if _, err := io.Copy(dst, file); err != nil {
+			fmt.Printf("Avatar copy error: %v\n", err)
+			http.Error(w, "Failed to save avatar", http.StatusInternalServerError)
+			return
+		}
+		registerReq.Avatar = "/uploads/" + filename
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerReq.Password), bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Printf("Password hashing error: %v\n", err)
+		http.Error(w, "Failed to process password", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate user UUID
+	userUUID, err := uuid.NewV4()
+	if err != nil {
+		fmt.Printf("User UUID generation error: %v\n", err)
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		return
+	}
+
+	// Insert user into database
+	currentTime := time.Now()
+	query = `
+		INSERT INTO users (
+			user_uuid, email, password, first_name, last_name, date_of_birth,
+			nickname, about_me, avatar, privacy, role, status, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'private', 'user', 'active', ?, ?)`
+	result, err := db.Exec(
+		query,
+		userUUID.String(), registerReq.Email, string(hashedPassword),
+		registerReq.FirstName, registerReq.LastName, registerReq.DOB,
+		utils.NullIfEmpty(registerReq.Nickname), utils.NullIfEmpty(registerReq.AboutMe), utils.NullIfEmpty(registerReq.Avatar),
+		currentTime, currentTime,
+	)
+	if err != nil {
+		fmt.Printf("User insertion error: %v\n", err)
+		http.Error(w, "Failed to register user", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the inserted user ID
+	userID, err := result.LastInsertId()
+	if err != nil {
+		fmt.Printf("Failed to get user ID: %v\n", err)
+		http.Error(w, "Failed to register user", http.StatusInternalServerError)
+		return
+	}
+
+	// Create session
+	sessionUUID, err := uuid.NewV4()
+	if err != nil {
+		fmt.Printf("Session UUID generation error: %v\n", err)
+		http.Error(w, "Session creation failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Insert session into database
+	expiresAt := time.Now().Add(24 * time.Hour)
+	sessionQuery := `INSERT INTO sessions (session_uuid, user_id, status, created_at, expires_at, updated_at) 
+	                 VALUES (?, ?, 'active', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
+	_, err = db.Exec(sessionQuery, sessionUUID.String(), userID, expiresAt)
+	if err != nil {
+		fmt.Printf("Session creation error: %v\n", err)
+		http.Error(w, "Session creation failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Set session cookie
+	cookie := &http.Cookie{
+		Name:     "session_id",
+		Value:    sessionUUID.String(),
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	}
+	http.SetCookie(w, cookie)
+
+	// Prepare user response
+	user := User{
+		UserID:    int(userID),
+		UserUUID:  userUUID.String(),
+		Email:     registerReq.Email,
+		FirstName: registerReq.FirstName,
+		LastName:  registerReq.LastName,
+		Nickname:  registerReq.Nickname,
+		Privacy:   "private",
+	}
+
+	// Return success response
+	response := LoginResponse{
+		Success: true,
+		User:    user,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
 }
 
 // LogoutHandler handles user logout
