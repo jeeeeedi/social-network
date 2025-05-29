@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS "users" (
     date_of_birth DATE NOT NULL,
     nickname TEXT,
     about_me TEXT,
+    avatar TEXT,
     privacy TEXT CHECK(privacy IN ('private', 'public')) NOT NULL DEFAULT 'private',
     role TEXT CHECK(role IN ('user', 'admin', 'group_moderator')) NOT NULL DEFAULT 'user',
     status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',

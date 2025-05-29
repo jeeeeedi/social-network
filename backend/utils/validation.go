@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"errors"
 	"regexp"
 	"strings"
@@ -44,6 +45,14 @@ func ValidatePassword(password string) error {
 	}
 
 	return nil
+}
+
+// NullIfEmpty converts empty strings to sql.NullString
+func NullIfEmpty(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
 }
 
 // For registration - stronger requirements (commented out for testing)
