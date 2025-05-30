@@ -27,7 +27,7 @@ func setHandlers() {
 func main() {
 	// Initialize database
 	db := &dbTools.DB{}
-	if err := db.OpenDBWithMigration(); err != nil {
+	if _, err := db.OpenDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.CloseDB()
