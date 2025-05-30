@@ -1,4 +1,4 @@
-package backendUtils
+package utils
 
 import (
 	"log"

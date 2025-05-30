@@ -23,13 +23,13 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Success bool `json:"success"`
-	User    User `json:"user,omitempty"`
+	Success bool         `json:"success"`
+	User    dbTools.User `json:"user,omitempty"`
 }
 
 type SessionResponse struct {
-	Success bool  `json:"success"`
-	User    *User `json:"user,omitempty"`
+	Success bool          `json:"success"`
+	User    *dbTools.User `json:"user,omitempty"`
 }
 
 // LoginHandler handles user login
@@ -72,7 +72,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.CloseDB()
 
 	// Find user by email
-	var user User
+	var user dbTools.User
 	var hashedPassword string
 	query := `SELECT user_id, user_uuid, email, password, first_name, last_name, date_of_birth,
 	          COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
@@ -355,15 +355,16 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, cookie)
 
 	// Prepare user response
-	user := User{
+	parsedDOB, _ := time.Parse("2006-01-02", registerReq.DOB) // Parse DOB string to time.Time
+	user := dbTools.User{
 		UserID:      int(userID),
 		UserUUID:    userUUID.String(),
 		Email:       registerReq.Email,
 		FirstName:   registerReq.FirstName,
 		LastName:    registerReq.LastName,
-		DateOfBirth: registerReq.DOB,
-		Nickname:    registerReq.Nickname,
-		AboutMe:     registerReq.AboutMe,
+		DateOfBirth: parsedDOB,
+		Nickname:    utils.NullIfEmpty(registerReq.Nickname),
+		AboutMe:     utils.NullIfEmpty(registerReq.AboutMe),
 		Avatar:      registerReq.Avatar,
 		Privacy:     "private",
 		Role:        "user",
@@ -453,7 +454,7 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.CloseDB()
 
 	// Check session
-	var user User
+	var user dbTools.User
 	query := `
 		SELECT u.user_id, u.user_uuid, u.email, u.first_name, u.last_name, u.date_of_birth,
 		       COALESCE(u.nickname, '') as nickname, COALESCE(u.about_me, '') as about_me,

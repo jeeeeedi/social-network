@@ -2,14 +2,14 @@ package dbTools
 
 import (
 	"database/sql"
-	"social_network/backendUtils"
+	"social_network/utils"
 )
 
 func (db *DB) InsertSession(s *Session) (*Session, error) {
 
 	// Generate UUID for the session if not already set
 	if s.SessionUUID == "" {
-		uuid, err := backendUtils.GenerateUUID()
+		uuid, err := utils.GenerateUUID()
 		if err != nil {
 			return nil, err
 		}
@@ -19,7 +19,7 @@ func (db *DB) InsertSession(s *Session) (*Session, error) {
 	// Insert session into the database
 	query := `INSERT INTO sessions (session_uuid, user_id, status, created_at, expires_at) 
 	          VALUES (?, ?, ?, datetime('now'), ?)`
-	_, err := db.db.Exec(query, s.SessionUUID, s.User.UserID, s.Status, s.CreatedAt, s.ExpiresAt)
+	_, err := db.db.Exec(query, s.SessionUUID, s.UserID, s.Status, s.CreatedAt, s.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
@@ -35,16 +35,13 @@ func (db *DB) GetSessionByUUID(uuid string) (*Session, error) {
 	row := db.db.QueryRow(query, uuid)
 
 	s := &Session{}
-	err := row.Scan(&s.SessionUUID, &s.User.UserID, &s.Status, &s.CreatedAt, &s.ExpiresAt)
+	err := row.Scan(&s.SessionUUID, &s.UserID, &s.Status, &s.CreatedAt, &s.ExpiresAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // No session found
 		}
 		return nil, err // Other error
 	}
-
-	// Set the user for the session
-	s.User = &User{UserID: s.User.UserID}
 
 	return s, nil
 }

@@ -1,4 +1,4 @@
-DB_URL=sqlite://db/socnet.db?cache=shared&mode=rwc
+DB_URL=sqlite://backend/db/socnet.db?cache=shared&mode=rwc
 name=socnet
 
 migrateup:
@@ -14,6 +14,6 @@ migratedown1:
 	migrate -path db/migrations -database "$(DB_URL)" -verbose down 1
 
 new_migration:
-	migrate create -ext sql -dir db/migrations -seq $(name)
+	migrate create -ext sql -dir db/migrations -seq socnet
 
 .PHONY: migrateup migratedown migrateup1 migratedown1 new_migration

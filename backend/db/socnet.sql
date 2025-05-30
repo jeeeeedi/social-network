@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS "users" (
     date_of_birth DATE NOT NULL,
     nickname TEXT,
     about_me TEXT,
+    avatar TEXT,
     privacy TEXT CHECK(privacy IN ('private', 'public')) NOT NULL DEFAULT 'private',
     role TEXT CHECK(role IN ('user', 'admin', 'group_moderator')) NOT NULL DEFAULT 'user',
     status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',
@@ -65,6 +66,15 @@ CREATE TABLE IF NOT EXISTS "posts" (
     FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
+/* The join table approach is scalable, efficient, and standard SQL practice. */
+CREATE TABLE IF NOT EXISTS post_private_viewers (
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    PRIMARY KEY (post_id, user_id),
+    FOREIGN KEY(post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS "comments" (
     comment_id INTEGER PRIMARY KEY AUTOINCREMENT,
     commenter_id INTEGER NOT NULL,
@@ -99,7 +109,6 @@ CREATE TABLE IF NOT EXISTS "post_categories" (
 CREATE TABLE IF NOT EXISTS "interactions" (
     interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    post_id INTEGER NOT NULL,
     interaction_type TEXT CHECK(interaction_type IN ('like', 'dislike', 'cancelled')) NOT NULL,
     parent_type TEXT CHECK(parent_type IN ('post', 'comment')) NOT NULL,
     parent_id INTEGER NOT NULL,
@@ -108,7 +117,6 @@ CREATE TABLE IF NOT EXISTS "interactions" (
     updated_at DATETIME,
     updater_id INTEGER,
     FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
     FOREIGN KEY(updater_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
