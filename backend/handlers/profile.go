@@ -9,23 +9,6 @@ import (
 	"strings"
 )
 
-// User represents a user profile
-type User struct {
-	UserID      int    `json:"user_id"`
-	UserUUID    string `json:"user_uuid"`
-	Email       string `json:"email"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	DateOfBirth string `json:"date_of_birth"`
-	Nickname    string `json:"nickname,omitempty"`
-	AboutMe     string `json:"about_me,omitempty"`
-	Avatar      string `json:"avatar,omitempty"`
-	Privacy     string `json:"privacy"`
-	Role        string `json:"role"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-}
-
 // PrivacyRequest represents a privacy update request
 type PrivacyRequest struct {
 	Privacy string `json:"privacy"`
@@ -63,7 +46,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.CloseDB()
 
 	// Fetch profile
-	var profile User
+	var profile dbTools.User
 	query := `
 		SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
 		       COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as aboutMe,
@@ -144,7 +127,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := struct {
 		Success   bool          `json:"success"`
-		Profile   User          `json:"profile"`
+		Profile   dbTools.User          `json:"profile"`
 		Posts     []interface{} `json:"posts"`     // Placeholder
 		Followers []interface{} `json:"followers"` // Placeholder
 		Following []interface{} `json:"following"` // Placeholder
@@ -302,7 +285,7 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var profile User
+	var profile dbTools.User
 	query := `
 		SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
 		       COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
@@ -324,7 +307,7 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := struct {
 		Success bool `json:"success"`
-		Profile User `json:"profile"`
+		Profile dbTools.User `json:"profile"`
 	}{
 		Success: true,
 		Profile: profile,
