@@ -1,4 +1,4 @@
-DB_URL=sqlite://backend/db/socnet.db?cache=shared&mode=rwc
+DB_URL=sqlite://db/socnet.db?cache=shared&mode=rwc
 name=socnet
 
 migrateup:
@@ -17,3 +17,11 @@ new_migration:
 	migrate create -ext sql -dir db/migrations -seq socnet
 
 .PHONY: migrateup migratedown migrateup1 migratedown1 new_migration
+
+# 1. run new_migration to create new up.sql and down.sql files with autoincrementing filenames
+# 2. edit the up.sql and down.sql files to define the migration
+# 3. run `make migrateup` to apply the migrations
+
+# somehow, this works:
+# go to backend dir
+# sqlite3 ./db/socnet.db < ./db/migrations/000002_socnet.up.sql
