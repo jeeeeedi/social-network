@@ -10,20 +10,23 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const checkLoggedIn = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/profile/me', {
+                const response = await fetch('http://localhost:8080/api/session-check', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                 });
+                
                 const data = await response.json();
                 if (data.success) {
-                    setCurrentUser(data.profile);
+                    setCurrentUser(data.user);
                 } else {
                     setCurrentUser(null);
+                    setError(null);
+                    console.log("Setting user to null")
                 }
             } catch (err) {
                 setCurrentUser(null);
-                console.error('Check logged in error:', err);
+                console.log("And now I'm here ...")
             } finally {
                 setLoading(false);
             }
