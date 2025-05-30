@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
-
-	"github.com/gorilla/mux"
+	"strings"
 )
 
 // User represents a user profile
@@ -41,9 +40,12 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	userUUID := vars["user_uuid"]
-	if userUUID == "" {
+	// Extract user_uuid from URL path manually
+	// Expected format: /api/profile/{user_uuid}
+	path := strings.TrimPrefix(r.URL.Path, "/api/profile/")
+	userUUID := strings.Split(path, "/")[0] // Get first segment after /api/profile/
+
+	if userUUID == "" || userUUID == "me" || userUUID == "privacy" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Missing user UUID"})
 		return
@@ -175,7 +177,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		fmt.Printf("No session cookie: %v\n", err)
-		w.WriteHeader(http.StatusUnauthorized)
+		//w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
 		return
 	}
