@@ -35,26 +35,35 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const registerNewUser = async (userData) => {
-        try {
-            setError(null);
-            const response = await fetch('http://localhost:8080/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData),
-                credentials: 'include',
-            });
-            const data = await response.json();
-            if (data.success) {
-                setCurrentUser(data.user);
-                return data;
-            } else {
-                throw new Error(data.message || 'Registration failed');
-            }
-        } catch (err) {
-            setError(err.message || 'Registration failed. Please try again.');
-            throw err;
-        }
-    };
+  try {
+    setError(null);
+    const response = await fetch('http://localhost:8080/api/register', {
+      method: 'POST',
+      body: userData, // Send FormData directly
+      credentials: 'include',
+    });
+
+    // Get the raw response text first to debug non-JSON responses
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text); // Attempt to parse as JSON
+    } catch (err) {
+      console.error('Invalid JSON response:', text);
+      throw new Error('Server returned invalid response');
+    }
+
+    if (response.ok && data.success) {
+      setCurrentUser(data.user);
+      return data;
+    } else {
+      throw new Error(data.message || 'Registration failed');
+    }
+  } catch (err) {
+    setError(err.message || 'Registration failed. Please try again.');
+    throw err;
+  }
+};
 
     const loginUser = async (email, password) => {
         try {
