@@ -1,14 +1,60 @@
-'use client';
-export default function RegisterFormUI({
-  formData,
-  errors,
-  error,
-  handleChange,
-  handleFileChange,
-  handleSubmit,
-}) {
+import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
+import { validateRegister } from '../utils/validate';
+import { registerUser } from '../api/auth';
+
+const RegisterPage = () => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    dob: '',
+    nickname: '',
+    aboutMe: '',
+    avatar: null,
+  });
+  const [errors, setErrors] = useState({});
+  const { error } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setFormData({ ...formData, avatar: file });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newErrors = validateRegister(formData);
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    const submitData = new FormData();
+    submitData.append('email', formData.email);
+    submitData.append('password', formData.password);
+    submitData.append('firstName', formData.firstName);
+    submitData.append('lastName', formData.lastName);
+    submitData.append('dob', formData.dob);
+    if (formData.nickname) submitData.append('nickname', formData.nickname);
+    if (formData.aboutMe) submitData.append('aboutMe', formData.aboutMe);
+    if (formData.avatar) submitData.append('avatar', formData.avatar);
+
+    try {
+      await registerUser(submitData);
+      navigate('/login');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
-    <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+    <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md mx-auto mt-10">
       <h2 className="text-2xl font-bold text-center mb-4">Register</h2>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <form onSubmit={handleSubmit} encType="multipart/form-data" className="space-y-4">
@@ -115,4 +161,6 @@ export default function RegisterFormUI({
       </form>
     </div>
   );
-}
+};
+
+export default RegisterPage;
