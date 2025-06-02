@@ -477,7 +477,7 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		fmt.Printf("Session check error: %v\n", err)
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		//http.Error(w, "Invalid session", http.StatusUnauthorized)
 		return
 	}
 

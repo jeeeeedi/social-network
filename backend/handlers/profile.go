@@ -201,7 +201,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&userID)
 	if err != nil {
 		fmt.Printf("Session check error: %v\n", err)
-		w.WriteHeader(http.StatusUnauthorized)
+		//w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
 		return
 	}
@@ -265,7 +265,7 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		fmt.Println("No session cookie found")
-		w.WriteHeader(http.StatusUnauthorized)
+		//w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
 		return
 	}
@@ -280,7 +280,7 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID)
 	if err != nil {
 		fmt.Printf("Session query error: %v\n", err)
-		w.WriteHeader(http.StatusUnauthorized)
+		//w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
 		return
 	}
