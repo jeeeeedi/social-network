@@ -22,6 +22,10 @@ func setHandlers() {
 	http.HandleFunc("/api/profile/me", handlers.ProfileMeHandler)
 	http.HandleFunc("/api/profile/", handlers.ProfileHandler) // Will handle /api/profile/{uuid}
 	http.HandleFunc("/api/profile/privacy", handlers.PrivacyHandler)
+	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
+	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)
+	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
+	http.HandleFunc("/api/following", handlers.GetFollowingHandler)*/
 }
 
 func main() {
