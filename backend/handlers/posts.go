@@ -61,7 +61,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := r.FormValue("content")
 	privacy := r.FormValue("privacy")
-	var imageURL string
+	//var imageURL string
 
 	file, handler, err := r.FormFile("file")
 	if err == nil {
@@ -76,7 +76,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer dst.Close()
 		io.Copy(dst, file)
-		imageURL = filePath
+		//imageURL = filePath
 	}
 
 	storeMutex.Lock()
@@ -88,11 +88,12 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 	comments = []dbTools.Comment{}
-	var uploadedFile *dbTools.File
-	if imageURL != "" {
-		uploadedFile = &dbTools.File{Filename: filepath.Base(imageURL)}
+	/* 	if imageURL != "" {
+		var uploadedFile *dbTools.File
 		// You can store uploadedFile somewhere if needed
-	}
+		uploadedFile = &dbTools.File{Filename: filepath.Base(imageURL)}
+	} */
+
 	postID++
 	posts = append(posts, post)
 

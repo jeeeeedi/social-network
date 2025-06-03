@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'; // Add Link
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Feed from '../pages/Feed';
+import PostInput from '../pages/PostInput';
 
 const Home = () => {
   const { currentUser, logoutUser } = useContext(AuthContext);
@@ -44,6 +45,7 @@ const Home = () => {
                 View My Profile
               </Link>
             </div>
+            <PostInput />
             <div className="bg-white shadow-md rounded p-6">
               <p className="mb-4">Your Feed</p>
               <Feed />
