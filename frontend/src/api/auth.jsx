@@ -33,8 +33,20 @@ export const logoutUser = async () => {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
-  const data = await response.json();
-  if (!data.success) {
+  // const data = await response.json();
+  // if (!data.success) {
+  //   throw new Error(data.message || 'Logout failed');
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    data = await response.text();
+  }
+
+  if (!response.ok) {
+    throw new Error((data && data.message) || data || 'Logout failed');
+  }
+  if (data && data.success === false) {
     throw new Error(data.message || 'Logout failed');
   }
 };
