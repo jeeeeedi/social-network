@@ -394,7 +394,12 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Get session cookie
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
-		http.Error(w, "No active session", http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "No active session",
+		})
 		return
 	}
 
