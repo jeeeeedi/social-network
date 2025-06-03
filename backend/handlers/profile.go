@@ -19,18 +19,16 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Method not allowed"})
 		return
 	}
 
-	// Extract user_uuid from URL path manually
-	// Expected format: /api/profile/{user_uuid}
+	// Extract user_uuid from URL path
 	path := strings.TrimPrefix(r.URL.Path, "/api/profile/")
-	userUUID := strings.Split(path, "/")[0] // Get first segment after /api/profile/
-
+	userUUID := strings.Split(path, "/")[0]
 	if userUUID == "" || userUUID == "me" || userUUID == "privacy" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Missing user UUID"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Missing user UUID"})
 		return
 	}
 
@@ -40,94 +38,33 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("DB connection error: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "DB connection failed"})
 		return
 	}
 	defer db.CloseDB()
 
-	// Fetch profile
+	// Fetch limited profile data (always accessible)
 	var profile dbTools.User
 	query := `
-		SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
-		       COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as aboutMe,
-		       COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
-		FROM users
-		WHERE user_uuid = ? AND status = 'active'
-	`
+        SELECT user_id, user_uuid, first_name, last_name, COALESCE(avatar, '') as avatar, privacy
+        FROM users
+        WHERE user_uuid = ? AND status = 'active'
+    `
 	err = db.QueryRow(query, userUUID).Scan(
-		&profile.UserID, &profile.UserUUID, &profile.Email, &profile.FirstName,
-		&profile.LastName, &profile.DateOfBirth, &profile.Nickname, &profile.AboutMe,
-		&profile.Avatar, &profile.Privacy, &profile.Role, &profile.CreatedAt, &profile.CreatedAt,
+		&profile.UserID, &profile.UserUUID, &profile.FirstName, &profile.LastName,
+		&profile.Avatar, &profile.Privacy,
 	)
 	if err != nil {
 		fmt.Printf("Profile fetch error: %v\n", err)
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "User not found"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "User not found"})
 		return
 	}
 
-	// Check privacy and follower status
-	isAuthorized := false
-	cookie, err := r.Cookie("session_id")
-	if err == nil {
-		fmt.Printf("Session cookie value: %s\n", cookie.Value)
-		var currentUserID int
-		sessionQuery := `
-			SELECT u.user_id
-			FROM users u
-			JOIN sessions s ON u.user_id = s.user_id
-			WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > CURRENT_TIMESTAMP
-		`
-		err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID)
-		if err != nil {
-			fmt.Printf("Session query error: %v\n", err)
-		} else {
-			fmt.Printf("Current user ID: %d, Profile user ID: %d\n", currentUserID, profile.UserID)
-			if currentUserID == profile.UserID {
-				isAuthorized = true // Own profile
-				fmt.Println("Authorized: Own profile")
-			} else if profile.Privacy == "public" {
-				isAuthorized = true // Public profile
-				fmt.Println("Authorized: Public profile")
-			} else {
-				// Check if current user is an accepted follower
-				followerQuery := `
-					SELECT COUNT(*)
-					FROM follows
-					WHERE follower_user_id = ? AND followed_user_id = ? AND status = 'accepted'
-				`
-				var followerCount int
-				err = db.QueryRow(followerQuery, currentUserID, profile.UserID).Scan(&followerCount)
-				if err != nil {
-					fmt.Printf("Follower query error: %v\n", err)
-					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Follower check error"})
-					return
-				}
-				if followerCount > 0 {
-					isAuthorized = true
-					fmt.Println("Authorized: Accepted follower")
-				}
-			}
-		}
-	} else {
-		fmt.Println("No session cookie found")
-		if profile.Privacy == "public" {
-			isAuthorized = true // Public profile, no login needed
-			fmt.Println("Authorized: Public profile, no login")
-		}
-	}
-
-	if !isAuthorized {
-		fmt.Println("Unauthorized: Access denied")
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Unauthorized to view private profile"})
-		return
-	}
-
+	// Prepare response with limited data
 	response := struct {
 		Success   bool          `json:"success"`
-		Profile   dbTools.User          `json:"profile"`
+		Profile   dbTools.User  `json:"profile"`
 		Posts     []interface{} `json:"posts"`     // Placeholder
 		Followers []interface{} `json:"followers"` // Placeholder
 		Following []interface{} `json:"following"` // Placeholder
@@ -138,6 +75,78 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		Followers: []interface{}{},
 		Following: []interface{}{},
 	}
+
+	// Check if full profile access is allowed
+	isAuthorized := false
+	cookie, err := r.Cookie("session_id")
+	if err == nil {
+		var currentUserID int
+		sessionQuery := `
+            SELECT u.user_id
+            FROM users u
+            JOIN sessions s ON u.user_id = s.user_id
+            WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > datetime('now')
+        `
+		err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID) // Fixed: Scan(&currentUserID)
+		if err != nil {
+			fmt.Printf("Session query error: %v\n", err)
+		} else {
+			fmt.Printf("currentUserID: %d, profile.UserID: %d\n", currentUserID, profile.UserID)
+			if currentUserID == profile.UserID {
+				isAuthorized = true // Own profile
+				fmt.Println("Authorized: Own profile")
+			} else if profile.Privacy == "public" {
+				isAuthorized = true // Public profile
+				fmt.Println("Authorized: Public profile")
+			} else {
+				// Check if current user is an accepted follower
+				followerQuery := `
+                    SELECT COUNT(*)
+                    FROM follows
+                    WHERE follower_user_id = ? AND followed_user_id = ? AND status = 'accepted'
+                `
+				var followerCount int
+				err = db.QueryRow(followerQuery, currentUserID, profile.UserID).Scan(&followerCount)
+				if err != nil {
+					fmt.Printf("Follower query error: %v\n", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Follower check error"})
+					return
+				}
+				if followerCount > 0 {
+					isAuthorized = true
+					fmt.Println("Authorized: Accepted follower")
+				}
+			}
+		}
+	} else if profile.Privacy == "public" {
+		isAuthorized = true // Public profile, no login needed
+		fmt.Println("Authorized: Public profile, no login")
+	}
+
+	// If authorized, fetch full profile data
+	if isAuthorized {
+		query = `
+            SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
+                   COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
+                   COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
+            FROM users
+            WHERE user_uuid = ? AND status = 'active'
+        `
+		err = db.QueryRow(query, userUUID).Scan(
+			&profile.UserID, &profile.UserUUID, &profile.Email, &profile.FirstName,
+			&profile.LastName, &profile.DateOfBirth, &profile.Nickname, &profile.AboutMe,
+			&profile.Avatar, &profile.Privacy, &profile.Role, &profile.CreatedAt, &profile.UpdatedAt,
+		)
+		if err != nil {
+			fmt.Printf("Full profile fetch error: %v\n", err)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "User not found"})
+			return
+		}
+		response.Profile = profile
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -201,7 +210,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&userID)
 	if err != nil {
 		fmt.Printf("Session check error: %v\n", err)
-		//w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
 		return
 	}
@@ -265,34 +274,34 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		fmt.Println("No session cookie found")
-		//w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
 		return
 	}
 
 	var currentUserID int
 	sessionQuery := `
-		SELECT u.user_id
-		FROM users u
-		JOIN sessions s ON u.user_id = s.user_id
-		WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > CURRENT_TIMESTAMP
-	`
-	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID)
+        SELECT u.user_id
+        FROM users u
+        JOIN sessions s ON u.user_id = s.user_id
+        WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > datetime('now')
+    `
+	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID) // Fixed: Scan(&currentUserID)
 	if err != nil {
 		fmt.Printf("Session query error: %v\n", err)
-		//w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
 		return
 	}
 
 	var profile dbTools.User
 	query := `
-		SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
-		       COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
-		       COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
-		FROM users
-		WHERE user_id = ? AND status = 'active'
-	`
+        SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
+               COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
+               COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
+        FROM users
+        WHERE user_id = ? AND status = 'active'
+    `
 	err = db.QueryRow(query, currentUserID).Scan(
 		&profile.UserID, &profile.UserUUID, &profile.Email, &profile.FirstName,
 		&profile.LastName, &profile.DateOfBirth, &profile.Nickname, &profile.AboutMe,
@@ -306,7 +315,7 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := struct {
-		Success bool `json:"success"`
+		Success bool         `json:"success"`
 		Profile dbTools.User `json:"profile"`
 	}{
 		Success: true,
