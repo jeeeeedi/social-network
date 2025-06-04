@@ -2,7 +2,6 @@ import React, { useContext } from 'react';
 import { Link } from 'react-router-dom'; // Add Link
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import Feed from '../pages/Feed'; // Import the Feed component
 
 const Home = () => {
   const { currentUser, logoutUser } = useContext(AuthContext);
@@ -46,7 +45,9 @@ const Home = () => {
             </div>
             <div className="bg-white shadow-md rounded p-6">
               <p className="mb-4">Your Feed</p>
-              <Feed />
+              <div className="border rounded p-4 mb-4 bg-gray-50">
+                <p className="text-gray-700">This is where posts will appear.</p>
+              </div>
             </div>
           </div>
         ) : (
