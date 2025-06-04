@@ -28,6 +28,12 @@ func setHandlers() {
 	http.HandleFunc("/api/following", handlers.GetFollowingHandler)*/
 	http.HandleFunc("/api/follow/", handlers.FollowHandler)
 	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
+	
+	// Routes for POSTS and COMMENTS
+	// TODO: Check if these work
+	http.HandleFunc("/api/posts/", handlers.CreatePostHandler)
+	http.HandleFunc("/api/posts", handlers.GetPostsHandler)
+	http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
 }
 
 func main() {
