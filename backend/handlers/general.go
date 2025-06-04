@@ -11,3 +11,4 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	fmt.Fprintf(w, "Greetings from Social Network Server")
 }
+ 
