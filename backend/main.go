@@ -27,7 +27,9 @@ func setHandlers() {
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
 	http.HandleFunc("/api/following", handlers.GetFollowingHandler)*/
 	http.HandleFunc("/api/follow/", handlers.FollowHandler)
-	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
+	//http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
+	http.HandleFunc("/api/follow/requests", handlers.FollowRequestHandler)
+	http.HandleFunc("/api/notifications/", handlers.NotificationHandler)
 }
 
 func main() {

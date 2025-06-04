@@ -81,32 +81,30 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var status string
+	// Inside FollowHandler, replace the POST block
 	if r.Method == "POST" {
-		// Check if follow relationship exists
 		var existingStatus string
 		var followID int
 		checkQuery := `
-			SELECT follow_id, status FROM follows
-			WHERE follower_user_id = ? AND followed_user_id = ?
-		`
+        SELECT follow_id, status FROM follows
+        WHERE follower_user_id = ? AND followed_user_id = ?
+    `
 		err = db.QueryRow(checkQuery, currentUserID, followedUserID).Scan(&followID, &existingStatus)
 		if err == nil {
-			// If status is pending or accepted, prevent duplicate
 			if existingStatus == "pending" || existingStatus == "accepted" {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Already following or request pending"})
 				return
 			}
-			// If declined or cancelled, update to pending or accepted
 			newStatus := "pending"
 			if privacy == "public" {
 				newStatus = "accepted"
 			}
 			updateQuery := `
-				UPDATE follows
-				SET status = ?, updated_at = datetime('now'), updater_id = ?
-				WHERE follow_id = ?
-			`
+            UPDATE follows
+            SET status = ?, updated_at = datetime('now'), updater_id = ?
+            WHERE follow_id = ?
+        `
 			_, err = db.Exec(updateQuery, newStatus, currentUserID, followID)
 			if err != nil {
 				fmt.Printf("Follow update error: %v\n", err)
@@ -116,21 +114,39 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			status = newStatus
 		} else {
-			// No existing follow, create new
 			status = "pending"
 			if privacy == "public" {
 				status = "accepted"
 			}
 			followQuery := `
-				INSERT INTO follows (follower_user_id, followed_user_id, status, created_at, updater_id)
-				VALUES (?, ?, ?, datetime('now'), ?)
-			`
-			_, err = db.Exec(followQuery, currentUserID, followedUserID, status, currentUserID)
+            INSERT INTO follows (follower_user_id, followed_user_id, status, created_at, updater_id)
+            VALUES (?, ?, ?, datetime('now'), ?)
+        `
+			result, err := db.Exec(followQuery, currentUserID, followedUserID, status, currentUserID)
 			if err != nil {
 				fmt.Printf("Follow insert error: %v\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to follow"})
 				return
+			}
+			if status == "pending" {
+				followID, err := result.LastInsertId()
+				if err == nil {
+					var nickname string
+					err = db.QueryRow(`SELECT nickname FROM users WHERE user_id = ?`, currentUserID).Scan(&nickname)
+					if err != nil || nickname == "" {
+						nickname = "Someone"
+					}
+					content := fmt.Sprintf("%s wants to follow you", nickname)
+					notifyQuery := `
+                    INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
+                    VALUES (?, ?, 'follow_request', 'follow', ?, ?, 'unread', datetime('now'), ?)
+                `
+					_, err = db.Exec(notifyQuery, followedUserID, currentUserID, followID, content, currentUserID)
+					if err != nil {
+						fmt.Printf("Notification insert error: %v\n", err)
+					}
+				}
 			}
 		}
 	} else if r.Method == "DELETE" {
