@@ -23,13 +23,24 @@ export const registerUser = async (formData) => {
 };
 
 export const loginUser = async ({ email, password }) => {
+  
   const response = await fetch(`${API_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
     credentials: 'include',
   });
-  const data = await response.json();
+  const text = await response.text();
+  console.log('Server response text:', text);
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Server returned non-JSON response: ${text}`);
+  }
+  if (!response.ok) {
+    throw new Error((data && data.message) || text || 'Login failed');
+  }
   if (!data.success) {
     throw new Error(data.message || 'Login failed');
   }
@@ -42,10 +53,17 @@ export const logoutUser = async () => {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
-  const data = await response.json();
-  if (!response.ok || !data.success) {
-    throw new Error(data.message || 'Logout failed');
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
   }
+  if (!response.ok || (data && !data.success)) {
+    throw new Error((data && data.message) || 'Logout failed');
+  }
+  return data;
 };
 
 export const checkSession = async () => {
@@ -54,9 +72,15 @@ export const checkSession = async () => {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
-  const data = await response.json();
-  if (!data.success) {
-    throw new Error(data.message || 'Session check failed');
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+  if (!response.ok || (data && !data.success)) {
+    throw new Error((data && data.message) || 'Session check failed');
   }
   return data.user;
 };

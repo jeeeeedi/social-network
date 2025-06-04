@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	SessionCookieName = "session_uuid"
+	SessionCookieName = "session_id"
 	SessionDuration   = 24 * time.Hour
 )
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
+	"social_network/utils"
 	"strings"
 )
 
@@ -27,16 +28,8 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get session cookie
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
-		return
-	}
-
 	db := &dbTools.DB{}
-	db, err = db.OpenDB()
+	db, err := db.OpenDB()
 	if err != nil {
 		fmt.Printf("DB connection error: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -45,19 +38,11 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.CloseDB()
 
-	// Get current user ID from session
-	var currentUserID int
-	sessionQuery := `
-		SELECT u.user_id
-		FROM users u
-		JOIN sessions s ON u.user_id = s.user_id
-		WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > datetime('now')
-	`
-	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID)
+	// Get current user ID from session using utility function
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
-		fmt.Printf("Session check error: %v\n", err)
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
 		return
 	}
 
@@ -74,7 +59,7 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prevent self-follow
-	if currentUserID == followedUserID {
+	if int(currentUserID) == followedUserID {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Cannot follow yourself"})
 		return
@@ -187,16 +172,8 @@ func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get session cookie
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
-		return
-	}
-
 	db := &dbTools.DB{}
-	db, err = db.OpenDB()
+	db, err := db.OpenDB()
 	if err != nil {
 		fmt.Printf("DB connection error: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -205,19 +182,11 @@ func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.CloseDB()
 
-	// Get current user ID from session
-	var currentUserID int
-	sessionQuery := `
-		SELECT u.user_id
-		FROM users u
-		JOIN sessions s ON u.user_id = s.user_id
-		WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > datetime('now')
-	`
-	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID)
+	// Get current user ID from session using utility function
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
-		fmt.Printf("Session check error: %v\n", err)
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
 		return
 	}
 
