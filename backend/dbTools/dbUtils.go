@@ -55,6 +55,11 @@ func (d *DB) CloseDB() error {
 	return nil
 }
 
+// GetDB returns the underlying *sql.DB connection for use in other packages.
+func (d *DB) GetDB() *sql.DB {
+	return d.db
+}
+
 func (d *DB) WithTransaction(fn func(*sql.Tx) error) error {
 	tx, err := d.db.Begin()
 	if err != nil {

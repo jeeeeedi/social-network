@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -99,36 +98,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create session
-	sessionUUID, err := uuid.NewV4()
-	if err != nil {
-		fmt.Printf("Session UUID generation error: %v\n", err)
-		http.Error(w, "Session creation failed", http.StatusInternalServerError)
-		return
-	}
-
-	// Insert session into database
-	expiresAt := time.Now().Add(24 * time.Hour)
-	sessionQuery := `INSERT INTO sessions (session_uuid, user_id, status, created_at, expires_at, updated_at) 
-	                 VALUES (?, ?, 'active', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
-
-	_, err = db.Exec(sessionQuery, sessionUUID.String(), user.UserID, expiresAt)
+	_, err = utils.CreateSession(db.GetDB(), w, int64(user.UserID))
 	if err != nil {
 		fmt.Printf("Session creation error: %v\n", err)
 		http.Error(w, "Session creation failed", http.StatusInternalServerError)
 		return
 	}
-
-	// Set session cookie
-	cookie := &http.Cookie{
-		Name:     "session_id",
-		Value:    sessionUUID.String(),
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	}
-	http.SetCookie(w, cookie)
 
 	// Return success response
 	response := LoginResponse{
@@ -257,13 +232,13 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid file type. Only JPEG, PNG, and GIF are allowed", http.StatusBadRequest)
 			return
 		}
-		avatarUUID, err := uuid.NewV4()
+		avatarUUID, err := utils.GenerateUUID()
 		if err != nil {
 			fmt.Printf("Avatar upload error: %v\n", err)
 			http.Error(w, "Failed to process avatar", http.StatusInternalServerError)
 			return
 		}
-		filename := avatarUUID.String() + ext
+		filename := avatarUUID + ext
 		dst, err := os.Create(filepath.Join(uploadDir, filename))
 		if err != nil {
 			fmt.Printf("Avatar save error: %v\n", err)
@@ -288,7 +263,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate user UUID
-	userUUID, err := uuid.NewV4()
+	userUUID, err := utils.GenerateUUID()
 	if err != nil {
 		fmt.Printf("User UUID generation error: %v\n", err)
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
@@ -304,7 +279,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'private', 'user', 'active', ?, ?)`
 	result, err := db.Exec(
 		query,
-		userUUID.String(), registerReq.Email, string(hashedPassword),
+		userUUID, registerReq.Email, string(hashedPassword),
 		registerReq.FirstName, registerReq.LastName, registerReq.DOB,
 		utils.NullIfEmpty(registerReq.Nickname), utils.NullIfEmpty(registerReq.AboutMe), utils.NullIfEmpty(registerReq.Avatar),
 		currentTime, currentTime,
@@ -324,42 +299,19 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create session
-	sessionUUID, err := uuid.NewV4()
-	if err != nil {
-		fmt.Printf("Session UUID generation error: %v\n", err)
-		http.Error(w, "Session creation failed", http.StatusInternalServerError)
-		return
-	}
-
-	// Insert session into database
-	expiresAt := time.Now().Add(24 * time.Hour)
-	sessionQuery := `INSERT INTO sessions (session_uuid, user_id, status, created_at, expires_at, updated_at) 
-	                 VALUES (?, ?, 'active', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
-	_, err = db.Exec(sessionQuery, sessionUUID.String(), userID, expiresAt)
+	_, err = utils.CreateSession(db.GetDB(), w, int64(userID))
 	if err != nil {
 		fmt.Printf("Session creation error: %v\n", err)
 		http.Error(w, "Session creation failed", http.StatusInternalServerError)
 		return
 	}
 
-	// Set session cookie
-	cookie := &http.Cookie{
-		Name:     "session_id",
-		Value:    sessionUUID.String(),
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	}
-	http.SetCookie(w, cookie)
-
 	// Prepare user response
 	// Parse DOB string to time.Time
 	parsedDOB, _ := time.Parse("2006-01-02", registerReq.DOB)
 	user := dbTools.User{
 		UserID:      int(userID),
-		UserUUID:    userUUID.String(),
+		UserUUID:    userUUID,
 		Email:       registerReq.Email,
 		FirstName:   registerReq.FirstName,
 		LastName:    registerReq.LastName,
@@ -391,46 +343,18 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get session cookie
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"message": "No active session",
-		})
-		return
-	}
-
 	db := &dbTools.DB{}
-	db, err = db.OpenDB()
+	db, err := db.OpenDB()
 	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
 		http.Error(w, "DB connection failed", http.StatusInternalServerError)
 		return
 	}
 	defer db.CloseDB()
-
-	// Invalidate session
-	query := `UPDATE sessions SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE session_uuid = ? AND status = 'active'`
-	_, err = db.Exec(query, cookie.Value)
+	err = utils.ClearSession(db.GetDB(), w, r)
 	if err != nil {
-		fmt.Printf("Session invalidation error: %v\n", err)
 		http.Error(w, "Failed to logout", http.StatusInternalServerError)
 		return
 	}
-
-	// Clear cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_id",
-		Value:    "",
-		Expires:  time.Now().Add(-1 * time.Hour),
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-	})
 
 	fmt.Fprintf(w, `{"success": true, "message": "Logged out successfully"}`)
 }
@@ -443,8 +367,17 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get session cookie
-	cookie, err := r.Cookie("session_id")
+	db := &dbTools.DB{}
+	db, err := db.OpenDB()
+	if err != nil {
+		fmt.Printf("DB connection error: %v\n", err)
+		http.Error(w, "DB connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.CloseDB()
+
+	// Use utility function to get user ID from session
+	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		// Always return 200 OK for session check
@@ -455,34 +388,28 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	db, err = db.OpenDB()
-	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		http.Error(w, "DB connection failed", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
-
-	// Check session
+	// Fetch user details based on userID
 	var user dbTools.User
 	query := `
-		SELECT u.user_id, u.user_uuid, u.email, u.first_name, u.last_name, u.date_of_birth,
-		       COALESCE(u.nickname, '') as nickname, COALESCE(u.about_me, '') as about_me,
-		       COALESCE(u.avatar, '') as avatar, u.privacy, u.role, u.created_at, u.updated_at
-		FROM users u
-		JOIN sessions s ON u.user_id = s.user_id
-		WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > CURRENT_TIMESTAMP
+		SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
+		       COALESCE(nickname, '') as nickname, COALESCE(about_me, '') as about_me,
+		       COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
+		FROM users
+		WHERE user_id = ? AND status = 'active'
 	`
 
-	err = db.QueryRow(query, cookie.Value).Scan(
+	err = db.QueryRow(query, userID).Scan(
 		&user.UserID, &user.UserUUID, &user.Email, &user.FirstName, &user.LastName,
 		&user.DateOfBirth, &user.Nickname, &user.AboutMe, &user.Avatar, &user.Privacy,
 		&user.Role, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
-		fmt.Printf("Session check error: %v\n", err)
-		//http.Error(w, "Invalid session", http.StatusUnauthorized)
+		fmt.Printf("User fetch error: %v\n", err)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "User not found or inactive",
+		})
 		return
 	}
 
