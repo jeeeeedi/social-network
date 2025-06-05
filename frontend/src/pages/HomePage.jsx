@@ -21,14 +21,14 @@ const Home = () => {
     <div className="container mx-auto px-4 py-8">
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Social Network</h1>
-        {currentUser && (
+        {/* {currentUser && (
           <button
             onClick={handleLogout}
             className="bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded"
           >
             Logout
           </button>
-        )}
+        )} */}
       </header>
 
       <main>
@@ -36,12 +36,12 @@ const Home = () => {
           <div>
             <h2 className="text-2xl mb-4">Welcome, {currentUser.first_name || 'User'}!</h2>
             <div className="mb-4">
-              <Link
+              {/* <Link
                 to={`/profile/${currentUser.user_uuid}`}
                 className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded"
               >
                 View My Profile
-              </Link>
+              </Link> */}
             </div>
             <div className="bg-white shadow-md rounded p-6">
               <p className="mb-4">Your Feed</p>

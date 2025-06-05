@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
+	"social_network/utils"
 	"strings"
 )
 
@@ -78,45 +79,32 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if full profile access is allowed
 	isAuthorized := false
-	cookie, err := r.Cookie("session_id")
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err == nil {
-		var currentUserID int
-		sessionQuery := `
-            SELECT u.user_id
-            FROM users u
-            JOIN sessions s ON u.user_id = s.user_id
-            WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > datetime('now')
-        `
-		err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID) // Fixed: Scan(&currentUserID)
-		if err != nil {
-			fmt.Printf("Session query error: %v\n", err)
+		if int(currentUserID) == profile.UserID {
+			isAuthorized = true // Own profile
+			fmt.Println("Authorized: Own profile")
+		} else if profile.Privacy == "public" {
+			isAuthorized = true // Public profile
+			fmt.Println("Authorized: Public profile")
 		} else {
-			fmt.Printf("currentUserID: %d, profile.UserID: %d\n", currentUserID, profile.UserID)
-			if currentUserID == profile.UserID {
-				isAuthorized = true // Own profile
-				fmt.Println("Authorized: Own profile")
-			} else if profile.Privacy == "public" {
-				isAuthorized = true // Public profile
-				fmt.Println("Authorized: Public profile")
-			} else {
-				// Check if current user is an accepted follower
-				followerQuery := `
+			// Check if current user is an accepted follower
+			followerQuery := `
                     SELECT COUNT(*)
                     FROM follows
                     WHERE follower_user_id = ? AND followed_user_id = ? AND status = 'accepted'
                 `
-				var followerCount int
-				err = db.QueryRow(followerQuery, currentUserID, profile.UserID).Scan(&followerCount)
-				if err != nil {
-					fmt.Printf("Follower query error: %v\n", err)
-					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Follower check error"})
-					return
-				}
-				if followerCount > 0 {
-					isAuthorized = true
-					fmt.Println("Authorized: Accepted follower")
-				}
+			var followerCount int
+			err = db.QueryRow(followerQuery, currentUserID, profile.UserID).Scan(&followerCount)
+			if err != nil {
+				fmt.Printf("Follower query error: %v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Follower check error"})
+				return
+			}
+			if followerCount > 0 {
+				isAuthorized = true
+				fmt.Println("Authorized: Accepted follower")
 			}
 		}
 	} else if profile.Privacy == "public" {
@@ -165,11 +153,20 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get session cookie
-	cookie, err := r.Cookie("session_id")
+	db := &dbTools.DB{}
+	db, err := db.OpenDB()
+	if err != nil {
+		fmt.Printf("DB connection error: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
+		return
+	}
+	defer db.CloseDB()
+
+	// Verify session and get user ID using utility function
+	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
 		fmt.Printf("No session cookie: %v\n", err)
-		//w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
 		return
 	}
@@ -186,32 +183,6 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Privacy != "public" && req.Privacy != "private" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid privacy setting"})
-		return
-	}
-
-	db := &dbTools.DB{}
-	db, err = db.OpenDB()
-	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
-
-	// Verify session and get user ID
-	var userID int
-	sessionQuery := `
-		SELECT u.user_id
-		FROM users u
-		JOIN sessions s ON u.user_id = s.user_id
-		WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > CURRENT_TIMESTAMP
-	`
-	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&userID)
-	if err != nil {
-		fmt.Printf("Session check error: %v\n", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
 		return
 	}
 
@@ -271,26 +242,11 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.CloseDB()
 
-	cookie, err := r.Cookie("session_id")
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
 		fmt.Println("No session cookie found")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
-		return
-	}
-
-	var currentUserID int
-	sessionQuery := `
-        SELECT u.user_id
-        FROM users u
-        JOIN sessions s ON u.user_id = s.user_id
-        WHERE s.session_uuid = ? AND s.status = 'active' AND s.expires_at > datetime('now')
-    `
-	err = db.QueryRow(sessionQuery, cookie.Value).Scan(&currentUserID) // Fixed: Scan(&currentUserID)
-	if err != nil {
-		fmt.Printf("Session query error: %v\n", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Invalid session"})
 		return
 	}
 

@@ -1,0 +1,44 @@
+social-network (Root)
+├── backend/
+│   ├── db/
+│   │   ├── migrations/ (directory for database migration scripts)
+│   │   ├── socnet.db (SQLite database file)
+│   │   └── socnet.sql (SQL schema or queries)
+│   ├── dbTools/
+│   │   ├── dbSession.go (Session-related database functions)
+│   │   ├── dbStructs.go (Database structure definitions)
+│   │   ├── dbUser.go (User-related database functions)
+│   │   └── dbUtils.go (Utility functions for database operations)
+│   ├── handlers/
+│   │   ├── follows.go (Handlers for followers feature)
+│   │   ├── general.go (General purpose handlers)
+│   │   ├── user_auth.go (Authentication handlers)
+│   │   └── posts.go (Posts-related handlers)
+│   ├── middleware/
+│   │   └── cors.go (CORS middleware for handling cross-origin requests)
+│   ├── public/
+│   │   └── uploads/ (Directory for storing uploaded files like avatars)
+│   ├── utils/
+│   │   └── common.go (Common utility functions)
+│   └── main.go (Main entry point for the Go backend server)
+├── frontend/
+│   ├── public/
+│   │   └── styles/
+│   │       └── index.css (Main CSS file for frontend styling)
+│   └── src/
+│       ├── api/
+│       │   ├── auth.jsx (API functions for authentication)
+│       │   └── profile.jsx (API functions for profile operations)
+│       ├── contexts/
+│       │   └── AuthContext.jsx (React context for authentication state)
+│       ├── pages/
+│       │   ├── HomePage.jsx (Home page component)
+│       │   ├── LoginPage.jsx (Login page component)
+│       │   ├── RegisterPage.jsx (Registration page component)
+│       │   ├── ProfilePage.jsx (Profile page component)
+│       │   └── ProfilePage.css (CSS for ProfilePage, if separate)
+│       ├── utils/
+│       │   └── validate.jsx (Validation utility functions for forms)
+│       ├── App.jsx (Main React app component with routing)
+│       └── index.jsx (Entry point for React app)
+└── setup.sh (Setup script for project initialization)

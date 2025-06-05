@@ -1,45 +1,44 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useParams } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchProfile, updateProfilePrivacy } from '../api/profile';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
-  const { user_uuid } = useParams();
-  const { currentUser, setCurrentUser } = useContext(AuthContext);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentUser } = useAuth();
+  console.log('Current User Object:', currentUser);
+
+  // Check if the path is /profile/me since id might not be set by useParams for exact route
+  const isMeRoute = location.pathname === '/profile/me';
+  const effectiveId = id || (isMeRoute ? 'me' : undefined);
+
+  const userId = effectiveId === 'me' ? currentUser?.user_uuid : effectiveId;
   const [profile, setProfile] = useState(null);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isFollowing, setIsFollowing] = useState(false);
   const [followStatus, setFollowStatus] = useState('');
+  const [privacy, setPrivacy] = useState('public');
 
   useEffect(() => {
-    if (!user_uuid) {
-      setError('Invalid user ID');
-      setLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchProfile = async () => {
+    const loadProfile = async () => {
+      if (!userId) {
+        setError('Invalid user ID');
+        setLoading(false);
+        return;
+      }
       try {
-        const endpoint = user_uuid === 'me' ? 'http://localhost:8080/api/profile/me' : `http://localhost:8080/api/profile/${user_uuid}`;
-        const response = await fetch(endpoint, {
-          credentials: 'include',
-        });
-        const data = await response.json();
-        if (!isMounted) return;
-
-        if (!data.success) {
-          setError(data.message || 'Failed to load profile');
-          return;
-        }
-        setProfile(data);
+        const data = await fetchProfile(userId);
+        setProfile(data.profile);
+        setPrivacy(data.profile.privacy || 'public');
 
         // Check follow status if not own profile
-        if (currentUser && currentUser.user_uuid !== user_uuid && user_uuid !== 'me') {
+        if (currentUser && currentUser.user_id !== userId && id !== 'me') {
           const followResponse = await fetch(
-            `http://localhost:8080/api/follow/status/${user_uuid}`,
+            `http://localhost:8080/api/follow/status/${userId}`,
             {
               credentials: 'include',
             }
@@ -51,27 +50,29 @@ const ProfilePage = () => {
           }
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err.message || 'Error fetching profile');
-        }
+        setError(err.message || 'Failed to load profile');
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
+    loadProfile();
+  }, [userId, currentUser, id]);
 
-    fetchProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user_uuid, currentUser]);
+  const handlePrivacyChange = async (e) => {
+    const newPrivacy = e.target.value;
+    setPrivacy(newPrivacy);
+    try {
+      await updateProfilePrivacy(newPrivacy);
+      setProfile({ ...profile, privacy: newPrivacy });
+    } catch (err) {
+      setError(err.message || 'Failed to update privacy');
+    }
+  };
 
   const handlePrivacyToggle = async () => {
-    if (!currentUser || (currentUser.user_uuid !== user_uuid && user_uuid !== 'me')) return;
+    if (!currentUser || (currentUser.user_uuid !== userId && effectiveId !== 'me')) return;
 
-    const newPrivacy = profile.profile.privacy === 'public' ? 'private' : 'public';
+    const newPrivacy = profile.privacy === 'public' ? 'private' : 'public';
     try {
       const response = await fetch('http://localhost:8080/api/profile/privacy', {
         method: 'POST',
@@ -81,9 +82,11 @@ const ProfilePage = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setProfile({ ...profile, profile: { ...profile.profile, privacy: newPrivacy } });
-        if (currentUser.user_uuid === user_uuid || user_uuid === 'me') {
-          setCurrentUser({ ...currentUser, privacy: newPrivacy });
+        setProfile({ ...profile, privacy: newPrivacy });
+        setPrivacy(newPrivacy);
+        if (currentUser.user_uuid === userId || effectiveId === 'me') {
+          // Update currentUser if it's the user's own profile
+          // Assuming AuthContext provides a way to update currentUser, though it might not be directly available
         }
       } else {
         setError(data.message || 'Failed to update privacy');
@@ -95,11 +98,11 @@ const ProfilePage = () => {
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
-      window.location.href = '/login';
+      navigate('/login');
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8080/api/follow/${user_uuid}`, {
+      const response = await fetch(`http://localhost:8080/api/follow/${userId}`, {
         method: isFollowing ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -116,15 +119,19 @@ const ProfilePage = () => {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!profile) return <div>Profile not found</div>;
+  if (loading) return <div className="text-center mt-10">Loading...</div>;
+  if (error) return <div className="text-center mt-10 text-red-500">Error: {error}</div>;
+  if (!profile) return <div className="text-center mt-10">Profile not found</div>;
 
-  const isOwnProfile = currentUser && (currentUser.user_uuid === user_uuid || user_uuid === 'me');
+  const isOwnProfile = currentUser && (currentUser.user_uuid === userId || effectiveId === 'me');
+  console.log('Debug - isOwnProfile:', isOwnProfile);
+  console.log('Debug - currentUser.user_uuid:', currentUser?.user_uuid);
+  console.log('Debug - userId:', userId);
+  console.log('Debug - effectiveId:', effectiveId);
 
   // Format date_of_birth
-  const formattedDateOfBirth = profile.profile.date_of_birth
-    ? new Date(profile.profile.date_of_birth).toLocaleDateString('en-US', {
+  const formattedDateOfBirth = profile.date_of_birth
+    ? new Date(profile.date_of_birth).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -133,43 +140,70 @@ const ProfilePage = () => {
 
   return (
     <div className="profile-container">
-      <h2>{profile.profile.first_name} {profile.profile.last_name}'s Profile</h2>
+      <h2>{profile.first_name} {profile.last_name}'s Profile</h2>
       <div className="profile-info">
-        {profile.profile.avatar && (
+        {profile.avatar && (
           <img
-            src={`http://localhost:8080${profile.profile.avatar}`}
-            alt={`${profile.profile.first_name}'s avatar`}
+            src={`http://localhost:8080${profile.avatar}`}
+            alt={`${profile.first_name}'s avatar`}
             className="profile-avatar"
           />
         )}
-        {profile.profile.email && (
+        {profile.email && (
           <>
-            <p><strong>Email:</strong> {profile.profile.email}</p>
-            {profile.profile.date_of_birth && (
-              <p><strong>Date of Birth:</strong> {formattedDateOfBirth}</p>
+            <div>
+              <label>Email: </label>
+              <span>{profile.email}</span>
+            </div>
+            {profile.date_of_birth && (
+              <div>
+                <label>Date of Birth: </label>
+                <span>{formattedDateOfBirth}</span>
+              </div>
             )}
-            {profile.profile.nickname && (
-              <p><strong>Nickname:</strong> {profile.profile.nickname}</p>
+            {profile.nickname && (
+              <div>
+                <label>Nickname: </label>
+                <span>{profile.nickname}</span>
+              </div>
             )}
-            {profile.profile.about_me && (
-              <p><strong>About Me:</strong> {profile.profile.about_me}</p>
+            {profile.about_me && (
+              <div>
+                <label>About Me: </label>
+                <span>{profile.about_me}</span>
+              </div>
             )}
-            {profile.profile.role && (
-              <p><strong>Role:</strong> {profile.profile.role}</p>
+            {profile.role && (
+              <div>
+                <label>Role: </label>
+                <span>{profile.role}</span>
+              </div>
             )}
-            {profile.profile.created_at && (
-              <p><strong>Joined:</strong> {new Date(profile.profile.created_at).toLocaleDateString()}</p>
+            {profile.created_at && (
+              <div>
+                <label>Joined: </label>
+                <span>{new Date(profile.created_at).toLocaleDateString()}</span>
+              </div>
             )}
           </>
         )}
-        <p><strong>Privacy:</strong> {profile.profile.privacy}</p>
+        <div>
+          <label>Privacy: </label>
+          <span>{privacy}</span>
+        </div>
         {isOwnProfile && (
-          <button className="privacy-button" onClick={handlePrivacyToggle}>
-            Make Profile {profile.profile.privacy === 'public' ? 'Private' : 'Public'}
-          </button>
+          <div>
+            <button className="privacy-button" onClick={handlePrivacyToggle} aria-label={`Make profile ${profile.privacy === 'public' ? 'private' : 'public'}`}
+              tabIndex="0">
+              Make Profile {profile.privacy === 'public' ? 'Private' : 'Public'}
+            </button>
+          </div>
         )}
         {!isOwnProfile && (
-          <button className="follow-button" onClick={handleFollowToggle}>
+          <button
+            onClick={handleFollowToggle}
+            className="follow-button"
+          >
             {isFollowing
               ? followStatus === 'pending'
                 ? 'Cancel Follow Request'
@@ -178,7 +212,7 @@ const ProfilePage = () => {
           </button>
         )}
       </div>
-      {profile.profile.email && (
+      {profile.email && (
         <>
           <div className="profile-posts">
             <h3>Posts</h3>
