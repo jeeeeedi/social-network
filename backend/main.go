@@ -14,7 +14,7 @@ func setHandlers() {
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("public/uploads"))))
 
 	// API routes
-	http.HandleFunc("/", handlers.HomeHandler)
+	//http.HandleFunc("/", handlers.HomeHandler)
 	http.HandleFunc("/api/login", handlers.LoginHandler)
 	http.HandleFunc("/api/register", handlers.RegisterHandler)
 	http.HandleFunc("/api/logout", handlers.LogoutHandler)
@@ -25,8 +25,8 @@ func setHandlers() {
 
 	// Routes for POSTS and COMMENTS
 	// TODO: Check if these work
-	http.HandleFunc("/api/posts/", handlers.CreatePostHandler)
-	http.HandleFunc("/api/posts", handlers.GetPostsHandler)
+	http.HandleFunc("/api/createposts", handlers.CreatePostHandler)
+	http.HandleFunc("/api/getposts", handlers.GetPostsHandler)
 	http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
 
 	

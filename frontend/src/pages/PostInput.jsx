@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { sanitize } from "../utils/sanitize.jsx";
+import { checkSession } from "../api/auth.jsx";
 
 const PostInput = ({ onPostCreated }) => {
   const [content, setContent] = useState("");
@@ -23,7 +24,15 @@ const PostInput = ({ onPostCreated }) => {
   const handlePostSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-  
+
+    try {
+      await checkSession(); // Verify authentication
+    } catch {
+      alert("You must be logged in to create a post.");
+      setSubmitting(false);
+      return;
+    }
+
     const sanitizedContent = sanitize(content);
 
     const formData = new FormData();
@@ -32,7 +41,7 @@ const PostInput = ({ onPostCreated }) => {
     if (image) formData.append("file", image);
 
     try {
-      const res = await fetch("http://localhost:8080/api/posts/", {
+      const res = await fetch("http://localhost:8080/api/createposts", {
         method: "POST",
         body: formData,
         credentials: "include",

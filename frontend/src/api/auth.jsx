@@ -82,5 +82,6 @@ export const checkSession = async () => {
   if (!response.ok || (data && !data.success)) {
     throw new Error((data && data.message) || 'Session check failed');
   }
+  //console.log('checkSession data.user:', data.user);
   return data.user;
 };

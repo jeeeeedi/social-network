@@ -61,8 +61,28 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := r.FormValue("content")
 	privacy := r.FormValue("privacy")
-	//var imageURL string
 
+	// Validate content
+	if len(content) == 0 {
+		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+		return
+	}
+	if len(content) > 3000 {
+		http.Error(w, "Content too long", http.StatusBadRequest)
+		return
+	}
+
+	// Validate privacy
+	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
+	if !validPrivacy[privacy] {
+		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: Sanitize content (implement a sanitize function or use a library)
+	// content = sanitize(content)
+
+	var imageURL string
 	file, handler, err := r.FormFile("file")
 	if err == nil {
 		defer file.Close()
@@ -75,27 +95,28 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer dst.Close()
-		io.Copy(dst, file)
-		//imageURL = filePath
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			http.Error(w, "Could not save file", http.StatusInternalServerError)
+			return
+		}
+		imageURL = filePath
 	}
 
-	storeMutex.Lock()
-	defer storeMutex.Unlock()
+	// Insert post into database (replace with your actual DB logic)
 	post := dbTools.Post{
-		PostID:    postID,
 		Content:   content,
 		Privacy:   privacy,
+		ImageURL:  imageURL, //TODO: Store the image URL correctly in the Files table
 		CreatedAt: time.Now(),
+		// Add UserID if you have session/user info
 	}
-	comments = []dbTools.Comment{}
-	/* 	if imageURL != "" {
-		var uploadedFile *dbTools.File
-		// You can store uploadedFile somewhere if needed
-		uploadedFile = &dbTools.File{Filename: filepath.Base(imageURL)}
-	} */
-
-	postID++
-	posts = append(posts, post)
+	// Example: err = dbTools.InsertPost(&post)
+	err = dbTools.InsertPost(&post)
+	if err != nil {
+		http.Error(w, "Failed to save post", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
