@@ -22,6 +22,14 @@ func setHandlers() {
 	http.HandleFunc("/api/profile/me", handlers.ProfileMeHandler)
 	http.HandleFunc("/api/profile/", handlers.ProfileHandler) // Will handle /api/profile/{uuid}
 	http.HandleFunc("/api/profile/privacy", handlers.PrivacyHandler)
+
+	// Routes for POSTS and COMMENTS
+	// TODO: Check if these work
+	http.HandleFunc("/api/posts/", handlers.CreatePostHandler)
+	http.HandleFunc("/api/posts", handlers.GetPostsHandler)
+	http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
+
+	
 	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
 	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
