@@ -53,11 +53,6 @@ const Navbar = () => {
               <Person />
             </IconButton>
             <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
-              <Avatar 
-                src={currentUser.avatar} 
-                alt={currentUser.firstName}
-                sx={{ width: 32, height: 32, mr: 1 }}
-              />
               <Button color="inherit" onClick={handleLogout} startIcon={<ExitToApp />}>
                 Logout
               </Button>
