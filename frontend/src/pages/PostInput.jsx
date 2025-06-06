@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { sanitize } from "../utils/sanitize.jsx";
 
 const PostInput = ({ onPostCreated }) => {
   const [content, setContent] = useState("");
@@ -22,9 +23,11 @@ const PostInput = ({ onPostCreated }) => {
   const handlePostSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+  
+    const sanitizedContent = sanitize(content);
 
     const formData = new FormData();
-    formData.append("content", content);
+    formData.append("content", sanitizedContent);
     formData.append("privacy", privacy);
     if (image) formData.append("file", image);
 
@@ -51,8 +54,30 @@ const PostInput = ({ onPostCreated }) => {
 
   return (
     <div className="bg-white shadow-md rounded p-6 mb-6">
+      <div className="mb-4">
+        <label className="block mb-1 font-semibold">
+          Privacy
+          <span style={{ color: "red" }}>*</span>
+        </label>
+        <br />
+        <select
+          className="border rounded p-2"
+          value={privacy}
+          onChange={(e) => setPrivacy(e.target.value)}
+          required
+        >
+          <option value="public">Public</option>
+          <option value="semiprivate">Semiprivate</option>
+          <option value="private">Private</option>
+        </select>
+      </div>
+      <br />
       <form onSubmit={handlePostSubmit}>
-        <label className="block mb-2 font-semibold">What's on your mind?</label>
+        <label className="block mb-2 font-semibold">
+          What's on your mind?
+          <span style={{ color: "red" }}>*</span>
+        </label>
+        <br />
         <textarea
           className="w-full border rounded p-2 mb-4"
           rows={3}
@@ -60,9 +85,13 @@ const PostInput = ({ onPostCreated }) => {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           required
+          maxLength={3000}
         />
+        <br />
+        <br />
         <div className="mb-4">
           <label className="block mb-1 font-semibold">Attach Image/GIF</label>
+          <br />
           <input
             type="file"
             accept="image/*,image/gif"
@@ -77,18 +106,7 @@ const PostInput = ({ onPostCreated }) => {
             />
           )}
         </div>
-        <div className="mb-4">
-          <label className="block mb-1 font-semibold">Privacy</label>
-          <select
-            className="border rounded p-2"
-            value={privacy}
-            onChange={(e) => setPrivacy(e.target.value)}
-          >
-            <option value="public">Public</option>
-            <option value="semiprivate">Semiprivate</option>
-            <option value="private">Private</option>
-          </select>
-        </div>
+        <br />
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
