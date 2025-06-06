@@ -105,7 +105,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	post := dbTools.Post{
-		PosterID:  currentUserID,      // set this from session/auth
+		//PosterID:  currentUserID,      // set this from session/auth
 		GroupID:   0,                  // or set to a group ID if posting to a group
 		Content:   content,
 		Privacy:   privacy,
