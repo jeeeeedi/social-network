@@ -1,23 +1,35 @@
 package dbTools
 
+import "social_network/utils"
+
 // InsertPost inserts a new post into the database and sets the PostID on success.
 
-func (d *DB) InsertPost(post *Post) error {
+func (d *DB) InsertPost(p *Post) error {
+
+	// Generate UUID for the post if not already set
+	if p.PostUUID == "" {
+		uuid, err := utils.GenerateUUID()
+		if err != nil {
+			return err
+		}
+		p.PostUUID = uuid
+	}
+
 	query := `
         INSERT INTO posts 
-            (post_uuid, poster_id, group_id, content, privacy, status, created_at, updater_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (post_uuid, poster_id, group_id, content, privacy, updated_at, updater_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 	result, err := d.Exec(
 		query,
-		post.PostUUID,
-		post.PosterID,
-		post.GroupID,
-		post.Content,
-		post.Privacy,
-		post.Status,
-		post.CreatedAt,
-		post.UpdaterID,
+		p.PostUUID,
+		p.PosterID,
+		p.GroupID,
+		p.Content,
+		p.Privacy,
+		p.Status,
+		p.UpdatedAt,
+		p.UpdaterID,
 	)
 	if err != nil {
 		return err
@@ -26,6 +38,6 @@ func (d *DB) InsertPost(post *Post) error {
 	if err != nil {
 		return err
 	}
-	post.PostID = int(id)
+	p.PostID = int(id)
 	return nil
 }

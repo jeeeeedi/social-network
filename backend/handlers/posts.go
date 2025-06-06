@@ -103,13 +103,16 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		imageURL = filePath
 	}
 
-	// Insert post into database (replace with your actual DB logic)
+	now := time.Now()
 	post := dbTools.Post{
+		PosterID:  currentUserID,      // set this from session/auth
+		GroupID:   0,                  // or set to a group ID if posting to a group
 		Content:   content,
 		Privacy:   privacy,
-		ImageURL:  imageURL, //TODO: Store the image URL correctly in the Files table
-		CreatedAt: time.Now(),
-		// Add UserID if you have session/user info
+		Status:    "active",           // or your default status
+		CreatedAt: now,
+		UpdatedAt: now,
+		UpdaterID: currentUserID,      // usually the same as PosterID for creation
 	}
 	// Example: err = dbTools.InsertPost(&post)
 	err = dbTools.InsertPost(&post)
