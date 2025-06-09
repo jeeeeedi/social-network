@@ -9,12 +9,12 @@ import (
 )
 
 // setHandlers sets up all route handlers
-func setHandlers() {
+func setHandlers(db *dbTools.DB) {
 	// Static file serving for uploads
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("public/uploads"))))
 
 	// API routes
-	//http.HandleFunc("/", handlers.HomeHandler)
+	http.HandleFunc("/", handlers.HomeHandler)
 	http.HandleFunc("/api/login", handlers.LoginHandler)
 	http.HandleFunc("/api/register", handlers.RegisterHandler)
 	http.HandleFunc("/api/logout", handlers.LogoutHandler)
@@ -25,11 +25,12 @@ func setHandlers() {
 
 	// Routes for POSTS and COMMENTS
 	// TODO: Check if these work
-	http.HandleFunc("/api/createposts", handlers.CreatePostHandler)
+	http.HandleFunc("/api/createposts", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CreatePostHandler(db, w, r)
+	})
 	http.HandleFunc("/api/getposts", handlers.GetPostsHandler)
 	http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
 
-	
 	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
 	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
@@ -47,7 +48,7 @@ func main() {
 	defer db.CloseDB()
 
 	// Set up routes
-	setHandlers()
+	setHandlers(db)
 
 	log.Println("Social Network Server starting on :8080")
 	if err := http.ListenAndServe(":8080", middleware.CORSMiddleware(http.DefaultServeMux)); err != nil {

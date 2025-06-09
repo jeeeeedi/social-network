@@ -18,7 +18,8 @@ func (d *DB) OpenDB() (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DB{db: db}, nil
+	d.db = db
+	return d, nil
 }
 
 func (d *DB) OpenDBWithMigration() error {

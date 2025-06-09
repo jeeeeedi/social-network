@@ -9,7 +9,7 @@ const Feed = () => {
   useEffect(() => {
     const verifySessionAndFetch = async () => {
       try {
-        let user = await checkSession(); // If this fails, it jumps to catch
+        await checkSession(); // If this fails, it jumps to catch
         setIsAuthenticated(true);        // Only runs if checkSession succeeds
         // Fetch posts only if authenticated
         const res = await fetch('http://localhost:8080/api/getposts', {
@@ -47,7 +47,7 @@ const Feed = () => {
     );
   }
 
-  if (!posts.length) {
+  if (!posts) {
     return (
       <div className="border rounded p-4 mb-4 bg-gray-50">
         <p className="text-gray-700">No posts yet.</p>

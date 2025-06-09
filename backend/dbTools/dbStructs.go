@@ -50,7 +50,7 @@ type Post struct {
 	PostID    int        `json:"post_id"`
 	PostUUID  string     `json:"post_uuid"`
 	PosterID  int        `json:"poster_id"`
-	GroupID   int        `json:"group_id"`
+	GroupID   *int        `json:"group_id"`
 	Content   string     `json:"content"`
 	Privacy   string     `json:"privacy"` // public, semi-private, private
 	Status    string     `json:"status"`  // active, inactive

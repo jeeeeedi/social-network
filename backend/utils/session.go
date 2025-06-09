@@ -13,13 +13,13 @@ const (
 )
 
 // GetUserIDFromSession retrieves the user ID from the session cookie
-func GetUserIDFromSession(db *sql.DB, r *http.Request) (int64, error) {
+func GetUserIDFromSession(db *sql.DB, r *http.Request) (int, error) {
 	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil {
 		return 0, fmt.Errorf("no session cookie: %w", err)
 	}
 
-	var userID int64
+	var userID int
 	query := `SELECT user_id FROM sessions WHERE session_uuid = ? AND status = 'active' AND expires_at > CURRENT_TIMESTAMP`
 	err = db.QueryRow(query, cookie.Value).Scan(&userID)
 	if err != nil {

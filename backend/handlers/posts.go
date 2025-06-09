@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"social_network/dbTools"
 	"social_network/middleware"
+	"social_network/utils"
 	"sync"
 	"time"
 )
@@ -42,12 +44,14 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	storeMutex.Lock()
 	defer storeMutex.Unlock()
+	//TODO: Replace with actual database query to get posts
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
 }
 
 // CreatePostHandler handles creating new posts
-func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
+func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
+	log.Println("CreatePostHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -59,6 +63,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	timeNow := time.Now()
 	content := r.FormValue("content")
 	privacy := r.FormValue("privacy")
 
@@ -71,6 +76,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Content too long", http.StatusBadRequest)
 		return
 	}
+	content = utils.Sanitize(content)
 
 	// Validate privacy
 	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
@@ -79,10 +85,26 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Sanitize content (implement a sanitize function or use a library)
-	// content = sanitize(content)
+	// Get current user ID from session
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	var imageURL string
+	post := dbTools.Post{
+		PosterID:  currentUserID,
+		GroupID:   nil, // Regular posts (not group)
+		Content:   content,
+		Privacy:   privacy,
+		CreatedAt: timeNow,
+	}
+	postID, err = db.InsertPost(&post)
+	if err != nil {
+		http.Error(w, "Failed to InsertPost in DB", http.StatusInternalServerError)
+		return
+	}
+
 	file, handler, err := r.FormFile("file")
 	if err == nil {
 		defer file.Close()
@@ -100,27 +122,22 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Could not save file", http.StatusInternalServerError)
 			return
 		}
-		imageURL = filePath
-	}
+		imageURL := filePath
+		fileStruct := dbTools.File{
+			UploaderID: currentUserID,
+			Filename:   imageURL,
+			ParentType: "post",
+			ParentID:   postID,
+			CreatedAt:  timeNow,
+		}
+		_, err = db.InsertFile(&fileStruct)
+		if err != nil {
+			http.Error(w, "Failed to InsertPost in DB", http.StatusInternalServerError)
+			return
+		}
+	} // else: no file uploaded, that's OK
 
-	now := time.Now()
-	post := dbTools.Post{
-		//PosterID:  currentUserID,      // set this from session/auth
-		GroupID:   0,                  // or set to a group ID if posting to a group
-		Content:   content,
-		Privacy:   privacy,
-		Status:    "active",           // or your default status
-		CreatedAt: now,
-		UpdatedAt: now,
-		UpdaterID: currentUserID,      // usually the same as PosterID for creation
-	}
-	// Example: err = dbTools.InsertPost(&post)
-	err = dbTools.InsertPost(&post)
-	if err != nil {
-		http.Error(w, "Failed to save post", http.StatusInternalServerError)
-		return
-	}
-
+	//TODO: Should return the post ID/UUID or the created post object?
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
 }
