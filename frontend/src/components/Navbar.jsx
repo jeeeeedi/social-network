@@ -1,75 +1,72 @@
+// filepath: /Users/sergei.budaev/Desktop/social-network/frontend/src/components/Navbar.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  IconButton, 
+  Avatar,
+  Box
+} from '@mui/material';
+import { Home, Group, Notifications, Person, ExitToApp } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   const handleHome = () => navigate('/');
   const handleGroup = () => navigate('/groups');
   const handleNotifications = () => navigate('/notifications');
   const handleProfile = () => navigate('/profile/me');
+  
   const handleLogout = async () => {
     try {
       await logout();
       navigate('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Failed to log out:', error);
     }
   };
 
   return (
-    <nav className="bg-blue-600 text-white w-full h-[55px] flex items-center justify-between px-4 shadow-md">
-      <div className="flex space-x-4">
-        <button
-          onClick={handleHome}
-          className="hover:bg-blue-700 px-3 py-2 rounded-md transition-colors"
-          aria-label="Navigate to Home"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleHome()}
-        >
-          Home
-        </button>
-        <button
-          onClick={handleGroup}
-          className="hover:bg-blue-700 px-3 py-2 rounded-md transition-colors"
-          aria-label="Navigate to Groups"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleGroup()}
-        >
-          Group
-        </button>
-        <button
-          onClick={handleNotifications}
-          className="hover:bg-blue-700 px-3 py-2 rounded-md transition-colors"
-          aria-label="Navigate to Notifications"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleNotifications()}
-        >
-          Notifications
-        </button>
-        <button
-          onClick={handleProfile}
-          className="hover:bg-blue-700 px-3 py-2 rounded-md transition-colors"
-          aria-label="View My Profile"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleProfile()}
-        >
-          View My Profile
-        </button>
-        <button
-          onClick={handleLogout}
-          className="hover:bg-blue-700 px-3 py-2 rounded-md transition-colors"
-          aria-label="Logout"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleLogout()}
-        >
-          Logout
-        </button>
-      </div>
-    </nav>
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          Social Network
+        </Typography>
+        
+        {currentUser ? (
+          <>
+            <IconButton color="inherit" onClick={handleHome}>
+              <Home />
+            </IconButton>
+            <IconButton color="inherit" onClick={handleGroup}>
+              <Group />
+            </IconButton>
+            <IconButton color="inherit" onClick={handleNotifications}>
+              <Notifications />
+            </IconButton>
+            <IconButton color="inherit" onClick={handleProfile}>
+              <Person />
+            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+              <Button color="inherit" onClick={handleLogout} startIcon={<ExitToApp />}>
+                Logout
+              </Button>
+            </Box>
+          </>
+        ) : (
+          <>
+            <Button color="inherit" onClick={() => navigate('/login')}>Login</Button>
+            <Button color="inherit" onClick={() => navigate('/register')}>Register</Button>
+          </>
+        )}
+      </Toolbar>
+    </AppBar>
   );
 };
 
-export default Navbar; 
+export default Navbar;
