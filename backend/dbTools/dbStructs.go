@@ -36,6 +36,7 @@ type Session struct {
 
 type File struct {
 	FileID     int        `json:"file_id"`
+	FileUUID   string     `json:"file_uuid"`
 	UploaderID int        `json:"uploader_id"`
 	Filename   string     `json:"filename"`
 	ParentType string     `json:"parent_type"` // profile, post, comment, group, event, chat
@@ -50,13 +51,27 @@ type Post struct {
 	PostID    int        `json:"post_id"`
 	PostUUID  string     `json:"post_uuid"`
 	PosterID  int        `json:"poster_id"`
-	GroupID   *int        `json:"group_id"`
+	GroupID   *int       `json:"group_id"`
 	Content   string     `json:"content"`
 	Privacy   string     `json:"privacy"` // public, semi-private, private
 	Status    string     `json:"status"`  // active, inactive
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt *time.Time `json:"updated_at"`
 	UpdaterID int        `json:"updater_id"`
+}
+
+type PostWithUserAndFile struct {
+	PostID        int       `json:"post_id"`
+	PostUUID      string    `json:"post_uuid"`
+	PosterID      int       `json:"poster_id"`
+	GroupID       *int      `json:"group_id"`
+	Content       string    `json:"content"`
+	Privacy       string    `json:"privacy"` // public, semi-private, private
+	PostStatus    string    `json:"status"`  // active, inactive
+	PostCreatedAt time.Time `json:"created_at"`
+	Nickname      string    `json:"nickname,omitempty"`
+	FileID        int       `json:"file_id"`
+	Filename      string    `json:"filename,omitempty"`
 }
 
 type Comment struct {
@@ -166,7 +181,7 @@ type Notification struct {
 	NotificationID int        `json:"notification_id"`
 	ReceiverID     int        `json:"receiver_id"`
 	ActorID        int        `json:"actor_id"`
-	ActionType     string     `json:"action_type"` // like, dislike, comment, follow_request, follow_accepted, group_invitation, group_join_request, group_event
+	ActionType     string     `json:"action_type"` // like, dislike, post, comment, chat_message, follow_request, follow_accepted, group_invitation, group_join_request, group_event
 	ParentType     string     `json:"parent_type"` // follow, post, comment, chat, group, event
 	ParentID       int        `json:"parent_id"`   // ID from Follow, Post, Comment, ChatMessage, Group, Event
 	Content        string     `json:"content"`

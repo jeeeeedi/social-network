@@ -3,11 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
@@ -16,10 +13,10 @@ import (
 )
 
 var (
-	posts      []dbTools.Post
+	//posts      []dbTools.Post
 	comments   []dbTools.Comment
-	postID     = 1
-	commentID  = 1
+	postID     int
+	commentID  int
 	storeMutex sync.Mutex
 )
 
@@ -27,7 +24,6 @@ var (
 - Implement a proper database connection and use it instead of in-memory storage
 - Check frontend and backend integration for creating posts and comments
 - Implement error handling for file uploads
-- Add validation for post content (no empty posts, sanitize chars/scripts) and privacy settings
 - Validate active session before doing anything
 -
 
@@ -36,31 +32,47 @@ var (
 //TODO: Probably make an error handler func that gracefully routes to an error page
 
 // GetPostsHandler handles getting user feed/posts
-func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
+func GetPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	log.Println("GetPostsHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+		return fmt.Errorf("method not allowed")
 	}
-	storeMutex.Lock()
-	defer storeMutex.Unlock()
-	//TODO: Replace with actual database query to get posts
+
+	// Get the current user ID from the session
+	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return err
+	}
+
+	// Get all public posts and all posts from the current user
+	posts, err := db.GetFeedPosts(userID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
+		return err
+	}
+	log.Print("Retrieved posts:", posts)
+
+	// Return the posts as JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
+	return nil
 }
 
 // CreatePostHandler handles creating new posts
-func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
+func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
 	log.Println("CreatePostHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+		return fmt.Errorf("method not allowed")
 	}
 	err := r.ParseMultipartForm(10 << 20) // 10MB max
 	if err != nil {
 		http.Error(w, "Could not parse form", http.StatusBadRequest)
-		return
+		return err
 	}
 
 	timeNow := time.Now()
@@ -70,11 +82,11 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	// Validate content
 	if len(content) == 0 {
 		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
-		return
+		return err
 	}
 	if len(content) > 3000 {
 		http.Error(w, "Content too long", http.StatusBadRequest)
-		return
+		return err
 	}
 	content = utils.Sanitize(content)
 
@@ -82,14 +94,14 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
 	if !validPrivacy[privacy] {
 		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
-		return
+		return err
 	}
 
 	// Get current user ID from session
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+		return err
 	}
 
 	post := dbTools.Post{
@@ -102,52 +114,40 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	postID, err = db.InsertPost(&post)
 	if err != nil {
 		http.Error(w, "Failed to InsertPost in DB", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	file, handler, err := r.FormFile("file")
 	if err == nil {
 		defer file.Close()
-		uploadDir := "./uploads"
-		os.MkdirAll(uploadDir, os.ModePerm)
-		filePath := filepath.Join(uploadDir, fmt.Sprintf("%d_%s", time.Now().UnixNano(), handler.Filename))
-		dst, err := os.Create(filePath)
-		if err != nil {
-			http.Error(w, "Could not save file", http.StatusInternalServerError)
-			return
-		}
-		defer dst.Close()
-		_, err = io.Copy(dst, file)
-		if err != nil {
-			http.Error(w, "Could not save file", http.StatusInternalServerError)
-			return
-		}
-		imageURL := filePath
-		fileStruct := dbTools.File{
+		fileMeta := &dbTools.File{
 			UploaderID: currentUserID,
-			Filename:   imageURL,
+			Filename:   handler.Filename,
 			ParentType: "post",
 			ParentID:   postID,
 			CreatedAt:  timeNow,
 		}
-		_, err = db.InsertFile(&fileStruct)
-		if err != nil {
-			http.Error(w, "Failed to InsertPost in DB", http.StatusInternalServerError)
-			return
+		uploadErr := db.FileUpload(file, fileMeta, r, w)
+		if uploadErr != nil {
+			http.Error(w, "Failed to upload file", http.StatusInternalServerError)
+			return uploadErr
 		}
-	} // else: no file uploaded, that's OK
+	} else if err != http.ErrMissingFile {
+		http.Error(w, "Failed to get file from form", http.StatusBadRequest)
+		return err
+	}
 
-	//TODO: Should return the post ID/UUID or the created post object?
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
+	return nil
 }
 
 // CreateCommentHandler handles creating new comments
-func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
+func CreateCommentHandler(w http.ResponseWriter, r *http.Request) error {
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+		return fmt.Errorf("method not allowed")
 	}
 	postIDParam := r.URL.Query().Get("postId")
 	var postIDInt int
@@ -158,7 +158,7 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid body", http.StatusBadRequest)
-		return
+		return err
 	}
 
 	storeMutex.Lock()
@@ -174,6 +174,7 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(comment)
+	return nil
 }
 
 //TODO: GetCommnentsHandler to get comments for a post

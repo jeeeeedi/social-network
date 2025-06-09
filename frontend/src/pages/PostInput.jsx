@@ -63,24 +63,6 @@ const PostInput = ({ onPostCreated }) => {
 
   return (
     <div className="bg-white shadow-md rounded p-6 mb-6">
-      <div className="mb-4">
-        <label className="block mb-1 font-semibold">
-          Privacy
-          <span style={{ color: "red" }}>*</span>
-        </label>
-        <br />
-        <select
-          className="border rounded p-2"
-          value={privacy}
-          onChange={(e) => setPrivacy(e.target.value)}
-          required
-        >
-          <option value="public">Public</option>
-          <option value="semiprivate">Semiprivate</option>
-          <option value="private">Private</option>
-        </select>
-      </div>
-      <br />
       <form onSubmit={handlePostSubmit}>
         <label className="block mb-2 font-semibold">
           What's on your mind?
@@ -107,6 +89,7 @@ const PostInput = ({ onPostCreated }) => {
             className="block"
             onChange={handleImageChange}
           />
+          <br />
           {imagePreview && (
             <img
               src={imagePreview}
@@ -114,6 +97,24 @@ const PostInput = ({ onPostCreated }) => {
               className="mt-2 max-h-40 rounded"
             />
           )}
+        </div>
+        <br />
+        <div className="mb-4">
+          <label className="block mb-1 font-semibold">
+            Privacy
+            <span style={{ color: "red" }}>*</span>
+          </label>
+          <br />
+          <select
+            className="border rounded p-2"
+            value={privacy}
+            onChange={(e) => setPrivacy(e.target.value)}
+            required
+          >
+            <option value="public">Public</option>
+            <option value="semiprivate">Semiprivate</option>
+            <option value="private">Private</option>
+          </select>
         </div>
         <br />
         <button

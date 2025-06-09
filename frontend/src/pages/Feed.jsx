@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { checkSession } from '../api/auth.jsx';
+import React, { useEffect, useState } from "react";
+import { checkSession } from "../api/auth.jsx";
+import { formatDate } from "../utils/formatDate.jsx";
 
 const Feed = () => {
   const [posts, setPosts] = useState([]);
+  const [imageModal, setImageModal] = useState({ open: false, src: "" });
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(null);
 
@@ -10,15 +12,16 @@ const Feed = () => {
     const verifySessionAndFetch = async () => {
       try {
         await checkSession(); // If this fails, it jumps to catch
-        setIsAuthenticated(true);        // Only runs if checkSession succeeds
+        setIsAuthenticated(true); // Only runs if checkSession succeeds
         // Fetch posts only if authenticated
-        const res = await fetch('http://localhost:8080/api/getposts', {
-          method: 'GET',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("http://localhost:8080/api/getposts", {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
         });
-        if (!res.ok) throw new Error('Failed to fetch posts');
+        if (!res.ok) throw new Error("Failed to fetch posts");
         const data = await res.json();
+        console.log("Fetched posts:", data);
         setPosts(data);
       } catch {
         setIsAuthenticated(false);
@@ -40,7 +43,6 @@ const Feed = () => {
 
   if (!isAuthenticated) {
     return (
-      
       <div className="border rounded p-4 mb-4 bg-gray-50">
         <p className="text-gray-700">Please log in to view the feed.</p>
       </div>
@@ -54,15 +56,72 @@ const Feed = () => {
       </div>
     );
   }
+  console.log("Posts:", posts);
 
   return (
-    <div>
-      {posts.map(post => (
-        <div key={post.PostID} className="border rounded p-4 mb-4 bg-gray-50">
-          <p className="font-semibold">{post.Content}</p>
-          <p className="text-xs text-gray-500 mt-2">Privacy: {post.Privacy}</p>
+    <div className="max-w-2xl mx-auto mt-8">
+      <h2 className="text-2xl font-bold mb-6 text-center text-blue-700">
+        Your Feed
+      </h2>
+      {posts.map((post) => (
+        <div
+          key={post.PostUUID}
+          className="border rounded-lg p-6 mb-6 bg-white shadow hover:shadow-lg transition-shadow"
+        >
+          <div className="flex items-center mb-2">
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+              <span className="text-blue-700 font-bold text-lg">
+                {post.nickname ? post.nickname[0].toUpperCase() : "?"}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg text-blue-800">
+                {post.nickname}
+              </h3>
+              <span className="text-xs text-gray-400">
+                {formatDate(post.created_at)}
+              </span>
+            </div>
+          </div>
+          <p className="text-gray-800 mb-3">{post.content}</p>
+          {/* Image preview */}
+          {post.Filename && post.Filename !== "" && (
+            <div className="mb-3">
+              <img
+                src={`http://localhost:8080/${post.Filename}`}
+                alt="attachment"
+                className="max-w-xs max-h-48 rounded cursor-pointer border"
+                onClick={() =>
+                  setImageModal({
+                    open: true,
+                    src: `http://localhost:8080/${post.Filename}`,
+                  })
+                }
+              />
+            </div>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-500">
+              Privacy: {post.privacy}
+            </span>
+          </div>
         </div>
       ))}
+
+      {/* Modal for large image preview */}
+      {imageModal.open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={() => setImageModal({ open: false, src: "" })}
+        >
+          <img
+            src={imageModal.src}
+            alt="full"
+            className="max-w-3xl max-h-[80vh] rounded shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };
