@@ -29,8 +29,8 @@ var (
 
 //TODO: Probably make an error handler func that gracefully routes to an error page
 
-// GetPostsHandler handles getting user feed/posts
-func GetPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+// GetFeedPostsHandler handles getting user feed/posts
+func GetFeedPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -46,6 +46,34 @@ func GetPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) err
 
 	// Get all public posts and all posts from the current user
 	posts, err := db.GetFeedPosts(userID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
+		return err
+	}
+
+	// Return the posts as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+	return nil
+}
+
+// GetMyPostsHandler handles getting my/user posts
+func GetMyPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	middleware.SetCORSHeaders(w)
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return fmt.Errorf("method not allowed")
+	}
+
+	// Get the current user ID from the session
+	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return err
+	}
+
+	// Get all public posts and all posts from the current user
+	posts, err := db.GetMyPosts(userID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
 		return err
@@ -106,9 +134,9 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		Privacy:   privacy,
 		CreatedAt: timeNow,
 	}
-	postID, err = db.InsertPost(&post)
+	postID, err = db.InsertPostToDB(&post)
 	if err != nil {
-		http.Error(w, "Failed to InsertPost in DB", http.StatusInternalServerError)
+		http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
 		return err
 	}
 

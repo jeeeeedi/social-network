@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { checkSession } from "../api/auth.jsx";
-import { formatDate } from "../utils/formatDate.jsx";
+import { formatDateTime } from "../utils/formatDate.jsx";
 
 const Feed = () => {
   const [posts, setPosts] = useState([]);
@@ -14,7 +14,7 @@ const Feed = () => {
         await checkSession(); // If this fails, it jumps to catch
         setIsAuthenticated(true); // Only runs if checkSession succeeds
         // Fetch posts only if authenticated
-        const res = await fetch("http://localhost:8080/api/getposts", {
+        const res = await fetch("http://localhost:8080/api/getfeedposts", {
           method: "GET",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -72,7 +72,7 @@ console.log("Posts fetched:", posts); // Debugging line to check fetched posts
                 {post.nickname}
               </h3>
               <span className="text-xs text-gray-400">
-                {formatDate(post.created_at)}
+                {formatDateTime(post.created_at)}
               </span>
             </div>
           </div>

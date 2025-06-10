@@ -28,8 +28,11 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/createposts", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreatePostHandler(db, w, r)
 	})
-	http.HandleFunc("/api/getposts", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetPostsHandler(db, w, r)
+	http.HandleFunc("/api/getfeedposts", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetFeedPostsHandler(db, w, r)
+	})
+	http.HandleFunc("/api/getmyposts", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetMyPostsHandler(db, w, r)
 	})
 	//http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
 
