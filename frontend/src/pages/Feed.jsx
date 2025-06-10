@@ -67,11 +67,6 @@ console.log("Posts fetched:", posts); // Debugging line to check fetched posts
           className="border rounded-lg p-6 mb-6 bg-white shadow hover:shadow-lg transition-shadow"
         >
           <div className="flex items-center mb-2">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-              <span className="text-blue-700 font-bold text-lg">
-                {post.nickname ? post.nickname[0].toUpperCase() : "?"}
-              </span>
-            </div>
             <div>
               <h3 className="font-semibold text-lg text-blue-800">
                 {post.nickname}
