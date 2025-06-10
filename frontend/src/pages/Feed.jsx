@@ -21,7 +21,6 @@ const Feed = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch posts");
         const data = await res.json();
-        console.log("Fetched posts:", data);
         setPosts(data);
       } catch {
         setIsAuthenticated(false);
@@ -56,8 +55,7 @@ const Feed = () => {
       </div>
     );
   }
-  console.log("Posts:", posts);
-
+console.log("Posts fetched:", posts); // Debugging line to check fetched posts
   return (
     <div className="max-w-2xl mx-auto mt-8">
       <h2 className="text-2xl font-bold mb-6 text-center text-blue-700">
@@ -65,7 +63,7 @@ const Feed = () => {
       </h2>
       {posts.map((post) => (
         <div
-          key={post.PostUUID}
+          key={post.post_uuid}
           className="border rounded-lg p-6 mb-6 bg-white shadow hover:shadow-lg transition-shadow"
         >
           <div className="flex items-center mb-2">
@@ -85,16 +83,16 @@ const Feed = () => {
           </div>
           <p className="text-gray-800 mb-3">{post.content}</p>
           {/* Image preview */}
-          {post.Filename && post.Filename !== "" && (
+          {post.filename_new && post.filename_new !== "" && (
             <div className="mb-3">
               <img
-                src={`http://localhost:8080/${post.Filename}`}
+                src={`http://localhost:8080/uploads/${post.filename_new}`}
                 alt="attachment"
                 className="max-w-xs max-h-48 rounded cursor-pointer border"
                 onClick={() =>
                   setImageModal({
                     open: true,
-                    src: `http://localhost:8080/${post.Filename}`,
+                    src: `http://localhost:8080/uploads/${post.filename_new}`,
                   })
                 }
               />

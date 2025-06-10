@@ -3,7 +3,6 @@ package dbTools
 import (
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -21,7 +20,7 @@ func (d *DB) FileUpload(file multipart.File, f *File, r *http.Request, w http.Re
 	}
 
 	defer file.Close()
-	ext := strings.ToLower(filepath.Ext(f.Filename))
+	ext := strings.ToLower(filepath.Ext(f.FilenameOrig))
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" {
 		return fmt.Errorf("invalid file type: %s", ext)
 	}
@@ -33,8 +32,9 @@ func (d *DB) FileUpload(file multipart.File, f *File, r *http.Request, w http.Re
 		}
 		f.FileUUID = fileUUID
 	}
-	filename := f.FileUUID + ext
-	dst, err := os.Create(filepath.Join(uploadDir, filename))
+	filenameNew := f.FileUUID + ext
+	f.FilenameNew = filenameNew
+	dst, err := os.Create(filepath.Join(uploadDir, filenameNew))
 	if err != nil {
 		fmt.Printf("File save error: %v\n", err)
 		return err
@@ -53,8 +53,6 @@ func (d *DB) FileUpload(file multipart.File, f *File, r *http.Request, w http.Re
 
 // InsertFile inserts a new file into the database and sets the FileID on success.
 func (d *DB) InsertFile(f *File) (int, error) {
-	log.Printf("Inserting file: %+v\n", f)
-
 	// Generate UUID for the file if not already set
 	if f.FileUUID == "" {
 		uuid, err := utils.GenerateUUID()
@@ -66,20 +64,20 @@ func (d *DB) InsertFile(f *File) (int, error) {
 
 	query := `
         INSERT INTO files
-			(file_uuid, uploader_id, filename, parent_type, parent_id, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?)
+			(file_uuid, uploader_id, filename_orig, filename_new, parent_type, parent_id, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 	result, err := d.Exec(
 		query,
 		f.FileUUID,
 		f.UploaderID,
-		f.Filename,
+		f.FilenameOrig,
+		f.FilenameNew,
 		f.ParentType,
 		f.ParentID,
 		f.CreatedAt,
 	)
 	if err != nil {
-		log.Printf("InsertFile Exec error: %v", err)
 		return -1, err
 	}
 	id, err := result.LastInsertId()

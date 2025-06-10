@@ -9,7 +9,6 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
-  console.log('Current User Object:', currentUser);
 
   // Check if the path is /profile/me since id might not be set by useParams for exact route
   const isMeRoute = location.pathname === '/profile/me';
@@ -124,10 +123,6 @@ const ProfilePage = () => {
   if (!profile) return <div className="text-center mt-10">Profile not found</div>;
 
   const isOwnProfile = currentUser && (currentUser.user_uuid === userId || effectiveId === 'me');
-  console.log('Debug - isOwnProfile:', isOwnProfile);
-  console.log('Debug - currentUser.user_uuid:', currentUser?.user_uuid);
-  console.log('Debug - userId:', userId);
-  console.log('Debug - effectiveId:', effectiveId);
 
   // Format date_of_birth
   const formattedDateOfBirth = profile.date_of_birth

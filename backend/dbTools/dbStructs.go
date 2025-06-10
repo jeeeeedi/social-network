@@ -35,16 +35,17 @@ type Session struct {
 }
 
 type File struct {
-	FileID     int        `json:"file_id"`
-	FileUUID   string     `json:"file_uuid"`
-	UploaderID int        `json:"uploader_id"`
-	Filename   string     `json:"filename"`
-	ParentType string     `json:"parent_type"` // profile, post, comment, group, event, chat
-	ParentID   int        `json:"parent_id"`   // ID from User, Post, Comment, Group, Event, or ChatMessage
-	Status     string     `json:"status"`      // active, inactive
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  *time.Time `json:"updated_at"`
-	UpdaterID  int        `json:"updater_id"`
+	FileID       int        `json:"file_id"`
+	FileUUID     string     `json:"file_uuid"`
+	UploaderID   int        `json:"uploader_id"`
+	FilenameOrig string     `json:"filename_orig"` // filename from upload
+	FilenameNew  string     `json:"filename_new"`  // UUID + ext
+	ParentType   string     `json:"parent_type"`   // profile, post, comment, group, event, chat
+	ParentID     int        `json:"parent_id"`     // ID from User, Post, Comment, Group, Event, or ChatMessage
+	Status       string     `json:"status"`        // active, inactive
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at"`
+	UpdaterID    int        `json:"updater_id"`
 }
 
 type Post struct {
@@ -64,14 +65,14 @@ type PostWithUserAndFile struct {
 	PostID        int       `json:"post_id"`
 	PostUUID      string    `json:"post_uuid"`
 	PosterID      int       `json:"poster_id"`
-	GroupID       *int      `json:"group_id"`
+	GroupID       *int      `json:"group_id,omitempty"`
 	Content       string    `json:"content"`
 	Privacy       string    `json:"privacy"` // public, semi-private, private
 	PostStatus    string    `json:"status"`  // active, inactive
 	PostCreatedAt time.Time `json:"created_at"`
 	Nickname      string    `json:"nickname,omitempty"`
-	FileID        int       `json:"file_id"`
-	Filename      string    `json:"filename,omitempty"`
+	FileID        int       `json:"file_id,omitempty"`
+	FilenameNew   string    `json:"filename_new,omitempty"`
 }
 
 type Comment struct {

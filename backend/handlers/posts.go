@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
@@ -13,7 +12,6 @@ import (
 )
 
 var (
-	//posts      []dbTools.Post
 	comments   []dbTools.Comment
 	postID     int
 	commentID  int
@@ -33,7 +31,6 @@ var (
 
 // GetPostsHandler handles getting user feed/posts
 func GetPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	log.Println("GetPostsHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -53,7 +50,6 @@ func GetPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) err
 		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
 		return err
 	}
-	log.Print("Retrieved posts:", posts)
 
 	// Return the posts as JSON
 	w.Header().Set("Content-Type", "application/json")
@@ -63,7 +59,6 @@ func GetPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) err
 
 // CreatePostHandler handles creating new posts
 func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	log.Println("CreatePostHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -122,7 +117,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		defer file.Close()
 		fileMeta := &dbTools.File{
 			UploaderID: currentUserID,
-			Filename:   handler.Filename,
+			FilenameOrig:   handler.Filename,
 			ParentType: "post",
 			ParentID:   postID,
 			CreatedAt:  timeNow,

@@ -2,7 +2,6 @@ package dbTools
 
 import (
 	"database/sql"
-	"log"
 	"social_network/utils"
 )
 
@@ -47,13 +46,12 @@ func (d *DB) InsertPost(p *Post) (int, error) {
 // GetFeedPosts retrieves all public posts and all posts from the specified user
 // TODO: Add logic for semiprivate posts
 func (d *DB) GetFeedPosts(userID int) ([]PostWithUserAndFile, error) {
-	log.Println("GetFeedPosts called for userID:", userID)
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
             u.nickname, 
             COALESCE(f.file_id, 0) as file_id, 
-            f.filename
+            f.filename_new
         FROM posts p
         JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
         LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
@@ -67,41 +65,40 @@ func (d *DB) GetFeedPosts(userID int) ([]PostWithUserAndFile, error) {
 	}
 	defer rows.Close()
 
-	var posts []PostWithUserAndFile
+	var postsWUAFstruct []PostWithUserAndFile
 	for rows.Next() {
-		var post PostWithUserAndFile
+		var postWUAF PostWithUserAndFile
 		var groupID sql.NullInt64
-		var filename sql.NullString
+		var filenameNew sql.NullString
 
 		err := rows.Scan(
-			&post.PostID,
-			&post.PostUUID,
-			&post.PosterID,
+			&postWUAF.PostID,
+			&postWUAF.PostUUID,
+			&postWUAF.PosterID,
 			&groupID,
-			&post.Content,
-			&post.Privacy,
-			&post.PostStatus,
-			&post.PostCreatedAt,
-			&post.Nickname,
-			&post.FileID,
-			&filename,
+			&postWUAF.Content,
+			&postWUAF.Privacy,
+			&postWUAF.PostStatus,
+			&postWUAF.PostCreatedAt,
+			&postWUAF.Nickname,
+			&postWUAF.FileID,
+			&filenameNew,
 		)
 		if err != nil {
 			return nil, err
 		}
 		if groupID.Valid {
 			gid := int(groupID.Int64)
-			post.GroupID = &gid
+			postWUAF.GroupID = &gid
 		} else {
-			post.GroupID = nil
+			postWUAF.GroupID = nil
 		}
-		if filename.Valid {
-			post.Filename = filename.String
+		if filenameNew.Valid {
+			postWUAF.FilenameNew = filenameNew.String
 		} else {
-			post.Filename = ""
+			postWUAF.FilenameNew = ""
 		}
-		posts = append(posts, post)
+		postsWUAFstruct = append(postsWUAFstruct, postWUAF)
 	}
-	log.Print("GetFeedPosts:", posts)
-	return posts, nil
+	return postsWUAFstruct, nil
 }

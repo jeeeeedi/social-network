@@ -31,7 +31,6 @@ export const loginUser = async ({ email, password }) => {
     credentials: 'include',
   });
   const text = await response.text();
-  console.log('Server response text:', text);
   let data;
   try {
     data = JSON.parse(text);
@@ -82,6 +81,5 @@ export const checkSession = async () => {
   if (!response.ok || (data && !data.success)) {
     throw new Error((data && data.message) || 'Session check failed');
   }
-  //console.log('checkSession data.user:', data.user);
   return data.user;
 };
