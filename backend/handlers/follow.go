@@ -1,17 +1,21 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
 	"strings"
+	"time"
 )
 
 // FollowHandler handles follow and unfollow requests
 func FollowHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("FollowHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 
 	if r.Method == "OPTIONS" {
@@ -19,30 +23,40 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method != "POST" && r.Method != "DELETE" {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	// Extract user_uuid from URL
 	path := strings.TrimPrefix(r.URL.Path, "/api/follow/")
 	userUUID := strings.Split(path, "/")[0]
 	if userUUID == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Missing user UUID"})
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing user UUID")
 		return
 	}
 
+	// Initialize database
 	db := &dbTools.DB{}
 	db, err := db.OpenDB()
 	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
+		log.Printf("DB connection error: %v", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
 		return
 	}
 	defer db.CloseDB()
 
-	// Get current user ID from session using utility function
+	if db.GetDB() == nil {
+		log.Println("Nil database connection")
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
+		return
+	}
+
+	// Get current user ID from session
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
+		log.Printf("Session check error: %v", err)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid session")
 		return
 	}
 
@@ -50,39 +64,33 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	var followedUserID int
 	var privacy string
 	userQuery := `SELECT user_id, privacy FROM users WHERE user_uuid = ? AND status = 'active'`
-	err = db.QueryRow(userQuery, userUUID).Scan(&followedUserID, &privacy)
+	err = db.GetDB().QueryRow(userQuery, userUUID).Scan(&followedUserID, &privacy)
 	if err != nil {
-		fmt.Printf("User fetch error: %v\n", err)
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "User not found"})
+		log.Printf("User fetch error for user_uuid %s: %v", userUUID, err)
+		utils.SendErrorResponse(w, http.StatusNotFound, "User not found")
 		return
 	}
 
 	// Prevent self-follow
 	if int(currentUserID) == followedUserID {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Cannot follow yourself"})
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Cannot follow yourself")
 		return
 	}
 
 	var status string
 	if r.Method == "POST" {
-		// Check if follow relationship exists
 		var existingStatus string
 		var followID int
 		checkQuery := `
 			SELECT follow_id, status FROM follows
 			WHERE follower_user_id = ? AND followed_user_id = ?
 		`
-		err = db.QueryRow(checkQuery, currentUserID, followedUserID).Scan(&followID, &existingStatus)
+		err = db.GetDB().QueryRow(checkQuery, currentUserID, followedUserID).Scan(&followID, &existingStatus)
 		if err == nil {
-			// If status is pending or accepted, prevent duplicate
 			if existingStatus == "pending" || existingStatus == "accepted" {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Already following or request pending"})
+				utils.SendErrorResponse(w, http.StatusBadRequest, "Already following or request pending")
 				return
 			}
-			// If declined or cancelled, update to pending or accepted
 			newStatus := "pending"
 			if privacy == "public" {
 				newStatus = "accepted"
@@ -92,74 +100,246 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 				SET status = ?, updated_at = datetime('now'), updater_id = ?
 				WHERE follow_id = ?
 			`
-			_, err = db.Exec(updateQuery, newStatus, currentUserID, followID)
+			_, err = db.GetDB().Exec(updateQuery, newStatus, currentUserID, followID)
 			if err != nil {
-				fmt.Printf("Follow update error: %v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to update follow status"})
+				log.Printf("Follow update error: %v", err)
+				utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to update follow status")
 				return
 			}
 			status = newStatus
-		} else {
-			// No existing follow, create new
+		} else if err == sql.ErrNoRows {
 			status = "pending"
 			if privacy == "public" {
 				status = "accepted"
 			}
 			followQuery := `
-				INSERT INTO follows (follower_user_id, followed_user_id, status, created_at, updater_id)
-				VALUES (?, ?, ?, datetime('now'), ?)
+				INSERT INTO follows (follower_user_id, followed_user_id, status, created_at, updated_at, updater_id)
+				VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
 			`
-			_, err = db.Exec(followQuery, currentUserID, followedUserID, status, currentUserID)
+			result, err := db.GetDB().Exec(followQuery, currentUserID, followedUserID, status, currentUserID)
 			if err != nil {
-				fmt.Printf("Follow insert error: %v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to follow"})
+				log.Printf("Follow insert error: %v", err)
+				utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to follow")
 				return
 			}
+			if status == "pending" {
+				followID64, err := result.LastInsertId()
+				if err == nil {
+					followID := int(followID64)
+					var nickname string
+					err = db.GetDB().QueryRow(`SELECT COALESCE(nickname, first_name) FROM users WHERE user_id = ?`, currentUserID).Scan(&nickname)
+					if err != nil || nickname == "" {
+						nickname = "Someone"
+					}
+					content := fmt.Sprintf("%s wants to follow you", nickname)
+					notifyQuery := `
+						INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
+						VALUES (?, ?, 'follow_request', 'follow', ?, ?, 'unread', datetime('now'), ?)
+					`
+					_, err = db.GetDB().Exec(notifyQuery, followedUserID, currentUserID, followID, content, currentUserID)
+					if err != nil {
+						log.Printf("Notification insert error: %v", err)
+					}
+				}
+			}
+		} else {
+			log.Printf("Follow check error: %v", err)
+			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check follow status")
+			return
 		}
-	} else if r.Method == "DELETE" {
-		// Update status to cancelled instead of deleting
+	} else { // DELETE
 		updateQuery := `
 			UPDATE follows
 			SET status = 'cancelled', updated_at = datetime('now'), updater_id = ?
 			WHERE follower_user_id = ? AND followed_user_id = ?
 		`
-		result, err := db.Exec(updateQuery, currentUserID, currentUserID, followedUserID)
+		result, err := db.GetDB().Exec(updateQuery, currentUserID, currentUserID, followedUserID)
 		if err != nil {
-			fmt.Printf("Follow cancel error: %v\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to cancel follow"})
+			log.Printf("Follow cancel error: %v", err)
+			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to cancel follow")
 			return
 		}
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No follow relationship to cancel"})
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No follow relationship to cancel")
 			return
 		}
 		status = "cancelled"
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
+	}
+
+	utils.SendSuccessResponse(w, map[string]interface{}{
+		"status": status,
+	})
+}
+
+// FollowRequestHandler handles follow request operations (GET for listing, POST for accepting/declining)
+func FollowRequestHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("FollowRequestHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
+	middleware.SetCORSHeaders(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	response := map[string]interface{}{
-		"success": true,
-		"status":  status,
+	// Initialize database
+	db := &dbTools.DB{}
+	db, err := db.OpenDB()
+	if err != nil {
+		log.Printf("DB connection error: %v", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
+		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	defer db.CloseDB()
+
+	if db.GetDB() == nil {
+		log.Println("Nil database connection")
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
+		return
+	}
+
+	// Get current user ID from session
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+	if err != nil {
+		log.Printf("Session check error: %v", err)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid session")
+		return
+	}
+
+	if r.Method == "GET" {
+		rows, err := db.GetDB().Query(`
+			SELECT f.follow_id, u.user_uuid, COALESCE(u.nickname, u.first_name) as nickname
+			FROM follows f
+			JOIN users u ON f.follower_user_id = u.user_id
+			WHERE f.followed_user_id = ? AND f.status = 'pending'
+		`, currentUserID)
+		if err != nil {
+			log.Printf("Query error: %v", err)
+			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to fetch requests")
+			return
+		}
+		defer rows.Close()
+
+		requests := []map[string]interface{}{}
+		for rows.Next() {
+			var followID int
+			var userUUID, nickname string
+			if err := rows.Scan(&followID, &userUUID, &nickname); err != nil {
+				log.Printf("Row scan error: %v", err)
+				continue
+			}
+			requests = append(requests, map[string]interface{}{
+				"follow_id": followID,
+				"user_uuid": userUUID,
+				"nickname":  nickname,
+			})
+		}
+
+		utils.SendSuccessResponse(w, map[string]interface{}{
+			"requests": requests,
+		})
+		return
+	}
+
+	if r.Method == "POST" {
+		var requestBody struct {
+			FollowID int    `json:"follow_id"`
+			Action   string `json:"action"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+
+		// Map action to status
+		var newStatus string
+		switch requestBody.Action {
+		case "accept":
+			newStatus = "accepted"
+		case "decline":
+			newStatus = "declined"
+		default:
+			utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid action: must be 'accept' or 'decline'")
+			return
+		}
+
+		var followedUserID, followerUserID int
+		var status string
+		checkQuery := `
+			SELECT followed_user_id, follower_user_id, status
+			FROM follows
+			WHERE follow_id = ? AND status = 'pending'
+		`
+		err = db.GetDB().QueryRow(checkQuery, requestBody.FollowID).Scan(&followedUserID, &followerUserID, &status)
+		if err != nil {
+			log.Printf("Follow request fetch error: %v", err)
+			utils.SendErrorResponse(w, http.StatusNotFound, "Follow request not found or not pending")
+			return
+		}
+		if int(currentUserID) != followedUserID {
+			utils.SendErrorResponse(w, http.StatusForbidden, "Unauthorized to manage this request")
+			return
+		}
+
+		updateQuery := `
+			UPDATE follows
+			SET status = ?, updated_at = datetime('now'), updater_id = ?
+			WHERE follow_id = ?
+		`
+		_, err = db.GetDB().Exec(updateQuery, newStatus, currentUserID, requestBody.FollowID)
+		if err != nil {
+			log.Printf("Follow update error: %v", err)
+			utils.SendErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("Failed to update follow request: %v", err))
+			return
+		}
+
+		_, err = db.GetDB().Exec(`
+			UPDATE notifications
+			SET status = 'read', updated_at = datetime('now'), updater_id = ?
+			WHERE parent_type = 'follow' AND parent_id = ? AND action_type = 'follow_request'
+		`, currentUserID, requestBody.FollowID)
+		if err != nil {
+			log.Printf("Notification update error: %v", err)
+		}
+
+		if newStatus == "accepted" {
+			var nickname string
+			err = db.GetDB().QueryRow(`SELECT COALESCE(nickname, first_name) FROM users WHERE user_id = ?`, currentUserID).Scan(&nickname)
+			if err != nil || nickname == "" {
+				nickname = "Someone"
+			}
+			content := fmt.Sprintf("%s accepted your follow request", nickname)
+			notifyQuery := `
+				INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
+				VALUES (?, ?, 'follow_accepted', 'follow', ?, ?, 'unread', datetime('now'), ?)
+			`
+			_, err = db.GetDB().Exec(notifyQuery, followerUserID, currentUserID, requestBody.FollowID, content, currentUserID)
+			if err != nil {
+				log.Printf("Notification insert error: %v", err)
+			}
+		}
+
+		utils.SendSuccessResponse(w, map[string]interface{}{
+			"status": newStatus,
+		})
+		return
+	}
+
+	utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 }
 
 // FollowStatusHandler checks if the current user is following a profile
 func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("FollowStatusHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -167,37 +347,41 @@ func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/follow/status/")
 	userUUID := strings.Split(path, "/")[0]
 	if userUUID == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Missing user UUID"})
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing user UUID")
 		return
 	}
 
+	// Initialize database
 	db := &dbTools.DB{}
 	db, err := db.OpenDB()
 	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
+		log.Printf("DB connection error: %v", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
 		return
 	}
 	defer db.CloseDB()
 
-	// Get current user ID from session using utility function
+	if db.GetDB() == nil {
+		log.Println("Nil database connection")
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
+		return
+	}
+
+	// Get current user ID from session
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "No active session"})
+		log.Printf("Session check error: %v", err)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid session")
 		return
 	}
 
 	// Get followed user ID from user_uuid
 	var followedUserID int
 	userQuery := `SELECT user_id FROM users WHERE user_uuid = ? AND status = 'active'`
-	err = db.QueryRow(userQuery, userUUID).Scan(&followedUserID)
+	err = db.GetDB().QueryRow(userQuery, userUUID).Scan(&followedUserID)
 	if err != nil {
-		fmt.Printf("User fetch error: %v\n", err)
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "User not found"})
+		log.Printf("User fetch error for user_uuid %s: %v", userUUID, err)
+		utils.SendErrorResponse(w, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -207,7 +391,7 @@ func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT status FROM follows
 		WHERE follower_user_id = ? AND followed_user_id = ?
 	`
-	err = db.QueryRow(checkQuery, currentUserID, followedUserID).Scan(&status)
+	err = db.GetDB().QueryRow(checkQuery, currentUserID, followedUserID).Scan(&status)
 	isFollowing := err == nil && (status == "pending" || status == "accepted")
 
 	response := map[string]interface{}{

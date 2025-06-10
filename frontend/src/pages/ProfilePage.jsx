@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchProfile, updateProfilePrivacy } from '../api/profile';
+import { fetchProfile} from '../api/profile';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
@@ -10,11 +10,13 @@ const ProfilePage = () => {
   const location = useLocation();
   const { currentUser } = useAuth();
 
-  // Check if the path is /profile/me since id might not be set by useParams for exact route
-  const isMeRoute = location.pathname === '/profile/me';
-  const effectiveId = id || (isMeRoute ? 'me' : undefined);
+  console.log('ProfilePage Rendered - Params:', { id, pathname: location.pathname });
+  console.log('Current User Object:', currentUser);
 
+  const isMeRoute = (location.pathname === '/profile/me' || location.pathname === '/profile/me/')
+  const effectiveId = id|| (isMeRoute ? 'me' : undefined);
   const userId = effectiveId === 'me' ? currentUser?.user_uuid : effectiveId;
+
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,110 +25,167 @@ const ProfilePage = () => {
   const [privacy, setPrivacy] = useState('public');
 
   useEffect(() => {
+    console.log('useEffect - userId:', userId);
     const loadProfile = async () => {
       if (!userId) {
-        setError('Invalid user ID');
+        console.error('No userId provided');
+        setError('Invalid user UUID');
         setLoading(false);
         return;
       }
       try {
+        console.log('Fetching profile for userId:', userId);
         const data = await fetchProfile(userId);
-        setProfile(data.profile);
-        setPrivacy(data.profile.privacy || 'public');
+        console.log('Profile API Response:', data);
+        if (!data.success) {
+          setError(data.message || 'Failed to load profile');
+          setLoading(false);
+          return;
+        }
+        setProfile(data); // Set full response
+        setPrivacy(data.profile?.privacy || 'public');
+        console.log('Set profile followers:', data.followers);
 
         // Check follow status if not own profile
-        if (currentUser && currentUser.user_id !== userId && id !== 'me') {
-          const followResponse = await fetch(
-            `http://localhost:8080/api/follow/status/${userId}`,
-            {
-              credentials: 'include',
+        if (currentUser && currentUser.user_uuid !== userId && userId !== 'me') {
+          console.log('Fetching follow status for userId:', userId);
+          try {
+            const followResponse = await fetch(
+              `http://localhost:8080/api/follow/status/${userId}`,
+              { credentials: 'include' }
+            );
+            console.log('Follow Status Response Status:', followResponse.status);
+            const followData = await followResponse.json();
+            console.log('Follow Status Response:', followData);
+            if (followData.success) {
+              setIsFollowing(followData.isFollowing);
+              setFollowStatus(followData.status || '');
+            } else {
+              console.warn('Follow status error:', followData.message);
+              // Fallback: Check if current user is in followers list
+              const isFollower = data.followers?.some(f => f.user_uuid === currentUser.user_uuid);
+              setIsFollowing(isFollower);
+              setFollowStatus(isFollower ? 'accepted' : '');
             }
-          );
-          const followData = await followResponse.json();
-          if (followData.success) {
-            setIsFollowing(followData.isFollowing);
-            setFollowStatus(followData.status || '');
+          } catch (err) {
+            console.warn('Follow status fetch error:', err);
+            // Fallback
+            const isFollower = data.followers?.some(f => f.user_uuid === currentUser.user_uuid);
+            setIsFollowing(isFollower);
+            setFollowStatus(isFollower ? 'accepted' : '');
           }
         }
       } catch (err) {
+        console.error('Profile Fetch Error:', err.message);
         setError(err.message || 'Failed to load profile');
       } finally {
         setLoading(false);
       }
     };
     loadProfile();
-  }, [userId, currentUser, id]);
-
-  const handlePrivacyChange = async (e) => {
-    const newPrivacy = e.target.value;
-    setPrivacy(newPrivacy);
-    try {
-      await updateProfilePrivacy(newPrivacy);
-      setProfile({ ...profile, privacy: newPrivacy });
-    } catch (err) {
-      setError(err.message || 'Failed to update privacy');
-    }
-  };
+  }, [userId, currentUser]);
 
   const handlePrivacyToggle = async () => {
-    if (!currentUser || (currentUser.user_uuid !== userId && effectiveId !== 'me')) return;
-
-    const newPrivacy = profile.privacy === 'public' ? 'private' : 'public';
+    if (!currentUser || (currentUser.user_uuid !== userId && effectiveId !== 'me')) {
+      console.warn('Privacy toggle blocked: Not authorized');
+      navigate('/login');
+      return;
+    }
+    const newPrivacy = profile.profile.privacy === 'public' ? 'private' : 'public';
     try {
+      console.log('Updating privacy to:', newPrivacy);
       const response = await fetch('http://localhost:8080/api/profile/privacy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ privacy: newPrivacy }),
         credentials: 'include',
       });
+      console.log('Privacy Update Response Status:', response.status);
       const data = await response.json();
+      console.log('Privacy Update Response:', data);
       if (data.success) {
-        setProfile({ ...profile, privacy: newPrivacy });
+        setProfile({ ...profile, profile: { ...profile.profile, privacy: newPrivacy } });
         setPrivacy(newPrivacy);
-        if (currentUser.user_uuid === userId || effectiveId === 'me') {
-          // Update currentUser if it's the user's own profile
-          // Assuming AuthContext provides a way to update currentUser, though it might not be directly available
-        }
       } else {
         setError(data.message || 'Failed to update privacy');
       }
     } catch (err) {
+      console.error('Privacy Update Error:', err);
       setError('Error updating privacy');
     }
   };
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
-      navigate('/login');
+      console.log('Redirecting to login: No current user');
+      window.location.href = '/login';
       return;
     }
     try {
+      console.log('Toggling follow for userId:', userId);
       const response = await fetch(`http://localhost:8080/api/follow/${userId}`, {
         method: isFollowing ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       });
-      const data = await response.json();
-      if (data.success) {
-        setIsFollowing(data.status === 'pending' || data.status === 'accepted');
-        setFollowStatus(data.status || '');
+      console.log('Follow Toggle Response Status:', response.status);
+      const followData = await response.json();
+      console.log('Follow Toggle Response:', followData);
+      if (followData.success) {
+        setIsFollowing(followData.status === 'pending' || followData.status === 'accepted');
+        setFollowStatus(followData.status || '');
+        // Refresh profile to update followers list
+        const updatedProfile = await fetchProfile(userId);
+        if (updatedProfile.success) {
+          setProfile(updatedProfile);
+          console.log('Refreshed profile followers:', updatedProfile.followers);
+        }
       } else {
-        setError(data.message || 'Failed to update follow status');
+        setError(followData.message || 'Failed to update follow status');
       }
     } catch (err) {
+      console.error('Follow Toggle Error:', err);
       setError('Error updating follow status');
     }
   };
 
-  if (loading) return <div className="text-center mt-10">Loading...</div>;
-  if (error) return <div className="text-center mt-10 text-red-500">Error: {error}</div>;
-  if (!profile) return <div className="text-center mt-10">Profile not found</div>;
+  const handleRetry = () => {
+    console.log('Retrying profile fetch');
+    setError('');
+    setLoading(true);
+    setProfile(null);
+  };
+
+  if (loading) {
+    console.log('Rendering: Loading state');
+    return <div className="text-center mt-10">Loading...</div>;
+  }
+  if (error) {
+    console.log('Rendering: Error state:', error);
+    return (
+      <div className="text-center mt-10 text-red-500">
+        Error: {error}
+        <button onClick={handleRetry} className="retry-button">Retry</button>
+      </div>
+    );
+  }
+  if (!profile) {
+    console.log('Rendering: Profile not found');
+    return <div className="text-center mt-10">Profile not found</div>;
+  }
 
   const isOwnProfile = currentUser && (currentUser.user_uuid === userId || effectiveId === 'me');
+  console.log('Debug - isOwnProfile:', isOwnProfile);
+  console.log('Debug - currentUser.user_uuid:', currentUser?.user_uuid);
+  console.log('Debug - userId:', userId);
+  console.log('Debug - effectiveId:', effectiveId);
 
-  // Format date_of_birth
-  const formattedDateOfBirth = profile.date_of_birth
-    ? new Date(profile.date_of_birth).toLocaleDateString('en-US', {
+  const displayName = profile.profile.first_name && profile.profile.last_name
+    ? `${profile.profile.first_name} ${profile.profile.last_name}`
+    : profile.profile.nickname || 'Unknown User';
+
+  const formattedDateOfBirth = profile.profile.date_of_birth
+    ? new Date(profile.profile.date_of_birth).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -135,69 +194,68 @@ const ProfilePage = () => {
 
   return (
     <div className="profile-container">
-      <h2>{profile.first_name} {profile.last_name}'s Profile</h2>
+      <h2>{displayName}'s Profile</h2>
       <div className="profile-info">
-        {profile.avatar && (
+        {profile.profile.avatar && (
           <img
-            src={`http://localhost:8080${profile.avatar}`}
-            alt={`${profile.first_name}'s avatar`}
+            src={`http://localhost:8080${profile.profile.avatar}`}
+            alt={`${displayName}'s avatar`}
             className="profile-avatar"
           />
         )}
-        {profile.email && (
+        <div>
+          <p><strong>Privacy: </strong>{privacy}</p>
+        </div>
+        {profile.profile.email ? (
           <>
             <div>
-              <label>Email: </label>
-              <span>{profile.email}</span>
+              <p><strong>Email:</strong> {profile.profile.email}</p>
             </div>
-            {profile.date_of_birth && (
+            {formattedDateOfBirth && (
               <div>
-                <label>Date of Birth: </label>
-                <span>{formattedDateOfBirth}</span>
+                <p><strong>Date of Birth:</strong> {formattedDateOfBirth}</p>
               </div>
             )}
-            {profile.nickname && (
+            {profile.profile.nickname && (
               <div>
-                <label>Nickname: </label>
-                <span>{profile.nickname}</span>
+                <p><strong>Username:</strong> {profile.profile.nickname}</p>
               </div>
             )}
-            {profile.about_me && (
+            {profile.profile.about_me && (
               <div>
-                <label>About Me: </label>
-                <span>{profile.about_me}</span>
+                <p><strong>About Me:</strong> {profile.profile.about_me}</p>
               </div>
             )}
-            {profile.role && (
+            {profile.profile.role && (
               <div>
-                <label>Role: </label>
-                <span>{profile.role}</span>
+                <p><strong>Role:</strong> {profile.profile.role}</p>
               </div>
             )}
-            {profile.created_at && (
+            {profile.profile.created_at && (
               <div>
-                <label>Joined: </label>
-                <span>{new Date(profile.created_at).toLocaleDateString()}</span>
+                <p><strong>Joined:</strong> {new Date(profile.profile.created_at).toLocaleDateString()}</p>
               </div>
             )}
           </>
+        ) : (
+          <p>Limited profile view</p>
         )}
-        <div>
-          <label>Privacy: </label>
-          <span>{privacy}</span>
-        </div>
         {isOwnProfile && (
           <div>
-            <button className="privacy-button" onClick={handlePrivacyToggle} aria-label={`Make profile ${profile.privacy === 'public' ? 'private' : 'public'}`}
-              tabIndex="0">
-              Make Profile {profile.privacy === 'public' ? 'Private' : 'Public'}
+            <button
+              className="privacy-button"
+              onClick={handlePrivacyToggle}
+              aria-label={`Make profile ${profile.profile.privacy === 'public' ? 'private' : 'public'}`}
+            >
+              Make Profile {profile.profile.privacy === 'public' ? 'Private' : 'Public'}
             </button>
           </div>
         )}
-        {!isOwnProfile && (
+        {!isOwnProfile && currentUser && (
           <button
             onClick={handleFollowToggle}
             className="follow-button"
+            aria-label={isFollowing ? (followStatus === 'pending' ? 'Cancel Follow Request' : 'Unfollow') : 'Follow'}
           >
             {isFollowing
               ? followStatus === 'pending'
@@ -207,19 +265,44 @@ const ProfilePage = () => {
           </button>
         )}
       </div>
-      {profile.email && (
+      {profile.profile.email && (
         <>
           <div className="profile-posts">
             <h3>Posts</h3>
             <p>Coming soon...</p>
           </div>
           <div className="profile-followers">
-            <h3>Followers</h3>
-            <p>Coming soon...</p>
+            {console.log('Rendering followers:', profile.followers)}
+            <h3>Followers ({profile.followers?.length || 0})</h3>
+            {profile.followers?.length > 0 ? (
+              <ul>
+                {profile.followers.map((follower) => (
+                  <li key={follower.user_uuid}>
+                    <Link to={`/profile/${follower.user_uuid}`}>
+                      {follower.first_name || follower.user_uuid} {follower.last_name || ''}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No followers yet</p>
+            )}
           </div>
           <div className="profile-following">
-            <h3>Following</h3>
-            <p>Coming soon...</p>
+            <h3>Following ({profile.following?.length || 0})</h3>
+            {profile.following?.length > 0 ? (
+              <ul>
+                {profile.following.map((following) => (
+                  <li key={following.user_uuid}>
+                    <Link to={`/profile/${following.user_uuid}`}>
+                      {following.first_name || following.user_uuid} {following.last_name || ''}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Not following anyone yet</p>
+            )}
           </div>
         </>
       )}
