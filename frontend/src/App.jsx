@@ -6,14 +6,25 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
-//import Groups from './pages/Groups';
+import Groups from './components/Groups';
+import Notifications from './components/Notifications';
 //import Notifications from './pages/Notifications';
 
 const AppContent = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
   const isAuthenticated = !!currentUser;
   const location = useLocation();
   const showNavbar = isAuthenticated && !['/login', '/register'].includes(location.pathname);
+  console.log(isAuthenticated)
+
+    // Show a loading screen while session is being checked
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-lg">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -24,9 +35,9 @@ const AppContent = () => {
           <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/" />} />
           <Route path="/profile/:id" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" />} />
-          <Route path="/profile/me" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" />} />
-          {/* <Route path="/groups" element={isAuthenticated ? <GroupsPage /> : <Navigate to="/login" />} />
-          <Route path="/notifications" element={isAuthenticated ? <NotificationsPage /> : <Navigate to="/login" />} /> */}
+          <Route path="/groups" element={isAuthenticated ? <Groups /> : <Navigate to="/login" />} />
+          <Route path="/notifications" element={isAuthenticated ? <Notifications /> : <Navigate to="/login" />} />
+          {/* <Route path="/notifications" element={isAuthenticated ? <NotificationsPage /> : <Navigate to="/login" />} /> */}
         </Routes>
       </main>
     </div>
@@ -35,7 +46,7 @@ const AppContent = () => {
 
 const App = () => {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AppContent />
     </Router>
   );

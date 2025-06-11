@@ -4,6 +4,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Feed from '../pages/Feed';
 import PostInput from '../pages/PostInput';
+import SocialFeed from '../components/SocialFeed';
 
 const Home = () => {
   const { currentUser, logoutUser } = useContext(AuthContext);

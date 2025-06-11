@@ -77,6 +77,10 @@ func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 	return d.db.QueryRow(query, args...)
 }
 
+func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.db.Query(query, args...)
+}
+
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return d.db.Exec(query, args...)
 }

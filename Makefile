@@ -15,9 +15,9 @@ start:
 backend:
 	cd backend && go run main.go
 
-# Run frontend
+# Run frontend (Next.js)
 frontend:
-	cd frontend && npm start
+	npm run dev
 
 # Stop both backend and frontend servers
 stop:
