@@ -1,12 +1,29 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  Box, 
+  Paper, 
+  TextField, 
+  Button, 
+  Avatar, 
+  Typography, 
+  Divider, 
+  IconButton, 
+  Card, 
+  CardContent, 
+  CardHeader
+} from '@mui/material';
+import { Send, Favorite, Comment, Share } from '@mui/icons-material';
 import { checkSession } from "../api/auth.jsx";
 import { formatDateTime } from "../utils/formatDate.jsx";
 
 const Feed = () => {
+  const [newPost, setNewPost] = useState('');
   const [posts, setPosts] = useState([]);
   const [imageModal, setImageModal] = useState({ open: false, src: "" });
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(null);
+    const { currentUser } = useAuth();
 
   useEffect(() => {
     const verifySessionAndFetch = async () => {
@@ -55,7 +72,6 @@ const Feed = () => {
       </div>
     );
   }
-console.log("Posts fetched:", posts); // Debugging line to check fetched posts
   return (
     <div className="max-w-2xl mx-auto mt-8">
       <h2 className="text-2xl font-bold mb-6 text-center text-blue-700">

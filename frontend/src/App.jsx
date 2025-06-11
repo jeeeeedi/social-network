@@ -15,7 +15,6 @@ const AppContent = () => {
   const isAuthenticated = !!currentUser;
   const location = useLocation();
   const showNavbar = isAuthenticated && !['/login', '/register'].includes(location.pathname);
-  console.log(isAuthenticated)
 
     // Show a loading screen while session is being checked
   if (loading) {
