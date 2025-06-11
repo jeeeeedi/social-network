@@ -74,10 +74,9 @@ if ! command -v sqlite3 &> /dev/null; then
 fi
 
 # Setup frontend dependencies
-# CHANGE NOTE: This ensures all frontend dependencies are installed, including React, MUI, and related packages.
-# These are critical for the React application with Material-UI components added during project updates.
-echo -e "${GREEN}Setting up frontend dependencies...${NC}"
 cd frontend || { echo -e "${RED}Frontend directory not found!${NC}"; exit 1; }
+echo "Ensuring Next.js and React dependencies are installed..."
+npm install next react react-dom
 echo "Installing frontend dependencies (including React, MUI, and others as per package.json)..."
 npm install
 cd ..
