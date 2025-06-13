@@ -6,8 +6,9 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
-import Groups from './components/Groups';
+import Groups from './pages/Groups';
 import Notifications from './components/Notifications';
+import GroupForm from './pages/GroupForm';
 //import Notifications from './pages/Notifications';
 
 const AppContent = () => {
@@ -15,6 +16,7 @@ const AppContent = () => {
   const isAuthenticated = !!currentUser;
   const location = useLocation();
   const showNavbar = isAuthenticated && !['/login', '/register'].includes(location.pathname);
+  console.log(isAuthenticated)
 
     // Show a loading screen while session is being checked
   if (loading) {
@@ -35,6 +37,7 @@ const AppContent = () => {
           <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/" />} />
           <Route path="/profile/:id" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/groups" element={isAuthenticated ? <Groups /> : <Navigate to="/login" />} />
+          <Route path="/groups/create" element={isAuthenticated ? <GroupForm /> : <Navigate to="/login" />} />
           <Route path="/notifications" element={isAuthenticated ? <Notifications /> : <Navigate to="/login" />} />
           {/* <Route path="/notifications" element={isAuthenticated ? <NotificationsPage /> : <Navigate to="/login" />} /> */}
         </Routes>

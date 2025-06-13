@@ -18,32 +18,33 @@ func (d *DB) OpenDB() (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.db = db
-	
-	err = d.RunMigration()
-	if err != nil {
-		d.db.Close()
-	}
-	return d, nil
+	return &DB{db: db}, nil
 }
 
-func (d *DB) RunMigration() error {
-	driver, err := sqlite3.WithInstance(d.db, &sqlite3.Config{})
+func (d *DB) OpenDBWithMigration() error {
+	db, err := sql.Open("sqlite3", "./db/socnet.db")
 	if err != nil {
-		d.db.Close()
+		return err
+	}
+
+	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
+	if err != nil {
+		db.Close()
 		return err
 	}
 
 	m, err := migrate.NewWithDatabaseInstance("file://./db/migrations", "sqlite3", driver)
 	if err != nil {
-		d.db.Close()
+		db.Close()
 		return err
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		d.db.Close()
+		db.Close()
 		return err
 	}
+
+	d.db = db
 	return nil
 }
 

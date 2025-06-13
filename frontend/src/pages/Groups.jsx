@@ -2,6 +2,7 @@ import React from 'react';
 import { mockGroups } from '../utils/mockData';
 import { Box, Card, CardContent, CardMedia, Typography, Button, Grid, Chip } from '@mui/material';
 import { People, Lock } from '@mui/icons-material';
+import Image from 'next/image'
 
 // Groups component to display a list of groups using MUI
 const Groups = () => {
@@ -14,12 +15,15 @@ const Groups = () => {
         {mockGroups.map((group) => (
           <Grid item xs={12} sm={6} md={4} key={group.id}>
             <Card sx={{ maxWidth: 345, margin: 'auto' }}>
-              <CardMedia
-                component="img"
-                height="140"
-                image={group.image}
-                alt={`${group.title} cover`}
-              />
+              <Box sx={{ position: 'relative', width: '100%', height: 140 }}>
+                <Image
+                  src={group.image}
+                  alt={`${group.title} cover`}
+                  fill
+                  style={{ objectFit: 'cover', borderRadius: '4px 4px 0 0' }}
+                  sizes="(max-width: 600px) 100vw, 33vw"
+                />
+              </Box>
               <CardContent>
                 <Typography gutterBottom variant="h5" component="div">
                   {group.title}
