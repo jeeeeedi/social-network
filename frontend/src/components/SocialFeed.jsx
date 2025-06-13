@@ -144,13 +144,6 @@ const SocialFeed = () => {
     );
   }
 
-  if (!posts) {
-    return (
-      <div className="border rounded p-4 mb-4 bg-gray-50">
-        <p className="text-gray-700">No posts yet.</p>
-      </div>
-    );
-  }
   return (
     <Box sx={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
       {/* Create Post Section */}
@@ -242,77 +235,83 @@ const SocialFeed = () => {
 
       {/* Posts Feed */}
       <Box sx={{ spaceY: 3 }}>
-        {posts.map((post) => (
-          <Card key={post.post_id} sx={{ mb: 3 }}>
-            <CardHeader
-              avatar={
-                <Avatar
-                  src={post.avatar || ""}
-                  alt={post.nickname}
-                  sx={{ width: 40, height: 40 }}
-                />
-              }
-              title={<Typography variant="h6">{post.nickname}</Typography>}
-              subheader={
-                <Typography variant="caption">
-                  @{post.nickname} · {formatDateTime(post.created_at)}
-                </Typography>
-              }
-            />
-            <CardContent>
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                {post.content}
-              </Typography>
-              {post.filename_new && (
-                <Box
-                  sx={{
-                    mb: 2,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <img
-                    src={`http://localhost:8080/uploads/${post.filename_new}`}
-                    alt="Post image"
-                    style={{ maxWidth: "400px", maxHeight: "400px" }}
+        {(!posts || posts.length === 0) ? (
+          <Typography variant="body1" color="text.secondary" align="center">
+            No posts yet.
+          </Typography>
+        ) : (
+          posts.map((post) => (
+            <Card key={post.post_id} sx={{ mb: 3 }}>
+              <CardHeader
+                avatar={
+                  <Avatar
+                    src={post.avatar || ""}
+                    alt={post.nickname}
+                    sx={{ width: 40, height: 40 }}
                   />
-                </Box>
-              )}
-              <Box
-                sx={{ display: "flex", justifyContent: "space-between", pt: 2 }}
-              >
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <IconButton
-                    onClick={() => handleLike(post.post_id)}
-                    color={post.liked ? "error" : "default"}
-                    size="small"
+                }
+                title={<Typography variant="h6">{post.nickname}</Typography>}
+                subheader={
+                  <Typography variant="caption">
+                    @{post.nickname} · {formatDateTime(post.created_at)}
+                  </Typography>
+                }
+              />
+              <CardContent>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  {post.content}
+                </Typography>
+                {post.filename_new && (
+                  <Box
+                    sx={{
+                      mb: 2,
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
                   >
-                    <Favorite fontSize="small" />
-                    <Typography variant="caption" sx={{ ml: 0.5 }}>
-                      {post.likes}
-                    </Typography>
-                  </IconButton>
-                  <IconButton size="small">
-                    <Comment fontSize="small" />
-                    <Typography variant="caption" sx={{ ml: 0.5 }}>
-                      {post.comments}
-                    </Typography>
-                  </IconButton>
-                  <IconButton size="small">
-                    <Share fontSize="small" />
-                    <Typography variant="caption" sx={{ ml: 0.5 }}>
-                      {post.shares}
-                    </Typography>
-                  </IconButton>
+                    <img
+                      src={`http://localhost:8080/uploads/${post.filename_new}`}
+                      alt="Post image"
+                      style={{ maxWidth: "400px", maxHeight: "400px" }}
+                    />
+                  </Box>
+                )}
+                <Box
+                  sx={{ display: "flex", justifyContent: "space-between", pt: 2 }}
+                >
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <IconButton
+                      onClick={() => handleLike(post.post_id)}
+                      color={post.liked ? "error" : "default"}
+                      size="small"
+                    >
+                      <Favorite fontSize="small" />
+                      <Typography variant="caption" sx={{ ml: 0.5 }}>
+                        {post.likes}
+                      </Typography>
+                    </IconButton>
+                    <IconButton size="small">
+                      <Comment fontSize="small" />
+                      <Typography variant="caption" sx={{ ml: 0.5 }}>
+                        {post.comments}
+                      </Typography>
+                    </IconButton>
+                    <IconButton size="small">
+                      <Share fontSize="small" />
+                      <Typography variant="caption" sx={{ ml: 0.5 }}>
+                        {post.shares}
+                      </Typography>
+                    </IconButton>
+                  </Box>
                 </Box>
-              </Box>
-            </CardContent>
-            <Divider />
-          </Card>
-        ))}
+              </CardContent>
+              <Divider />
+            </Card>
+          ))
+        )}
       </Box>
     </Box>
   );
