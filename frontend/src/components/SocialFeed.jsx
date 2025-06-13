@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Collapse,
 } from "@mui/material";
 import { Send, Favorite, Comment, Share } from "@mui/icons-material";
 import { sanitize } from "../utils/sanitize.jsx";
@@ -27,6 +28,8 @@ const SocialFeed = () => {
   const [submitting, setSubmitting] = useState(false);
   const { currentUser } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [expandedComments, setExpandedComments] = useState({});
+  const [commentContent, setCommentContent] = useState({});
 
   useEffect(() => {
     const verifySessionAndFetch = async () => {
@@ -127,6 +130,57 @@ const SocialFeed = () => {
       )
     );
     // TODO: Send like status to backend API
+  };
+
+  const handleCommentClick = (postId) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [postId]: !prev[postId]
+    }));
+  };
+
+  const handleCommentSubmit = async (postId, e) => {
+    e.preventDefault();
+    const content = commentContent[postId];
+    if (!content?.trim()) return;
+
+    try {
+      const res = await fetch("http://localhost:8080/api/createcomment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          post_id: postId,
+          content: content,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create comment");
+
+      // Reset the comment form
+      setCommentContent(prev => ({
+        ...prev,
+        [postId]: ""
+      }));
+      setExpandedComments(prev => ({
+        ...prev,
+        [postId]: false
+      }));
+
+      // Refresh posts to show new comment
+      const feedRes = await fetch("http://localhost:8080/api/getfeedposts", {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!feedRes.ok) throw new Error("Failed to fetch posts");
+      const postData = await feedRes.json();
+      setPosts(postData);
+    } catch (err) {
+      alert("Error creating comment: " + err.message);
+    }
   };
 
   /*   if (loading) {
@@ -283,6 +337,7 @@ const SocialFeed = () => {
                   sx={{ display: "flex", justifyContent: "space-between", pt: 2 }}
                 >
                   <Box sx={{ display: "flex", gap: 1 }}>
+                    {/* Like Button */}
                     <IconButton
                       onClick={() => handleLike(post.post_id)}
                       color={post.liked ? "error" : "default"}
@@ -293,12 +348,17 @@ const SocialFeed = () => {
                         {post.likes}
                       </Typography>
                     </IconButton>
-                    <IconButton size="small">
+                    {/* Comment Button */}
+                    <IconButton 
+                      size="small"
+                      onClick={() => handleCommentClick(post.post_id)}
+                    >
                       <Comment fontSize="small" />
                       <Typography variant="caption" sx={{ ml: 0.5 }}>
                         {post.comments}
                       </Typography>
                     </IconButton>
+                    {/* Share Button */}
                     <IconButton size="small">
                       <Share fontSize="small" />
                       <Typography variant="caption" sx={{ ml: 0.5 }}>
@@ -307,6 +367,50 @@ const SocialFeed = () => {
                     </IconButton>
                   </Box>
                 </Box>
+                {/* Comment Section */}
+                <Collapse in={expandedComments[post.post_id]}>
+                  <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default' }}>
+                    <form onSubmit={(e) => handleCommentSubmit(post.post_id, e)}>
+                      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                        <Avatar
+                          src={currentUser ? currentUser.avatar || "" : ""}
+                          alt={currentUser ? currentUser.nickname || "User" : "User"}
+                          sx={{ width: 32, height: 32 }}
+                        />
+                        <TextField
+                          placeholder="Write a comment..."
+                          value={commentContent[post.post_id] || ""}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 1000) {
+                              setCommentContent(prev => ({
+                                ...prev,
+                                [post.post_id]: e.target.value
+                              }));
+                            }
+                          }}
+                          multiline
+                          rows={2}
+                          variant="outlined"
+                          fullWidth
+                          size="small"
+                          inputProps={{ maxLength: 1000 }}
+                          required
+                        />
+                      </Box>
+                      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          size="small"
+                          disabled={!commentContent[post.post_id]?.trim()}
+                          endIcon={<Send />}
+                        >
+                          Comment
+                        </Button>
+                      </Box>
+                    </form>
+                  </Box>
+                </Collapse>
               </CardContent>
               <Divider />
             </Card>

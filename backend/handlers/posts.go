@@ -166,37 +166,81 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 }
 
 // CreateCommentHandler handles creating new comments
-func CreateCommentHandler(w http.ResponseWriter, r *http.Request) error {
+func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return fmt.Errorf("method not allowed")
 	}
-	postIDParam := r.URL.Query().Get("postId")
-	var postIDInt int
-	fmt.Sscanf(postIDParam, "%d", &postIDInt)
-
-	var req struct {
-		Content string `json:"content"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
+	err := r.ParseMultipartForm(10 << 20) // 10MB max
+	if err != nil {
+		http.Error(w, "Could not parse form", http.StatusBadRequest)
 		return err
 	}
 
-	storeMutex.Lock()
-	defer storeMutex.Unlock()
-	comment := dbTools.Comment{
-		CommentID: commentID,
-		PostID:    postIDInt,
-		Content:   req.Content,
-		CreatedAt: time.Now(),
+	timeNow := time.Now()
+	content := r.FormValue("content")
+
+	// Validate content
+	if len(content) == 0 {
+		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+		return err
 	}
-	commentID++
-	comments = append(comments, comment)
+	if len(content) > 3000 {
+		http.Error(w, "Content too long", http.StatusBadRequest)
+		return err
+	}
+	content = utils.Sanitize(content)
+
+	// Validate privacy
+	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
+	if !validPrivacy[privacy] {
+		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
+		return err
+	}
+
+	// Get current user ID from session
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return err
+	}
+
+	post := dbTools.Post{
+		PosterID:  currentUserID,
+		GroupID:   nil, // Regular posts (not group)
+		Content:   content,
+		Privacy:   privacy,
+		CreatedAt: timeNow,
+	}
+	postID, err = db.InsertPostToDB(&post)
+	if err != nil {
+		http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
+		return err
+	}
+
+	file, handler, err := r.FormFile("file")
+	if err == nil {
+		defer file.Close()
+		fileMeta := &dbTools.File{
+			UploaderID: currentUserID,
+			FilenameOrig:   handler.Filename,
+			ParentType: "post",
+			ParentID:   postID,
+			CreatedAt:  timeNow,
+		}
+		uploadErr := db.FileUpload(file, fileMeta, r, w)
+		if uploadErr != nil {
+			http.Error(w, "Failed to upload file", http.StatusInternalServerError)
+			return uploadErr
+		}
+	} else if err != http.ErrMissingFile {
+		http.Error(w, "Failed to get file from form", http.StatusBadRequest)
+		return err
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(comment)
+	json.NewEncoder(w).Encode(post)
 	return nil
 }
 
