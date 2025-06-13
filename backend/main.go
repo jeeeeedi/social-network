@@ -37,9 +37,9 @@ func setHandlers(db *dbTools.DB) {
 	//http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
 
 	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
-	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)
+	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)*/
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
-	http.HandleFunc("/api/following", handlers.GetFollowingHandler)*/
+	http.HandleFunc("/api/following/", handlers.GetFollowingHandler)
 	http.HandleFunc("/api/follow/", handlers.FollowHandler)
 	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
 }
