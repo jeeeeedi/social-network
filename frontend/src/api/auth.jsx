@@ -31,7 +31,6 @@ export const loginUser = async ({ email, password }) => {
     credentials: 'include',
   });
   const text = await response.text();
-  console.log('Server response text:', text);
   let data;
   try {
     data = JSON.parse(text);

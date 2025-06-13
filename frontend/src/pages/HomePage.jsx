@@ -1,8 +1,9 @@
-import React, { useContext } from 'react';
-import { Link } from 'react-router-dom'; // Add Link
-import { AuthContext } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import SocialFeed from '../components/SocialFeed';
+import React, { useContext } from "react";
+import { Link } from "react-router-dom"; // Add Link
+import { AuthContext } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+// import PostInput from '../pages/PostInput';
+import SocialFeed from "../components/SocialFeed";
 
 const Home = () => {
   const { currentUser, logoutUser } = useContext(AuthContext);
@@ -14,7 +15,7 @@ const Home = () => {
     } catch (err) {
       console.error(err);
     } finally {
-      navigate('/login')
+      navigate("/login");
     }
   };
 
@@ -35,7 +36,9 @@ const Home = () => {
       <main>
         {currentUser ? (
           <div>
-            <h2 className="text-2xl mb-4">Welcome, {currentUser.first_name || 'User'}!</h2>
+            <h2 className="text-2xl mb-4">
+              Welcome, {currentUser.first_name || "User"}!
+            </h2>
             <div className="mb-4">
               {/* <Link
                 to={`/profile/${currentUser.user_uuid}`}
@@ -44,24 +47,30 @@ const Home = () => {
                 View My Profile
               </Link> */}
             </div>
+            {/* <PostInput /> */}
+            {/* <div className="bg-white shadow-md rounded p-6">
+              <p className="mb-4">Your Feed</p>
+            </div> */}
             <SocialFeed />
           </div>
         ) : (
           <div className="text-center py-12">
             <h2 className="text-3xl mb-4">Welcome to Social Network</h2>
-            <p className="mb-6 text-xl text-gray-600">Connect with friends and the world around you.</p>
+            <p className="mb-6 text-xl text-gray-600">
+              Connect with friends and the world around you.
+            </p>
             <div className="flex justify-center">
               <Link
                 to="/login"
                 className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-6 rounded-lg text-lg"
-                style={{ margin: '20px' }}
+                style={{ margin: "20px" }}
               >
                 Login
               </Link>
               <Link
                 to="/register"
                 className="bg-green-500 hover:bg-green-700 text-white py-2 px-6 rounded-lg text-lg"
-                style={{ margin: '20px' }}
+                style={{ margin: "20px" }}
               >
                 Register
               </Link>

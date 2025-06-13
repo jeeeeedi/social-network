@@ -22,5 +22,5 @@ frontend:
 # Stop both backend and frontend servers
 stop:
 	@echo "Stopping backend (8080) and frontend (3000)..."
-	@lsof -ti :8080 | xargs kill -9 || echo "No process on port 8080"
 	@lsof -ti :3000 | xargs kill -9 || echo "No process on port 3000"
+	@lsof -ti :8080 | xargs kill -9 || echo "No process on port 8080"
