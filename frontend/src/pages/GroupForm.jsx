@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { Box, TextField, Button, Typography, Container, Paper } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
 import { uploadImage } from '../utils/upload';
@@ -10,7 +10,7 @@ const GroupForm = () => {
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const router = useRouter();
   // TODO: Replace with actual user ID from context/session
   const userId = 1;
 
@@ -39,7 +39,7 @@ const GroupForm = () => {
 
     const groupData = { title, description, image: imageUrl };
     try {
-      const response = await fetch('http://localhost:8080/api/groups/', {
+      const response = await fetch('/api/groups/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ const GroupForm = () => {
 
       const newGroup = await response.json();
       console.log('Group created:', newGroup);
-      navigate('/groups');
+      router.push('/Groups');
     } catch (err) {
       setError(err.message);
       console.error('Error creating group:', err);
@@ -136,7 +136,7 @@ const GroupForm = () => {
           <Button
             fullWidth
             variant="outlined"
-            onClick={() => navigate('/groups')}
+            onClick={() => router.push('/Groups')}
           >
             Cancel
           </Button>

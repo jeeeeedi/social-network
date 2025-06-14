@@ -1,6 +1,5 @@
-import type { NextConfig } from 'next'
- 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   distDir: '.next',
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   reactStrictMode: true,
@@ -14,5 +13,5 @@ const nextConfig: NextConfig = {
     ]
   },
 }
- 
-export default nextConfig
+
+module.exports = nextConfig
