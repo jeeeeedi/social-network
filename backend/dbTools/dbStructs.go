@@ -192,6 +192,12 @@ type Notification struct {
 	UpdaterID      int        `json:"updater_id"`
 }
 
+type Follower struct {
+	UserUUID  string `json:"user_uuid"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
 /* NOTES:
 - sql.Null* types are for nullable DB columns:
 	- Valid (bool), value (e.g., String, Int64).

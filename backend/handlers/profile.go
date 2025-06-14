@@ -18,13 +18,6 @@ type PrivacyRequest struct {
 	Privacy string `json:"privacy"`
 }
 
-// Follower represents a follower or following user
-type Follower struct {
-	UserUUID  string `json:"user_uuid"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-}
-
 // ProfileHandler fetches user profile data
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("ProfileHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
@@ -80,24 +73,20 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare response
 	response := struct {
-		Success   bool          `json:"success"`
-		Profile   dbTools.User  `json:"profile"`
-		Posts     []interface{} `json:"posts"`
-		Followers []Follower    `json:"followers"`
-		Following []Follower    `json:"following"`
+		Success bool          `json:"success"`
+		Profile dbTools.User  `json:"profile"`
+		Posts   []interface{} `json:"posts"`
 	}{
-		Success:   true,
-		Profile:   profile,
-		Posts:     []interface{}{},
-		Followers: []Follower{},
-		Following: []Follower{},
+		Success: true,
+		Profile: profile,
+		Posts:   []interface{}{},
 	}
 
 	// Check authorization
 	isAuthorized := false
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err == nil {
-		if int(currentUserID) == profile.UserID { // Convert int64 to int
+		if int(currentUserID) == profile.UserID {
 			isAuthorized = true
 			log.Println("Authorized: Own profile")
 		} else if profile.Privacy == "public" {
@@ -127,7 +116,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Authorized: Public profile, no login")
 	}
 
-	// Fetch full profile and followers if authorized
+	// Fetch full profile if authorized
 	if isAuthorized {
 		query = `
             SELECT user_id, user_uuid, email, first_name, last_name, date_of_birth,
@@ -152,70 +141,6 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 			profile.DateOfBirth = dob.Time
 		}
 		response.Profile = profile
-
-		// Fetch followers
-		log.Printf("Querying followers for user_id %d", profile.UserID)
-		rows, err := db.Query(`
-            SELECT u.user_uuid, COALESCE(u.first_name, '') as first_name, COALESCE(u.last_name, '') as last_name
-            FROM follows f
-            JOIN users u ON f.follower_user_id = u.user_id
-            WHERE f.followed_user_id = ? AND f.status = 'accepted' AND u.status = 'active'
-        `, profile.UserID)
-		if err != nil {
-			log.Printf("Followers query error for user_id %d: %v", profile.UserID, err)
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to fetch followers"})
-			return
-		}
-		defer rows.Close()
-
-		followerCount := 0
-		for rows.Next() {
-			var follower Follower
-			if err := rows.Scan(&follower.UserUUID, &follower.FirstName, &follower.LastName); err != nil {
-				log.Printf("Follower scan error for user_id %d: %v", profile.UserID, err)
-				continue
-			}
-			response.Followers = append(response.Followers, follower)
-			followerCount++
-			log.Printf("Added follower: %s %s (%s)", follower.FirstName, follower.LastName, follower.UserUUID)
-		}
-		log.Printf("Found %d followers for user_id %d", followerCount, profile.UserID)
-		if err = rows.Err(); err != nil {
-			log.Printf("Followers rows error for user_id %d: %v", profile.UserID, err)
-		}
-
-		// Fetch following
-		log.Printf("Querying following for user_id %d", profile.UserID)
-		rows, err = db.Query(`
-            SELECT u.user_uuid, COALESCE(u.first_name, '') as first_name, COALESCE(u.last_name, '') as last_name
-            FROM follows f
-            JOIN users u ON f.followed_user_id = u.user_id
-            WHERE f.follower_user_id = ? AND f.status = 'accepted' AND u.status = 'active'
-        `, profile.UserID)
-		if err != nil {
-			log.Printf("Following query error for user_id %d: %v", profile.UserID, err)
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to fetch following"})
-			return
-		}
-		defer rows.Close()
-
-		followingCount := 0
-		for rows.Next() {
-			var following Follower
-			if err := rows.Scan(&following.UserUUID, &following.FirstName, &following.LastName); err != nil {
-				log.Printf("Following scan error for user_id %d: %v", profile.UserID, err)
-				continue
-			}
-			response.Following = append(response.Following, following)
-			followingCount++
-			log.Printf("Added following: %s %s (%s)", following.FirstName, following.LastName, following.UserUUID)
-		}
-		log.Printf("Found %d following for user_id %d", followingCount, profile.UserID)
-		if err = rows.Err(); err != nil {
-			log.Printf("Following rows error for user_id %d: %v", profile.UserID, err)
-		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -272,7 +197,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	// Update privacy and auto-accept follows in a transaction
 	err = db.WithTransaction(func(tx *sql.Tx) error {
 		query := `UPDATE users SET privacy = ?, updated_at = datetime('now') WHERE user_id = ? AND status = 'active'`
-		_, err := tx.Exec(query, req.Privacy, int(userID)) // Convert int64 to int
+		_, err := tx.Exec(query, req.Privacy, int(userID))
 		if err != nil {
 			return fmt.Errorf("privacy update error: %v", err)
 		}
@@ -283,7 +208,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
                 SET status = 'accepted', updated_at = datetime('now'), updater_id = ?
                 WHERE followed_user_id = ? AND status = 'pending'
             `
-			result, err := tx.Exec(followQuery, int(userID), int(userID)) // Convert int64 to int
+			result, err := tx.Exec(followQuery, int(userID), int(userID))
 			if err != nil {
 				return fmt.Errorf("auto-accept follows error: %v", err)
 			}
@@ -295,14 +220,14 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
                     SELECT follow_id, follower_user_id
                     FROM follows
                     WHERE followed_user_id = ? AND status = 'accepted'
-                `, int(userID)) // Convert int64 to int
+                `, int(userID))
 				if err != nil {
 					return fmt.Errorf("fetch accepted follows error: %v", err)
 				}
 				defer rows.Close()
 
 				var nickname string
-				err = tx.QueryRow(`SELECT COALESCE(nickname, '') FROM users WHERE user_id = ?`, int(userID)).Scan(&nickname) // Convert int64 to int
+				err = tx.QueryRow(`SELECT COALESCE(nickname, '') FROM users WHERE user_id = ?`, int(userID)).Scan(&nickname)
 				if err != nil || nickname == "" {
 					nickname = "Someone"
 				}
@@ -317,7 +242,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
                         INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
                         VALUES (?, ?, 'follow_accepted', 'follow', ?, ?, 'unread', datetime('now'), ?)
                     `
-					_, err = tx.Exec(notifyQuery, followerUserID, int(userID), followID, content, int(userID)) // Convert int64 to int
+					_, err = tx.Exec(notifyQuery, followerUserID, int(userID), followID, content, int(userID))
 					if err != nil {
 						log.Printf("Notification insert error: %v", err)
 					}
@@ -390,7 +315,7 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
         WHERE user_id = ? AND status = 'active'
     `
 	var dob sql.NullTime
-	err = db.QueryRow(query, int(currentUserID)).Scan( // Convert int64 to int
+	err = db.QueryRow(query, int(currentUserID)).Scan(
 		&profile.UserID, &profile.UserUUID, &profile.Email, &profile.FirstName,
 		&profile.LastName, &dob, &profile.Nickname, &profile.AboutMe,
 		&profile.Avatar, &profile.Privacy, &profile.Role, &profile.CreatedAt, &profile.UpdatedAt,
@@ -406,81 +331,13 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := struct {
-		Success   bool          `json:"success"`
-		Profile   dbTools.User  `json:"profile"`
-		Posts     []interface{} `json:"posts"`
-		Followers []Follower    `json:"followers"`
-		Following []Follower    `json:"following"`
+		Success bool          `json:"success"`
+		Profile dbTools.User  `json:"profile"`
+		Posts   []interface{} `json:"posts"`
 	}{
-		Success:   true,
-		Profile:   profile,
-		Posts:     []interface{}{},
-		Followers: []Follower{},
-		Following: []Follower{},
-	}
-
-	// Fetch followers
-	log.Printf("Fetching followers for user_id %d", currentUserID)
-	rows, err := db.Query(`
-        SELECT u.user_uuid, COALESCE(u.first_name, '') as first_name, COALESCE(u.last_name, '') as last_name
-        FROM follows f
-        JOIN users u ON f.follower_user_id = u.user_id
-        WHERE f.followed_user_id = ? AND f.status = 'accepted' AND u.status = 'active'
-    `, int(currentUserID)) // Convert int64 to int
-	if err != nil {
-		log.Printf("Followers query error for user_id %d: %v", currentUserID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to fetch followers"})
-		return
-	}
-	defer rows.Close()
-
-	followerCount := 0
-	for rows.Next() {
-		var follower Follower
-		if err := rows.Scan(&follower.UserUUID, &follower.FirstName, &follower.LastName); err != nil {
-			log.Printf("Follower scan error for user_id %d: %v", currentUserID, err)
-			continue
-		}
-		response.Followers = append(response.Followers, follower)
-		followerCount++
-		log.Printf("Added follower: %s %s (%s)", follower.FirstName, follower.LastName, follower.UserUUID)
-	}
-	log.Printf("Found %d followers for user_id %d", followerCount, currentUserID)
-	if err = rows.Err(); err != nil {
-		log.Printf("Followers rows error for user_id %d: %v", currentUserID, err)
-	}
-
-	// Fetch following
-	log.Printf("Fetching following for user_id %d", currentUserID)
-	rows, err = db.Query(`
-        SELECT u.user_uuid, COALESCE(u.first_name, '') as first_name, COALESCE(u.last_name, '') as last_name
-        FROM follows f
-        JOIN users u ON f.followed_user_id = u.user_id
-        WHERE f.follower_user_id = ? AND f.status = 'accepted' AND u.status = 'active'
-    `, int(currentUserID)) // Convert int64 to int
-	if err != nil {
-		log.Printf("Following query error for user_id %d: %v", currentUserID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Failed to fetch following"})
-		return
-	}
-	defer rows.Close()
-
-	followingCount := 0
-	for rows.Next() {
-		var following Follower
-		if err := rows.Scan(&following.UserUUID, &following.FirstName, &following.LastName); err != nil {
-			log.Printf("Following scan error for user_id %d: %v", currentUserID, err)
-			continue
-		}
-		response.Following = append(response.Following, following)
-		followingCount++
-		log.Printf("Added following: %s %s (%s)", following.FirstName, following.LastName, following.UserUUID)
-	}
-	log.Printf("Found %d following for user_id %d", followingCount, currentUserID)
-	if err = rows.Err(); err != nil {
-		log.Printf("Following rows error for user_id %d: %v", currentUserID, err)
+		Success: true,
+		Profile: profile,
+		Posts:   []interface{}{},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
