@@ -44,7 +44,11 @@ const Groups = () => {
   }, []);
 
   const handleCreateGroup = () => {
-    navigate('/groupform');
+    console.log('Create Group button clicked');
+    console.log('Current path:', window.location.pathname);
+    console.log('Attempting to navigate to /groups/create');
+    navigate('/groups/create');
+    console.log('Navigation called');
   };
 
   if (loading) {

@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Box, TextField, Button, Typography, Container, Paper, CircularProgress } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
 import { uploadImage } from '../utils/upload';
-import Image from 'next/image';
 
 const GroupForm = () => {
+  console.log('GroupForm component rendering');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -14,18 +15,26 @@ const GroupForm = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('GroupForm useEffect running');
     // Fetch user ID from session
     const fetchUserId = async () => {
       try {
-        const response = await fetch('/api/auth/me', {
+        console.log('Fetching user ID...');
+        const response = await fetch('/api/profile/me', {
           credentials: 'include'
         });
         if (!response.ok) {
           throw new Error('Not authenticated');
         }
         const data = await response.json();
-        setUserId(data.id);
+        console.log('User data fetched:', data);
+        if (data.success && data.profile) {
+          setUserId(data.profile.user_id);
+        } else {
+          throw new Error('Invalid response format');
+        }
       } catch (err) {
+        console.error('Error fetching user ID:', err);
         setError('Please log in to create a group');
         navigate('/login');
       }
@@ -80,6 +89,7 @@ const GroupForm = () => {
 
     const groupData = { 
       title,
+      description,
       image: imageUrl,
       is_public: true // Default to public group
     };
@@ -142,6 +152,18 @@ const GroupForm = () => {
             onChange={(e) => setTitle(e.target.value)}
             disabled={loading}
           />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Group Description"
+            name="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={loading}
+            multiline
+            rows={3}
+          />
           <Box sx={{ mt: 2, mb: 2 }}>
             <Button
               variant="contained"
@@ -160,11 +182,15 @@ const GroupForm = () => {
             </Button>
             {image && (
               <Box sx={{ mt: 2, mb: 2, position: 'relative', width: 200, height: 140 }}>
-                <Image
+                <img
                   src={URL.createObjectURL(image)}
                   alt="Preview"
-                  fill
-                  style={{ objectFit: 'cover', borderRadius: 8 }}
+                  style={{ 
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: 8
+                  }}
                 />
               </Box>
             )}

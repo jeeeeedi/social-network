@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import Groups from './pages/Groups';
+import GroupForm from './pages/GroupForm';
 import Notifications from './components/Notifications';
 //import Notifications from './pages/Notifications';
 
@@ -34,6 +35,7 @@ const AppContent = () => {
           <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/" />} />
           <Route path="/profile/:id" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" />} />
+          <Route path="/groups/create" element={isAuthenticated ? <GroupForm /> : <Navigate to="/login" />} />
           <Route path="/groups" element={isAuthenticated ? <Groups /> : <Navigate to="/login" />} />
           <Route path="/notifications" element={isAuthenticated ? <Notifications /> : <Navigate to="/login" />} />
           {/* <Route path="/notifications" element={isAuthenticated ? <NotificationsPage /> : <Navigate to="/login" />} /> */}
