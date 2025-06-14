@@ -33,7 +33,12 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 
-	if len(segments) == 2 && segments[1] == "groups" {
+	// Remove "api" from the path if it exists
+	if len(segments) > 0 && segments[0] == "api" {
+		segments = segments[1:]
+	}
+
+	if len(segments) == 1 && segments[0] == "groups" {
 		switch r.Method {
 		case http.MethodPost:
 			createGroup(w, r, db)
@@ -42,14 +47,14 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 3 && segments[1] == "groups" && segments[2] == "my-groups" {
+	} else if len(segments) == 2 && segments[0] == "groups" && segments[1] == "my-groups" {
 		if r.Method == http.MethodGet {
 			getMyGroups(w, r, db)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 3 && segments[1] == "groups" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 2 && segments[0] == "groups" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
@@ -60,8 +65,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "groups" && segments[3] == "invite" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "invite" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
@@ -71,8 +76,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "groups" && segments[3] == "request-join" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "request-join" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
@@ -82,13 +87,13 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 5 && segments[1] == "groups" && segments[3] == "membership" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 4 && segments[0] == "groups" && segments[2] == "membership" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
 		}
-		userID, err := strconv.Atoi(segments[4])
+		userID, err := strconv.Atoi(segments[3])
 		if err != nil {
 			http.Error(w, "Invalid user ID", http.StatusBadRequest)
 			return
@@ -98,8 +103,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "groups" && segments[3] == "members" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "members" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
@@ -109,14 +114,14 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 2 && segments[1] == "invitations" {
+	} else if len(segments) == 1 && segments[0] == "invitations" {
 		if r.Method == http.MethodGet {
 			getInvitations(w, r, db)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "groups" && segments[3] == "requests" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "requests" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
@@ -126,8 +131,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "groups" && segments[3] == "events" {
-		groupID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "events" {
+		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
@@ -140,8 +145,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 3 && segments[1] == "events" && segments[2] != "" {
-		eventID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 2 && segments[0] == "events" && segments[1] != "" {
+		eventID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid event ID", http.StatusBadRequest)
 			return
@@ -151,8 +156,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "events" && segments[3] == "rsvp" {
-		eventID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "events" && segments[2] == "rsvp" {
+		eventID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid event ID", http.StatusBadRequest)
 			return
@@ -162,8 +167,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 4 && segments[1] == "events" && segments[3] == "rsvps" {
-		eventID, err := strconv.Atoi(segments[2])
+	} else if len(segments) == 3 && segments[0] == "events" && segments[2] == "rsvps" {
+		eventID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid event ID", http.StatusBadRequest)
 			return

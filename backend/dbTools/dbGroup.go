@@ -2,6 +2,7 @@ package dbTools
 
 import (
 	"database/sql"
+	"time"
 )
 
 // CreateGroup creates a new group in the database
@@ -29,11 +30,17 @@ func (db *DB) GetGroupByID(id int) (*Group, error) {
 	query := `SELECT group_id, title, description, creator_id, created_at FROM groups WHERE group_id = ?`
 	row := db.db.QueryRow(query, id)
 	g := &Group{}
-	err := row.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &g.CreatedAt)
+	var createdAtStr string
+	err := row.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &createdAtStr)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	// Parse the time string into a time.Time
+	g.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAtStr)
+	if err != nil {
 		return nil, err
 	}
 	return g, nil
@@ -50,7 +57,13 @@ func (db *DB) GetAllGroups() ([]*Group, error) {
 	groups := []*Group{}
 	for rows.Next() {
 		g := &Group{}
-		err := rows.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &g.CreatedAt)
+		var createdAtStr string
+		err := rows.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+		// Parse the time string into a time.Time
+		g.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAtStr)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +86,13 @@ func (db *DB) GetGroupsByUserID(userID int) ([]*Group, error) {
 	groups := []*Group{}
 	for rows.Next() {
 		g := &Group{}
-		err := rows.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &g.CreatedAt)
+		var createdAtStr string
+		err := rows.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+		// Parse the time string into a time.Time
+		g.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAtStr)
 		if err != nil {
 			return nil, err
 		}

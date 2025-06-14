@@ -36,6 +36,14 @@ func setHandlers(db *dbTools.DB) {
 	})
 	//http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
 
+	// Routes for GROUPS
+	http.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GroupsHandler(w, r)
+	})
+	http.HandleFunc("/api/groups/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GroupsHandler(w, r)
+	})
+
 	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
 	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)*/
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
