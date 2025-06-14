@@ -6,7 +6,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
-import Groups from './components/Groups';
+import Groups from './pages/Groups';
 import Notifications from './components/Notifications';
 //import Notifications from './pages/Notifications';
 

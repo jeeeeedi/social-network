@@ -44,7 +44,7 @@ const Groups = () => {
   }, []);
 
   const handleCreateGroup = () => {
-    navigate('/groups/create');
+    navigate('/groupform');
   };
 
   if (loading) {
