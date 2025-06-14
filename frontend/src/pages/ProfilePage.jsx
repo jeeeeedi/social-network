@@ -38,7 +38,10 @@ const ProfilePage = () => {
       try {
         await checkSession();
         setIsAuthenticated(true);
+
+        // Fetch profile
         const profileData = await fetchProfile(userId);
+        console.log("Profile Response:", profileData);
         if (!profileData || !profileData.success) {
           setError(profileData?.message || "Failed to load profile");
           setLoading(false);
@@ -47,10 +50,40 @@ const ProfilePage = () => {
         setProfile(profileData.profile);
         setPrivacy(profileData.profile.privacy || "public");
 
-        if (!profileData.success) {
-          setError(profileData.message || "Failed to load profile");
-          setLoading(false);
-          return;
+        // Fetch followers
+        const followersResponse = await fetch(
+          `http://localhost:8080/api/followers/${userId}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        const followersData = await followersResponse.json();
+        console.log("Followers Response:", followersData);
+        if (followersData.success) {
+          setFollowers(followersData.followers || []);
+        } else {
+          console.warn("Followers fetch error:", followersData.message);
+          setFollowers([]);
+        }
+
+        // Fetch following
+        const followingResponse = await fetch(
+          `http://localhost:8080/api/following/${userId}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        const followingData = await followingResponse.json();
+        console.log("Following Response:", followingData);
+        if (followingData.success) {
+          setFollowing(followingData.following || []);
+        } else {
+          console.warn("Following fetch error:", followingData.message);
+          setFollowing([]);
         }
 
         // Check follow status if not own profile
@@ -70,7 +103,7 @@ const ProfilePage = () => {
             } else {
               console.warn('Follow status error:', followData.message);
               // Fallback: Check if current user is in followers list
-              const isFollower = profileData.followers?.some(
+              const isFollower = followersData.followers?.some(
                 (f) => f.user_uuid === currentUser.user_uuid
               );
               setIsFollowing(isFollower);
@@ -79,7 +112,7 @@ const ProfilePage = () => {
           } catch (err) {
             console.warn('Follow status fetch error:', err);
             // Fallback
-            const isFollower = profileData.followers?.some(
+            const isFollower = followersData.followers?.some(
               (f) => f.user_uuid === currentUser.user_uuid
             );
             setIsFollowing(isFollower);
@@ -90,6 +123,8 @@ const ProfilePage = () => {
         setIsAuthenticated(false);
         setError(err.message || "Failed to load profile");
         setPosts([]);
+        setFollowers([]);
+        setFollowing([]);
       } finally {
         setLoading(false);
       }
@@ -103,8 +138,7 @@ const ProfilePage = () => {
       navigate('/login');
       return;
     }
-    const newPrivacy =
-      profile.privacy === "public" ? "private" : "public";
+    const newPrivacy = privacy === "public" ? "private" : "public";
     try {
       console.log('Updating privacy to:', newPrivacy);
       const response = await fetch('http://localhost:8080/api/profile/privacy', {
@@ -117,10 +151,7 @@ const ProfilePage = () => {
       const data = await response.json();
       console.log('Privacy Update Response:', data);
       if (data.success) {
-        setProfile({
-          ...profile,
-          profile: { ...profile.profile, privacy: newPrivacy },
-        });
+        setProfile({ ...profile, privacy: newPrivacy });
         setPrivacy(newPrivacy);
       } else {
         setError(data.message || 'Failed to update privacy');
@@ -152,10 +183,30 @@ const ProfilePage = () => {
           followData.status === "pending" || followData.status === "accepted"
         );
         setFollowStatus(followData.status || "");
-        // Refresh profile to update followers list
-        const updatedProfile = await fetchProfile(userId);
-        if (updatedProfile.success) {
-          setProfile(updatedProfile);
+        // Refresh followers and following
+        const followersResponse = await fetch(
+          `http://localhost:8080/api/followers/${userId}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        const followersData = await followersResponse.json();
+        if (followersData.success) {
+          setFollowers(followersData.followers || []);
+        }
+        const followingResponse = await fetch(
+          `http://localhost:8080/api/following/${userId}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        const followingData = await followingResponse.json();
+        if (followingData.success) {
+          setFollowing(followingData.following || []);
         }
       } else {
         setError(followData.message || 'Failed to update follow status');
@@ -195,7 +246,7 @@ const ProfilePage = () => {
 
   const isOwnProfile =
     currentUser && (currentUser.user_uuid === userId || effectiveId === "me");
-    const displayName =
+  const displayName =
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
       : profile.nickname || "Unknown User";
@@ -253,12 +304,9 @@ const ProfilePage = () => {
             <button
               className="privacy-button"
               onClick={handlePrivacyToggle}
-              aria-label={`Make profile ${
-                profile.privacy === "public" ? "private" : "public"
-              }`}
+              aria-label={`Make profile ${privacy === "public" ? "private" : "public"}`}
             >
-              Make Profile{" "}
-              {profile.privacy === "public" ? "Private" : "Public"}
+              Make Profile {privacy === "public" ? "Private" : "Public"}
             </button>
           </div>
         )}
@@ -283,8 +331,9 @@ const ProfilePage = () => {
             <p>Coming soon...</p>
           </div>
           <div className="profile-followers">
-            <h3>Followers ({profile.followers?.length || 0})</h3>
-            {profile.followers?.length > 0 ? (
+            {console.log("Rendering followers:", followers)}
+            <h3>Followers ({followers?.length || 0})</h3>
+            {followers?.length > 0 ? (
               <ul>
                 {followers.map((follower) => (
                   <li key={follower.user_uuid}>
@@ -303,11 +352,11 @@ const ProfilePage = () => {
             <h3>Following ({following?.length || 0})</h3>
             {following?.length > 0 ? (
               <ul>
-                {profile.following.map((following) => (
-                  <li key={following.user_uuid}>
-                    <Link to={`/profile/${following.user_uuid}`}>
-                      {following.first_name || following.user_uuid}{" "}
-                      {following.last_name || ""}
+                {following.map((follow) => (
+                  <li key={follow.user_uuid}>
+                    <Link to={`/profile/${follow.user_uuid}`}>
+                      {follow.first_name || follow.user_uuid}{" "}
+                      {follow.last_name || ""}
                     </Link>
                   </li>
                 ))}
