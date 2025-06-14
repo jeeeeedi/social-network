@@ -185,7 +185,7 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 
 func createGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -233,7 +233,7 @@ func getAllGroups(w http.ResponseWriter, db *dbTools.DB) {
 
 func getMyGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -266,7 +266,7 @@ func getGroupByID(w http.ResponseWriter, db *dbTools.DB, groupID int) {
 
 func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -301,7 +301,7 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 
 func requestToJoinGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -318,7 +318,7 @@ func requestToJoinGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, 
 
 func updateMembershipStatus(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID, targetUserID int) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -379,7 +379,7 @@ func getGroupMembers(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gro
 
 func getInvitations(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -397,7 +397,7 @@ func getInvitations(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 
 func getJoinRequests(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -425,7 +425,7 @@ func getJoinRequests(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gro
 
 func createGroupEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -488,7 +488,7 @@ func getEventByID(w http.ResponseWriter, r *http.Request, db *dbTools.DB, eventI
 
 func respondToEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, eventID int) {
 	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r)
+	userID := getUserIDFromContext(r, db)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -548,16 +548,11 @@ func getEventRSVPs(w http.ResponseWriter, r *http.Request, db *dbTools.DB, event
 }
 
 // getUserIDFromContext retrieves the user ID from the session cookie using the utils package
-func getUserIDFromContext(r *http.Request) int {
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		return 0 // Return 0 if DB connection fails
-	}
-	defer db.CloseDB()
+func getUserIDFromContext(r *http.Request, db *dbTools.DB) int {
 	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
-		return 0 // Return 0 to indicate unauthorized if session retrieval fails
+		return 0
 	}
 	return int(userID)
 }
+

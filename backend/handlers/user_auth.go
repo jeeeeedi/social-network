@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -423,9 +422,9 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CurrentUserIDHandler returns the user ID of the currently authenticated user based on the session cookie
-func CurrentUserIDHandler(db *sql.DB) http.HandlerFunc {
+func CurrentUserIDHandler(db *dbTools.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := utils.GetUserIDFromSession(db, r)
+		userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to get user ID: %v", err), http.StatusUnauthorized)
 			return
