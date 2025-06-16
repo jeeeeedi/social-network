@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/components/theme-provider'
+import { AppContent } from '../components/AppContent'
 
 export const metadata: Metadata = {
   title: 'Social Network',
@@ -23,7 +24,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
+            <AppContent>
+              {children}
+            </AppContent>
           </AuthProvider>
         </ThemeProvider>
       </body>

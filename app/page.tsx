@@ -11,11 +11,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Bell,
   Bookmark,
   Camera,
   Heart,
@@ -23,60 +21,45 @@ import {
   MessageCircle,
   MoreHorizontal,
   Repeat2,
-  Search,
   Send,
   Settings,
   Share,
   User,
   Users,
+  X,
 } from "lucide-react"
-import Image from "next/image"
 import { ChatInterface } from "@/components/chat-interface"
 import { GroupChat } from "@/components/group-chat"
 import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
 import { UsersIcon } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { sanitize } from "@/utils/sanitize"
+import { checkSession } from "@/lib/auth"
+import { formatDateTime } from "@/utils/formatDate"
+
+interface Post {
+  post_id: number;
+  nickname: string;
+  content: string;
+  created_at: string;
+  avatar?: string;
+  filename_new?: string;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  liked?: boolean;
+}
 
 export default function SocialNetworkPage() {
   const { currentUser, logout } = useAuth()
-  const [newPost, setNewPost] = useState("")
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      user: { name: "Sarah Johnson", username: "sarahj", avatar: "/placeholder.svg?height=40&width=40" },
-      content:
-        "Just finished an amazing hike in the mountains! The view was absolutely breathtaking. Nature never fails to inspire me. 🏔️ #hiking #nature #adventure",
-      image: "/placeholder.svg?height=300&width=500",
-      timestamp: "2 hours ago",
-      likes: 24,
-      comments: 8,
-      shares: 3,
-      liked: false,
-    },
-    {
-      id: 2,
-      user: { name: "Alex Chen", username: "alexc", avatar: "/placeholder.svg?height=40&width=40" },
-      content:
-        "Working on a new design project today. The creative process is so fulfilling when everything starts coming together. What's everyone else working on?",
-      timestamp: "4 hours ago",
-      likes: 15,
-      comments: 12,
-      shares: 2,
-      liked: true,
-    },
-    {
-      id: 3,
-      user: { name: "Maria Garcia", username: "mariag", avatar: "/placeholder.svg?height=40&width=40" },
-      content:
-        "Coffee shop vibes ☕ Perfect place to catch up on some reading. Currently diving into 'The Design of Everyday Things' - highly recommend!",
-      image: "/placeholder.svg?height=250&width=400",
-      timestamp: "6 hours ago",
-      likes: 31,
-      comments: 5,
-      shares: 7,
-      liked: false,
-    },
-  ])
+  const [content, setContent] = useState("")
+  const [posts, setPosts] = useState<Post[]>([])
+  const [image, setImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [privacy, setPrivacy] = useState("public")
+  const [submitting, setSubmitting] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const { messages, sendMessage, isConnected } = useWebSocket()
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
@@ -146,6 +129,31 @@ export default function SocialNetworkPage() {
     },
   ])
 
+  // Fetch posts and verify authentication
+  useEffect(() => {
+    const verifySessionAndFetch = async () => {
+      try {
+        await checkSession(); // If this fails, it jumps to catch
+        setIsAuthenticated(true); // Only runs if checkSession succeeds
+        // Fetch posts only if authenticated
+        const res = await fetch("http://localhost:8080/api/getfeedposts", {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) throw new Error("Failed to fetch posts");
+        const postData = await res.json();
+        setPosts(postData);
+      } catch {
+        setIsAuthenticated(false);
+        setPosts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    verifySessionAndFetch();
+  }, []);
+
   const handleUserClick = (user: ChatUser) => {
     // Check if user can be messaged (following relationship)
     if (user.isFollowing || user.isFollowedBy) {
@@ -159,48 +167,80 @@ export default function SocialNetworkPage() {
     setIsGroupChatMinimized(false)
   }
 
-  const handleLike = (postId: number) => {
+  const handleLike = async (postId: number) => {
     setPosts(
       posts.map((post) =>
-        post.id === postId
-          ? { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 }
+        post.post_id === postId
+          ? { ...post, liked: !post.liked, likes: post.liked ? (post.likes || 0) - 1 : (post.likes || 0) + 1 }
           : post,
       ),
     )
+    // TODO: Send like status to backend API
   }
 
-  const handlePost = () => {
-    if (newPost.trim()) {
-      const post = {
-        id: posts.length + 1,
-        user: { 
-          name: currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : "You", 
-          username: currentUser?.nickname || "you", 
-          avatar: currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=40&width=40" 
-        },
-        content: newPost,
-        timestamp: "now",
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        liked: false,
-      }
-      setPosts([post, ...posts])
-      setNewPost("")
+  const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setImage(file || null);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
     }
-  }
+  };
 
-  const handleLogout = async () => {
+  const handleRemoveImage = () => {
+    setImage(null);
+    setImagePreview(null);
+  };
+
+  const handlePost = async () => {
+    if (!content.trim()) return;
+    
+    setSubmitting(true);
+    const sanitizedContent = sanitize(content);
+    const formData = new FormData();
+    
+    formData.append("content", sanitizedContent);
+    formData.append("privacy", privacy);
+    if (image) formData.append("file", image);
+
     try {
-      await logout()
-      window.location.href = '/login'
-    } catch (error) {
-      console.error('Failed to log out:', error)
+      const res = await fetch("http://localhost:8080/api/createposts", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Failed to create post");
+
+      // Reset the form after successful post
+      setContent("");
+      setImage(null);
+      setImagePreview(null);
+      setPrivacy("public");
+      
+      // Refresh posts
+      const postsRes = await fetch("http://localhost:8080/api/getfeedposts", {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (postsRes.ok) {
+        const postData = await postsRes.json();
+        setPosts(postData);
+      }
+    } catch (err) {
+      console.error("Error creating post:", err);
+      alert("Error creating post: " + (err as Error).message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
   // Show login/register interface if not authenticated
-  if (!currentUser) {
+  if (!currentUser || isAuthenticated === false) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
@@ -230,56 +270,19 @@ export default function SocialNetworkPage() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading feed...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-6">
-            <h1 className="text-2xl font-bold text-primary">SocialHub</h1>
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search posts, people, topics..." className="w-80 pl-10" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage 
-                      src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=32&width=32"} 
-                      alt={currentUser?.nickname || "User"} 
-                    />
-                    <AvatarFallback>
-                      {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem onClick={() => window.location.href = '/profile/me'}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto grid grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-4">
         {/* Left Sidebar */}
         <aside className="hidden lg:block">
@@ -349,20 +352,65 @@ export default function SocialNetworkPage() {
                 <div className="flex-1 space-y-4">
                   <Textarea
                     placeholder="What's on your mind?"
-                    value={newPost}
-                    onChange={(e) => setNewPost(e.target.value)}
+                    value={content}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 3000) setContent(e.target.value);
+                    }}
                     className="min-h-[100px] resize-none border-0 p-0 text-lg placeholder:text-muted-foreground focus-visible:ring-0"
+                    maxLength={3000}
                   />
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Camera className="h-4 w-4 mr-2" />
-                        Photo
+                  
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="relative inline-block">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-w-40 max-h-40 object-cover rounded-lg border"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                        onClick={handleRemoveImage}
+                      >
+                        <X className="h-3 w-3" />
                       </Button>
                     </div>
-                    <Button onClick={handlePost} disabled={!newPost.trim()}>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2 items-center">
+                      <Button variant="ghost" size="sm" asChild>
+                        <label className="cursor-pointer">
+                          <Camera className="h-4 w-4 mr-2" />
+                          Photo
+                          <input
+                            type="file"
+                            accept="image/*,image/gif"
+                            className="hidden"
+                            onChange={handleAddPhoto}
+                          />
+                        </label>
+                      </Button>
+                      
+                      <select
+                        value={privacy}
+                        onChange={(e) => setPrivacy(e.target.value)}
+                        className="text-sm border rounded px-2 py-1 bg-background"
+                      >
+                        <option value="public">Public</option>
+                        <option value="semiprivate">Semiprivate</option>
+                        <option value="private">Private</option>
+                      </select>
+                    </div>
+                    
+                    <Button 
+                      onClick={handlePost} 
+                      disabled={!content.trim() || submitting}
+                    >
                       <Send className="h-4 w-4 mr-2" />
-                      Post
+                      {submitting ? 'Posting...' : 'Post'}
                     </Button>
                   </div>
                 </div>
@@ -372,80 +420,86 @@ export default function SocialNetworkPage() {
 
           {/* Posts Feed */}
           <div className="space-y-6">
-            {posts.map((post) => (
-              <Card key={post.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={post.user.avatar || "/placeholder.svg"} alt={`@${post.user.username}`} />
-                        <AvatarFallback>
-                          {post.user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h4 className="font-semibold">{post.user.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          @{post.user.username} · {post.timestamp}
-                        </p>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Save post</DropdownMenuItem>
-                        <DropdownMenuItem>Report</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-sm leading-relaxed mb-4">{post.content}</p>
-                  {post.image && (
-                    <div className="mb-4 rounded-lg overflow-hidden">
-                      <Image
-                        src={post.image || "/placeholder.svg"}
-                        alt="Post image"
-                        width={500}
-                        height={300}
-                        className="w-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-6">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleLike(post.id)}
-                        className={post.liked ? "text-red-500" : ""}
-                      >
-                        <Heart className={`h-4 w-4 mr-2 ${post.liked ? "fill-current" : ""}`} />
-                        {post.likes}
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        {post.comments}
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Repeat2 className="h-4 w-4 mr-2" />
-                        {post.shares}
-                      </Button>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <Share className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {(!posts || posts.length === 0) ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">No posts yet.</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              posts.map((post) => (
+                <Card key={post.post_id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage 
+                            src={post.avatar ? `http://localhost:8080${post.avatar}` : "/placeholder.svg"} 
+                            alt={`@${post.nickname}`} 
+                          />
+                          <AvatarFallback>
+                            {post.nickname?.charAt(0)?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-semibold">{post.nickname}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            @{post.nickname} · {formatDateTime(post.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Save post</DropdownMenuItem>
+                          <DropdownMenuItem>Report</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <p className="text-sm leading-relaxed mb-4">{post.content}</p>
+                    {post.filename_new && (
+                      <div className="mb-4 rounded-lg overflow-hidden">
+                        <img
+                          src={`http://localhost:8080/uploads/${post.filename_new}`}
+                          alt="Post image"
+                          className="w-full max-w-md object-cover mx-auto"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-6">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleLike(post.post_id)}
+                          className={post.liked ? "text-red-500" : ""}
+                        >
+                          <Heart className={`h-4 w-4 mr-2 ${post.liked ? "fill-current" : ""}`} />
+                          {post.likes || 0}
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          {post.comments || 0}
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Repeat2 className="h-4 w-4 mr-2" />
+                          {post.shares || 0}
+                        </Button>
+                      </div>
+                      <Button variant="ghost" size="sm">
+                        <Share className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </main>
 
