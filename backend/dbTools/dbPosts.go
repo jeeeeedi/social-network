@@ -45,7 +45,7 @@ func (d *DB) InsertPostToDB(p *Post) (int, error) {
 
 // GetFeedPosts retrieves all public posts and all posts from the specified user
 // TODO: Add logic for semiprivate posts
-func (d *DB) GetFeedPosts(userID int) ([]PostWithUserAndFile, error) {
+func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
