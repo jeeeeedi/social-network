@@ -123,6 +123,7 @@ const SocialFeed = () => {
     });
     if (!res.ok) throw new Error("Failed to fetch comments");
     const comments = await res.json();
+    console.log("Comments for post:", postUUID, comments);
     setExpandedComments((prev) => ({
       ...prev,
       [postUUID]: !prev[postUUID],

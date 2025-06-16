@@ -92,17 +92,6 @@ go mod tidy
 
 echo -e "${GREEN}Backend Go dependencies installed.${NC}"
 
-# Run database migrations
-# CHANGE NOTE: No changes here; ensuring database setup is complete as per original setup.
-echo -e "${GREEN}Setting up database...${NC}"
-echo "Running migrations..."
-if make migrateup; then
-    echo -e "${GREEN}Database migrations completed successfully.${NC}"
-else
-    echo -e "${RED}Database migrations failed. Check your setup or ensure SQLite is installed.${NC}"
-    echo -e "${YELLOW}Continuing setup despite migration failure; you may need to resolve this manually.${NC}"
-fi
-
 echo ""
 # CHANGE NOTE: Added detailed instructions for starting both frontend and backend with updated context.
 echo -e "${GREEN}Full Setup Complete!${NC}"

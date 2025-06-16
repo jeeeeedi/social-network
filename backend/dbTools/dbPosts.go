@@ -201,8 +201,8 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
 	var postID int
 	// Query the posts table for the post_id using the UUID
 	err := d.db.QueryRowContext(ctx, `
-	SELECT id FROM posts
-	WHERE uuid = ?
+	SELECT post_id FROM posts
+	WHERE post_uuid = ?
 	`, postUUID).Scan(&postID)
 	if err != nil {
 		return nil, err

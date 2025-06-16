@@ -8,6 +8,7 @@ import (
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
+	"strings"
 	"sync"
 	"time"
 )
@@ -257,17 +258,21 @@ func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) 
 		return fmt.Errorf("method not allowed")
 	}
 
-	// Get the post UUID
-	/* 	postUUID := chi.URLParam(r, "postUUID")
-    if postUUID == "" {
-        http.Error(w, "Missing post UUID", http.StatusBadRequest)
-        return fmt.Errorf("missing post UUID")
-    } */
+	// Extract postUUID from URL path
+	// Example: /api/getcomments/abc-123
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 || parts[3] == "" {
+		http.Error(w, "Missing post UUID", http.StatusBadRequest)
+		log.Print("Missing post UUID")
+		return fmt.Errorf("missing post UUID")
+	}
+	postUUID := parts[3]
 
 	// Get all comments for the post
-	comments, err := db.GetCommentsForPost(postUUID)
+	comments, err := db.GetCommentsForPost(r.Context(), postUUID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+		log.Print("Failed to retrieve comments:", err)
 		return err
 	}
 
