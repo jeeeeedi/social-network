@@ -14,10 +14,11 @@ import {
   CardHeader,
   Collapse,
 } from "@mui/material";
-import { Send, Favorite, Comment, Share } from "@mui/icons-material";
+import { Send, Favorite, Comment } from "@mui/icons-material";
 import { sanitize } from "../utils/sanitize.jsx";
 import { checkSession } from "../api/auth.jsx";
 import { formatDateTime } from "../utils/formatDate.jsx";
+import { comment } from "postcss";
 
 const SocialFeed = () => {
   const [content, setNewPost] = useState("");
@@ -28,7 +29,9 @@ const SocialFeed = () => {
   const [submitting, setSubmitting] = useState(false);
   const { currentUser } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const [expandedComments, setExpandedComments] = useState({});
+  const [comments, setComments] = useState([]);
+  const [expandedPostUUID, setExpandedPostUUID] = useState(null);
+  const [commentsByPost, setCommentsByPost] = useState({});
   const [commentContent, setCommentContent] = useState({});
   const [commentImage, setCommentImage] = useState({});
   const [commentImagePreview, setCommentImagePreview] = useState({});
@@ -100,7 +103,7 @@ const SocialFeed = () => {
     }
   };
 
-  const handleLike = (postUUID) => {
+  /* const handleLike = (postUUID) => {
     setPosts(
       posts.map((post) =>
         post.post_uuid === postUUID
@@ -113,21 +116,31 @@ const SocialFeed = () => {
       )
     );
     // TODO: Send like status to backend API
-  };
+  }; */
 
   const handleCommentClick = async (postUUID) => {
-    const res = await fetch(`http://localhost:8080/api/getcomments/${postUUID}`, {
-      method: "GET",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error("Failed to fetch comments");
-    const comments = await res.json();
-    console.log("Comments for post:", postUUID, comments);
-    setExpandedComments((prev) => ({
-      ...prev,
-      [postUUID]: !prev[postUUID],
-    }));
+    if (expandedPostUUID === postUUID) {
+      setExpandedPostUUID(null); // Collapse if already open
+      return;
+    }
+    // Fetch comments only if not already fetched
+    if (!commentsByPost[postUUID]) {
+      const res = await fetch(
+        `http://localhost:8080/api/getcomments/${postUUID}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      const comments = await res.json();
+      setCommentsByPost((prev) => ({
+        ...prev,
+        [postUUID]: comments,
+      }));
+    }
+    setExpandedPostUUID(postUUID);
   };
 
   const handleCommentSubmit = async (postUUID, e) => {
@@ -160,20 +173,22 @@ const SocialFeed = () => {
         ...prev,
         [postUUID]: null,
       }));
-      setExpandedComments((prev) => ({
-        ...prev,
-        [postUUID]: false,
-      }));
 
-      // Optionally refresh posts/comments here
-      const feedRes = await fetch("http://localhost:8080/api/getfeedposts", {
-        method: "GET",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!feedRes.ok) throw new Error("Failed to fetch posts");
-      const posts = await feedRes.json();
-      setPosts(posts);
+      // Refresh comments for this post
+      const commentsRes = await fetch(
+        `http://localhost:8080/api/getcomments/${postUUID}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      if (!commentsRes.ok) throw new Error("Failed to fetch comments");
+      const comments = await commentsRes.json();
+      setCommentsByPost((prev) => ({
+        ...prev,
+        [postUUID]: comments,
+      }));
     } catch (err) {
       alert("Error creating comment: " + err.message);
     }
@@ -341,7 +356,7 @@ const SocialFeed = () => {
                 >
                   <Box sx={{ display: "flex", gap: 1 }}>
                     {/* Like Button */}
-                    <IconButton
+                    {/* <IconButton
                       onClick={() => handleLike(post.post_uuid)}
                       color={post.liked ? "error" : "default"}
                       size="small"
@@ -350,28 +365,21 @@ const SocialFeed = () => {
                       <Typography variant="caption" sx={{ ml: 0.5 }}>
                         {post.likes}
                       </Typography>
-                    </IconButton>
+                    </IconButton> */}
                     {/* Comment Button */}
                     <IconButton
                       size="small"
                       onClick={() => handleCommentClick(post.post_uuid)}
                     >
                       <Comment fontSize="small" />
-                      <Typography variant="caption" sx={{ ml: 0.5 }}>
-                        {expandedComments}
-                      </Typography>
+                      {/* <Typography variant="caption" sx={{ ml: 0.5 }}>
+                        {comments.content}
+                      </Typography> */}
                     </IconButton>
-                    {/* Share Button */}
-                    {/* <IconButton size="small">
-                      <Share fontSize="small" />
-                      <Typography variant="caption" sx={{ ml: 0.5 }}>
-                        {post.shares}
-                      </Typography>
-                    </IconButton> */}
                   </Box>
                 </Box>
                 {/* Comment Section */}
-                <Collapse in={expandedComments[post.post_uuid]}>
+                <Collapse in={expandedPostUUID === post.post_uuid}>
                   <Box sx={{ mt: 2, p: 2, bgcolor: "background.default" }}>
                     <form
                       onSubmit={(e) => handleCommentSubmit(post.post_uuid, e)}
@@ -391,7 +399,7 @@ const SocialFeed = () => {
                           placeholder="Write a comment..."
                           value={commentContent[post.post_uuid] || ""}
                           onChange={(e) => {
-                            if (e.target.value.length <= 1000) {
+                            if (e.target.value.length <= 3000) {
                               setCommentContent((prev) => ({
                                 ...prev,
                                 [post.post_uuid]: e.target.value,
@@ -403,7 +411,7 @@ const SocialFeed = () => {
                           variant="outlined"
                           fullWidth
                           size="small"
-                          inputProps={{ maxLength: 1000 }}
+                          inputProps={{ maxLength: 3000 }}
                           required
                         />
                       </Box>
@@ -450,30 +458,31 @@ const SocialFeed = () => {
                             }}
                           />
                         </Button>
-                        {commentImagePreview && commentImagePreview[post.post_uuid] && (
-                          <Box
-                            sx={{
-                              ml: 2,
-                              maxWidth: 80,
-                              maxHeight: 80,
-                              borderRadius: 2,
-                              overflow: "hidden",
-                              border: "1px solid #eee",
-                              bgcolor: "#fafafa",
-                            }}
-                          >
-                            <img
-                              src={commentImagePreview[post.post_uuid]}
-                              alt="Preview"
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                display: "block",
+                        {commentImagePreview &&
+                          commentImagePreview[post.post_uuid] && (
+                            <Box
+                              sx={{
+                                ml: 2,
+                                maxWidth: 80,
+                                maxHeight: 80,
+                                borderRadius: 2,
+                                overflow: "hidden",
+                                border: "1px solid #eee",
+                                bgcolor: "#fafafa",
                               }}
-                            />
-                          </Box>
-                        )}
+                            >
+                              <img
+                                src={commentImagePreview[post.post_uuid]}
+                                alt="Preview"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  display: "block",
+                                }}
+                              />
+                            </Box>
+                          )}
                         <Button
                           type="submit"
                           variant="contained"
@@ -485,6 +494,63 @@ const SocialFeed = () => {
                         </Button>
                       </Box>
                     </form>
+                    {/* Comments Feed */}
+                    {expandedPostUUID === post.post_uuid &&
+                      (!commentsByPost[post.post_uuid] ||
+                      commentsByPost[post.post_uuid].length === 0 ? (
+                        <Typography
+                          variant="body1"
+                          color="text.secondary"
+                          align="center"
+                        >
+                          No comments yet.
+                        </Typography>
+                      ) : (
+                        commentsByPost[post.post_uuid].map((comment) => (
+                          <Card key={comment.comment_id} sx={{ mb: 2, p: 1 }}>
+                            <Box display="flex" alignItems="center" mb={1}>
+                              <Avatar sx={{ mr: 1 }}>
+                                {(comment.nickname && comment.nickname[0]) || "?"}
+                              </Avatar>
+                              <Typography variant="subtitle2">
+                                {comment.nickname}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{ ml: 1, color: "gray" }}
+                              >
+                                {formatDateTime(comment.created_at)}
+                              </Typography>
+                            </Box>
+                            <CardContent sx={{ pt: 0 }}>
+                              <Typography variant="body2">
+                                {comment.content}
+                              </Typography>
+                              {comment.filename_new && (
+                                <Box
+                                  sx={{
+                                    mb: 2,
+                                    borderRadius: 1,
+                                    overflow: "hidden",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <img
+                                    src={`http://localhost:8080/uploads/${comment.filename_new}`}
+                                    alt="Comment image"
+                                    style={{
+                                      maxWidth: "400px",
+                                      maxHeight: "400px",
+                                    }}
+                                  />
+                                </Box>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))
+                      ))}
                   </Box>
                 </Collapse>
               </CardContent>

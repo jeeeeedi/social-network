@@ -61,7 +61,7 @@ type Post struct {
 	UpdaterID int        `json:"updater_id"`
 }
 
-type PostWithUserAndFile struct {
+type PostResponse struct {
 	PostID        int       `json:"post_id"`
 	PostUUID      string    `json:"post_uuid"`
 	PosterID      int       `json:"poster_id"`
@@ -86,6 +86,20 @@ type Comment struct {
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt *time.Time `json:"updated_at"`
 	UpdaterID int        `json:"updater_id"`
+}
+
+type CommentResponse struct {
+	CommentID        int64     `json:"comment_id"`
+	CommenterID      int       `json:"commenter_id"`
+	PostUUID         string    `json:"post_uuid"`
+	GroupID          *int      `json:"group_id,omitempty"`
+	Content          string    `json:"content"`
+	PostPrivacy      string    `json:"privacy"` // public, semi-private, private
+	CommentStatus    string    `json:"status"`  // active, inactive
+	CommentCreatedAt time.Time `json:"created_at"`
+	Nickname         string    `json:"nickname,omitempty"`
+	FileID           int       `json:"file_id,omitempty"`
+	FilenameNew      string    `json:"filename_new,omitempty"`
 }
 
 type PostCategory struct {

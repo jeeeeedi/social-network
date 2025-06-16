@@ -65,23 +65,23 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	}
 	defer rows.Close()
 
-	var postsWUAFstruct []PostWithUserAndFile
+	var postsResponse []PostResponse
 	for rows.Next() {
-		var postWUAF PostWithUserAndFile
+		var postResponse PostResponse
 		var groupID sql.NullInt64
 		var filenameNew sql.NullString
 
 		err := rows.Scan(
-			&postWUAF.PostID,
-			&postWUAF.PostUUID,
-			&postWUAF.PosterID,
+			&postResponse.PostID,
+			&postResponse.PostUUID,
+			&postResponse.PosterID,
 			&groupID,
-			&postWUAF.Content,
-			&postWUAF.Privacy,
-			&postWUAF.PostStatus,
-			&postWUAF.PostCreatedAt,
-			&postWUAF.Nickname,
-			&postWUAF.FileID,
+			&postResponse.Content,
+			&postResponse.Privacy,
+			&postResponse.PostStatus,
+			&postResponse.PostCreatedAt,
+			&postResponse.Nickname,
+			&postResponse.FileID,
 			&filenameNew,
 		)
 		if err != nil {
@@ -89,22 +89,22 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 		}
 		if groupID.Valid {
 			gid := int(groupID.Int64)
-			postWUAF.GroupID = &gid
+			postResponse.GroupID = &gid
 		} else {
-			postWUAF.GroupID = nil
+			postResponse.GroupID = nil
 		}
 		if filenameNew.Valid {
-			postWUAF.FilenameNew = filenameNew.String
+			postResponse.FilenameNew = filenameNew.String
 		} else {
-			postWUAF.FilenameNew = ""
+			postResponse.FilenameNew = ""
 		}
-		postsWUAFstruct = append(postsWUAFstruct, postWUAF)
+		postsResponse = append(postsResponse, postResponse)
 	}
-	return postsWUAFstruct, nil
+	return postsResponse, nil
 }
 
 // GetMyPosts retrieves all posts by the user
-func (d *DB) GetMyPosts(userID int) ([]PostWithUserAndFile, error) {
+func (d *DB) GetMyPosts(userID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
@@ -124,23 +124,23 @@ func (d *DB) GetMyPosts(userID int) ([]PostWithUserAndFile, error) {
 	}
 	defer rows.Close()
 
-	var postsWUAFstruct []PostWithUserAndFile
+	var postsResponse []PostResponse
 	for rows.Next() {
-		var postWUAF PostWithUserAndFile
+		var postResponse PostResponse
 		var groupID sql.NullInt64
 		var filenameNew sql.NullString
 
 		err := rows.Scan(
-			&postWUAF.PostID,
-			&postWUAF.PostUUID,
-			&postWUAF.PosterID,
+			&postResponse.PostID,
+			&postResponse.PostUUID,
+			&postResponse.PosterID,
 			&groupID,
-			&postWUAF.Content,
-			&postWUAF.Privacy,
-			&postWUAF.PostStatus,
-			&postWUAF.PostCreatedAt,
-			&postWUAF.Nickname,
-			&postWUAF.FileID,
+			&postResponse.Content,
+			&postResponse.Privacy,
+			&postResponse.PostStatus,
+			&postResponse.PostCreatedAt,
+			&postResponse.Nickname,
+			&postResponse.FileID,
 			&filenameNew,
 		)
 		if err != nil {
@@ -148,18 +148,18 @@ func (d *DB) GetMyPosts(userID int) ([]PostWithUserAndFile, error) {
 		}
 		if groupID.Valid {
 			gid := int(groupID.Int64)
-			postWUAF.GroupID = &gid
+			postResponse.GroupID = &gid
 		} else {
-			postWUAF.GroupID = nil
+			postResponse.GroupID = nil
 		}
 		if filenameNew.Valid {
-			postWUAF.FilenameNew = filenameNew.String
+			postResponse.FilenameNew = filenameNew.String
 		} else {
-			postWUAF.FilenameNew = ""
+			postResponse.FilenameNew = ""
 		}
-		postsWUAFstruct = append(postsWUAFstruct, postWUAF)
+		postsResponse = append(postsResponse, postResponse)
 	}
-	return postsWUAFstruct, nil
+	return postsResponse, nil
 }
 
 func (d *DB) GetPostByUUID(ctx context.Context, postUUID string) (*Post, error) {
@@ -186,7 +186,6 @@ func (d *DB) GetPostByUUID(ctx context.Context, postUUID string) (*Post, error) 
 	}
 	return &post, nil
 }
-
 
 // InsertCommentToDB inserts a new comment into the database and sets the CommentID on success.
 func (d *DB) InsertCommentToDB(c *Comment) (int, error) {
@@ -223,46 +222,64 @@ func (d *DB) InsertCommentToDB(c *Comment) (int, error) {
 	return c.CommentID, nil
 }
 
-func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment, error) {
-	var postID int
-	// Query the posts table for the post_id using the UUID
-	err := d.db.QueryRowContext(ctx, `
-	SELECT post_id FROM posts
-	WHERE post_uuid = ?
-	`, postUUID).Scan(&postID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Query the comments table for all comments with the found post_id
+func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]CommentResponse, error) {
 	rows, err := d.db.QueryContext(ctx, `
-	SELECT
-		c.comment_id, c.commenter_id, c.post_id, c.content, c.status, c.created_at
-	FROM comments c
-	WHERE c.post_id = ? AND c.status = 'active'
-	ORDER BY c.created_at ASC
-	`, postID)
+        SELECT 
+            c.comment_id,
+			c.commenter_id,
+            p.post_uuid,
+            c.group_id,
+            c.content,
+            p.privacy,
+            c.status,
+            c.created_at,
+            u.nickname,
+            COALESCE(f.file_id, 0) as file_id,
+            f.filename_new
+        FROM comments c
+        JOIN posts p ON c.post_id = p.post_id
+        JOIN users u ON c.commenter_id = u.user_id
+        LEFT JOIN files f ON f.parent_type = 'comment' AND f.parent_id = c.comment_id AND f.status = 'active'
+        WHERE p.post_uuid = ?
+        ORDER BY c.created_at ASC
+    `, postUUID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var comments []Comment
+	var comments []CommentResponse
 	for rows.Next() {
-		var comment Comment
+		var comment CommentResponse
+		var groupID sql.NullInt64
+		var fileID sql.NullInt64
+		var filenameNew sql.NullString
+
 		err := rows.Scan(
 			&comment.CommentID,
 			&comment.CommenterID,
-			&comment.PostID,
-			/* &comment.GroupID, */
+			&comment.PostUUID,
+			&groupID,
 			&comment.Content,
-			&comment.Status,
-			&comment.CreatedAt,
-			/* &comment.UpdatedAt,
-			&comment.UpdaterID, */
+			&comment.PostPrivacy,
+			&comment.CommentStatus,
+			&comment.CommentCreatedAt,
+			&comment.Nickname,
+			&comment.FileID,
+			&filenameNew,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if groupID.Valid {
+			gid := int(groupID.Int64)
+			comment.GroupID = &gid
+		}
+		if fileID.Valid {
+			comment.FileID = int(fileID.Int64)
+		}
+		if filenameNew.Valid {
+			comment.FilenameNew = filenameNew.String
 		}
 		comments = append(comments, comment)
 	}

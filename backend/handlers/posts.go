@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
@@ -169,7 +168,6 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 
 // CreateCommentHandler handles creating new comments
 func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	log.Println("CreateCommentHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -178,18 +176,14 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 	err := r.ParseMultipartForm(10 << 20) // 10MB max
 	if err != nil {
 		http.Error(w, "Could not parse form", http.StatusBadRequest)
-		log.Println("Error parsing form:", err)
 		return err
 	}
 
 	timeNow := time.Now()
 	content := r.FormValue("content")
-	log.Print("Content:", content)
 	postUUID := r.FormValue("post_uuid")
-	log.Print("Post UUID:", postUUID)
 	if postUUID == "" {
 		http.Error(w, "Missing post UUID", http.StatusBadRequest)
-		log.Println("Missing post UUID")
 		return fmt.Errorf("missing post UUID")
 	}
 
@@ -258,7 +252,6 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 
 // GetCommentsHandler for a specific post
 func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	log.Println("GetCommentsHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -270,20 +263,16 @@ func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) 
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 4 || parts[3] == "" {
 		http.Error(w, "Missing post UUID", http.StatusBadRequest)
-		log.Print("Missing post UUID")
 		return fmt.Errorf("missing post UUID")
 	}
 	postUUID := parts[3]
-	log.Print("postUUID:", postUUID)
 
 	// Get all comments for the post
 	comments, err := db.GetCommentsForPost(r.Context(), postUUID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
-		log.Print("Failed to retrieve comments:", err)
 		return err
 	}
-	log.Print("Context: ", r.Context(), "| Retrieved comments:", comments)
 
 	// Return the comments as JSON
 	w.Header().Set("Content-Type", "application/json")
