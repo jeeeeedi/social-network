@@ -1,13 +1,13 @@
 import React, { useContext } from "react";
-import { Link } from "react-router-dom"; // Add Link
+import Link from "next/link";
 import { AuthContext } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/router";
 // import PostInput from '../pages/PostInput';
 import SocialFeed from "../components/SocialFeed";
 
-const Home = () => {
+const HomePage = () => {
   const { currentUser, logoutUser } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleLogout = async () => {
     try {
@@ -15,7 +15,7 @@ const Home = () => {
     } catch (err) {
       console.error(err);
     } finally {
-      navigate("/login");
+      router.push("/login");
     }
   };
 
@@ -61,14 +61,14 @@ const Home = () => {
             </p>
             <div className="flex justify-center">
               <Link
-                to="/login"
+                href="/login"
                 className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-6 rounded-lg text-lg"
                 style={{ margin: "20px" }}
               >
                 Login
               </Link>
               <Link
-                to="/register"
+                href="/register"
                 className="bg-green-500 hover:bg-green-700 text-white py-2 px-6 rounded-lg text-lg"
                 style={{ margin: "20px" }}
               >
@@ -82,4 +82,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default HomePage;

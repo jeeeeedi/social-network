@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { AuthContext } from '../contexts/AuthContext';
 import { validateRegister } from '../utils/validate';
-import { registerUser } from '../api/auth';
+import { registerUser } from '../lib/auth';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +17,7 @@ const RegisterPage = () => {
   });
   const [errors, setErrors] = useState({});
   const { error } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -47,7 +47,7 @@ const RegisterPage = () => {
 
     try {
       await registerUser(submitData);
-      navigate('/login');
+      router.push('/login');
     } catch (err) {
       console.error(err);
     }

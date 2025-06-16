@@ -14,9 +14,9 @@ import {
   CardHeader,
 } from "@mui/material";
 import { Send, Favorite, Comment, Share } from "@mui/icons-material";
-import { sanitize } from "../utils/sanitize.jsx";
-import { checkSession } from "../api/auth.jsx";
-import { formatDateTime } from "../utils/formatDate.jsx";
+import { sanitize } from "../utils/sanitize";
+import { checkSession } from "../lib/auth";
+import { formatDateTime } from "../utils/formatDate";
 
 const SocialFeed = () => {
   const [content, setNewPost] = useState("");

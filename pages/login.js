@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { 
   Container, 
   Box, 
@@ -17,7 +17,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, error: authError } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,7 +31,7 @@ const LoginPage = () => {
       setIsSubmitting(true);
       try {
         await login(formData);
-        navigate('/');
+        router.push('/');
       } catch (err) {
         console.error('Login failed:', err);
       } finally {
@@ -92,7 +92,7 @@ const LoginPage = () => {
           <Button
             fullWidth
             variant="text"
-            onClick={() => navigate('/register')}
+            onClick={() => router.push('/register')}
           >
             Don't have an account? Register
           </Button>

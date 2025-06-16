@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { fetchProfile } from "../api/profile";
-import { checkSession } from "../api/auth.jsx";
-import { formatDateOnly, formatDateTime } from "../utils/formatDate.jsx";
-import "./ProfilePage.css";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useAuth } from "../../contexts/AuthContext";
+import { fetchProfile } from "../../lib/profile";
+import { checkSession } from "../../lib/auth";
+import { formatDateOnly, formatDateTime } from "../../utils/formatDate";
+import styles from "./ProfilePage.module.css";
 
 const ProfilePage = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const { id } = router.query;
   const { currentUser } = useAuth();
 
-  const isMeRoute =
-    location.pathname === "/profile/me" || location.pathname === "/profile/me/";
+  const isMeRoute = id === "me";
   const effectiveId = id || (isMeRoute ? "me" : undefined);
   const userId = effectiveId === "me" ? currentUser?.user_uuid : effectiveId;
 
@@ -29,6 +28,8 @@ const ProfilePage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useEffect(() => {
+    if (!router.isReady) return; // Wait for router to be ready
+    
     const verifySessionAndFetch = async () => {
       if (!userId) {
         setError("Invalid user UUID");
@@ -141,14 +142,14 @@ const ProfilePage = () => {
       }
     };
     verifySessionAndFetch();
-  }, [userId, currentUser]);
+  }, [router.isReady, userId, currentUser]);
 
   const handlePrivacyToggle = async () => {
     if (
       !currentUser ||
       (currentUser.user_uuid !== userId && effectiveId !== "me")
     ) {
-      navigate("/login");
+      router.push("/login");
       return;
     }
     const newPrivacy = privacy === "public" ? "private" : "public";
@@ -177,7 +178,7 @@ const ProfilePage = () => {
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
     try {
@@ -251,7 +252,7 @@ const ProfilePage = () => {
     return (
       <div className="text-center mt-10 text-red-500">
         Error: {error}
-        <button onClick={handleRetry} className="retry-button">
+        <button onClick={handleRetry} className={styles.retryButton}>
           Retry
         </button>
       </div>
@@ -269,14 +270,14 @@ const ProfilePage = () => {
       : profile.nickname || "Unknown User";
 
   return (
-    <div className="profile-container">
+    <div className={styles.profileContainer}>
       <h2>{displayName}'s Profile</h2>
-      <div className="profile-info">
+      <div className={styles.profileInfo}>
         {profile.avatar && (
           <img
             src={`http://localhost:8080${profile.avatar}`}
             alt={`${displayName}'s avatar`}
-            className="profile-avatar"
+            className={styles.profileAvatar}
           />
         )}
         <div>
@@ -335,7 +336,7 @@ const ProfilePage = () => {
         {isOwnProfile && (
           <div>
             <button
-              className="privacy-button"
+              className={styles.privacyButton}
               onClick={handlePrivacyToggle}
               aria-label={`Make profile ${privacy === "public" ? "private" : "public"}`}
             >
@@ -346,7 +347,7 @@ const ProfilePage = () => {
         {!isOwnProfile && currentUser && (
           <button
             onClick={handleFollowToggle}
-            className="follow-button"
+            className={styles.followButton}
             aria-label={
               isFollowing
                 ? followStatus === "pending"
@@ -365,7 +366,7 @@ const ProfilePage = () => {
       </div>
       {profile.email && (
         <>
-          <div className="profile-posts">
+          <div className={styles.profilePosts}>
             <h3>Posts</h3>
             {!posts ? (
               <p>No posts yet.</p>
@@ -401,14 +402,14 @@ const ProfilePage = () => {
               ))
             )}
           </div>
-          <div className="profile-followers">
+          <div className={styles.profileFollowers}>
             {console.log("Rendering followers:", followers)}
             <h3>Followers ({followers?.length || 0})</h3>
             {followers?.length > 0 ? (
               <ul>
                 {followers.map((follower) => (
                   <li key={follower.user_uuid}>
-                    <Link to={`/profile/${follower.user_uuid}`}>
+                    <Link href={`/profile/${follower.user_uuid}`}>
                       {follower.first_name || follower.user_uuid}{" "}
                       {follower.last_name || ""}
                     </Link>
@@ -419,14 +420,14 @@ const ProfilePage = () => {
               <p>No followers yet</p>
             )}
           </div>
-          <div className="profile-following">
+          <div className={styles.profileFollowing}>
             {console.log("Rendering following:", following)}
             <h3>Following ({following?.length || 0})</h3>
             {following?.length > 0 ? (
               <ul>
                 {following.map((follow) => (
                   <li key={follow.user_uuid}>
-                    <Link to={`/profile/${follow.user_uuid}`}>
+                    <Link href={`/profile/${follow.user_uuid}`}>
                       {follow.first_name || follow.user_uuid}{" "}
                       {follow.last_name || ""}
                     </Link>
@@ -443,4 +444,4 @@ const ProfilePage = () => {
   );
 };
 
-export default ProfilePage;
+export default ProfilePage; 
