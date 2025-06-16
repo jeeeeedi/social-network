@@ -73,12 +73,13 @@ if ! command -v sqlite3 &> /dev/null; then
     echo ""
 fi
 
+npm install next react react-dom
+npm install
+
 # Setup frontend dependencies
 cd frontend || { echo -e "${RED}Frontend directory not found!${NC}"; exit 1; }
 echo "Ensuring Next.js and React dependencies are installed..."
-npm install next react react-dom
 echo "Installing frontend dependencies (including React, MUI, and others as per package.json)..."
-npm install
 cd ..
 
 echo -e "${GREEN}Frontend dependencies installed.${NC}"

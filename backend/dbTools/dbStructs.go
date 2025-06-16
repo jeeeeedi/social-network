@@ -190,6 +190,14 @@ type Notification struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      *time.Time `json:"updated_at"`
 	UpdaterID      int        `json:"updater_id"`
+	Nickname       string     `json:"nickname"`
+	Avatar         string     `json:"avatar"`
+}
+
+type Follower struct {
+	UserUUID  string `json:"user_uuid"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
 }
 
 /* NOTES:
