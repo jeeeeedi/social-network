@@ -162,6 +162,32 @@ func (d *DB) GetMyPosts(userID int) ([]PostWithUserAndFile, error) {
 	return postsWUAFstruct, nil
 }
 
+func (d *DB) GetPostByUUID(ctx context.Context, postUUID string) (*Post, error) {
+	var post Post
+	err := d.db.QueryRowContext(ctx, `
+	SELECT post_id, post_uuid, poster_id, group_id, content, privacy, status, created_at
+	FROM posts
+	WHERE post_uuid = ? AND status = 'active'
+	`, postUUID).Scan(
+		&post.PostID,
+		&post.PostUUID,
+		&post.PosterID,
+		&post.GroupID,
+		&post.Content,
+		&post.Privacy,
+		&post.Status,
+		&post.CreatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Post not found
+		}
+		return nil, err // Other error
+	}
+	return &post, nil
+}
+
+
 // InsertCommentToDB inserts a new comment into the database and sets the CommentID on success.
 func (d *DB) InsertCommentToDB(c *Comment) (int, error) {
 

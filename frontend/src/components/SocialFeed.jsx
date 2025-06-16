@@ -30,6 +30,8 @@ const SocialFeed = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [expandedComments, setExpandedComments] = useState({});
   const [commentContent, setCommentContent] = useState({});
+  const [commentImage, setCommentImage] = useState({});
+  const [commentImagePreview, setCommentImagePreview] = useState({});
 
   useEffect(() => {
     const verifySessionAndFetch = async () => {
@@ -52,8 +54,6 @@ const SocialFeed = () => {
     };
     verifySessionAndFetch();
   }, []);
-
-  console.log("Posts:", posts);
 
   const handleAddPhoto = (e) => {
     const file = e.target.files[0];
@@ -135,32 +135,37 @@ const SocialFeed = () => {
     const content = commentContent[postUUID];
     if (!content?.trim()) return;
 
+    const formData = new FormData();
+    formData.append("post_uuid", postUUID);
+    formData.append("content", content);
+    if (commentImage[postUUID]) formData.append("file", commentImage[postUUID]);
+
     try {
       const res = await fetch("http://localhost:8080/api/createcomment", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify({
-          post_uuid: postUUID,
-          content: content,
-        }),
+        body: formData,
       });
-
       if (!res.ok) throw new Error("Failed to create comment");
 
-      // Reset the comment form
       setCommentContent((prev) => ({
         ...prev,
         [postUUID]: "",
+      }));
+      setCommentImage((prev) => ({
+        ...prev,
+        [postUUID]: null,
+      }));
+      setCommentImagePreview((prev) => ({
+        ...prev,
+        [postUUID]: null,
       }));
       setExpandedComments((prev) => ({
         ...prev,
         [postUUID]: false,
       }));
 
-      // Refresh posts to show new comment
+      // Optionally refresh posts/comments here
       const feedRes = await fetch("http://localhost:8080/api/getfeedposts", {
         method: "GET",
         credentials: "include",
@@ -293,7 +298,7 @@ const SocialFeed = () => {
               <CardHeader
                 avatar={
                   <Avatar
-                    src={post.avatar || ""}
+                    src={currentUser.avatar || ""}
                     alt={post.nickname}
                     sx={{ width: 40, height: 40 }}
                   />
@@ -353,16 +358,16 @@ const SocialFeed = () => {
                     >
                       <Comment fontSize="small" />
                       <Typography variant="caption" sx={{ ml: 0.5 }}>
-                        {post.comments}
+                        {expandedComments}
                       </Typography>
                     </IconButton>
                     {/* Share Button */}
-                    <IconButton size="small">
+                    {/* <IconButton size="small">
                       <Share fontSize="small" />
                       <Typography variant="caption" sx={{ ml: 0.5 }}>
                         {post.shares}
                       </Typography>
-                    </IconButton>
+                    </IconButton> */}
                   </Box>
                 </Box>
                 {/* Comment Section */}
@@ -370,6 +375,7 @@ const SocialFeed = () => {
                   <Box sx={{ mt: 2, p: 2, bgcolor: "background.default" }}>
                     <form
                       onSubmit={(e) => handleCommentSubmit(post.post_uuid, e)}
+                      encType="multipart/form-data"
                     >
                       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
                         <Avatar
@@ -401,7 +407,73 @@ const SocialFeed = () => {
                           required
                         />
                       </Box>
-                      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          mb: 2,
+                          gap: 2,
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Button
+                          variant="text"
+                          size="small"
+                          component="label"
+                          sx={{ minWidth: 0 }}
+                        >
+                          Add Photo
+                          <input
+                            type="file"
+                            accept="image/*,image/gif"
+                            hidden
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              setCommentImage((prev) => ({
+                                ...prev,
+                                [post.post_uuid]: file,
+                              }));
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () =>
+                                  setCommentImagePreview((prev) => ({
+                                    ...prev,
+                                    [post.post_uuid]: reader.result,
+                                  }));
+                                reader.readAsDataURL(file);
+                              } else {
+                                setCommentImagePreview((prev) => ({
+                                  ...prev,
+                                  [post.post_uuid]: null,
+                                }));
+                              }
+                            }}
+                          />
+                        </Button>
+                        {commentImagePreview && commentImagePreview[post.post_uuid] && (
+                          <Box
+                            sx={{
+                              ml: 2,
+                              maxWidth: 80,
+                              maxHeight: 80,
+                              borderRadius: 2,
+                              overflow: "hidden",
+                              border: "1px solid #eee",
+                              bgcolor: "#fafafa",
+                            }}
+                          >
+                            <img
+                              src={commentImagePreview[post.post_uuid]}
+                              alt="Preview"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                          </Box>
+                        )}
                         <Button
                           type="submit"
                           variant="contained"

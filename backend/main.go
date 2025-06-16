@@ -33,7 +33,7 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/getmyposts", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetMyPostsHandler(db, w, r)
 	})
-	http.HandleFunc("/api/createcomments", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/createcomment", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateCommentHandler(db, w, r)
 	})
 	http.HandleFunc("/api/getcomments/{postUUID}", func(w http.ResponseWriter, r *http.Request) {

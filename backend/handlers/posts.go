@@ -178,11 +178,20 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 	err := r.ParseMultipartForm(10 << 20) // 10MB max
 	if err != nil {
 		http.Error(w, "Could not parse form", http.StatusBadRequest)
+		log.Println("Error parsing form:", err)
 		return err
 	}
 
 	timeNow := time.Now()
 	content := r.FormValue("content")
+	log.Print("Content:", content)
+	postUUID := r.FormValue("post_uuid")
+	log.Print("Post UUID:", postUUID)
+	if postUUID == "" {
+		http.Error(w, "Missing post UUID", http.StatusBadRequest)
+		log.Println("Missing post UUID")
+		return fmt.Errorf("missing post UUID")
+	}
 
 	// Validate content
 	if len(content) == 0 {
@@ -195,12 +204,10 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 	}
 	content = utils.Sanitize(content)
 
-	p := dbTools.Post{}
-
-	// Validate privacy
-	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
-	if !validPrivacy[p.Privacy] {
-		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
+	// Fetch the post by UUID to get its ID
+	post, err := db.GetPostByUUID(r.Context(), postUUID)
+	if err != nil {
+		http.Error(w, "Post not found", http.StatusBadRequest)
 		return err
 	}
 
@@ -213,7 +220,7 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 
 	comment := dbTools.Comment{
 		CommenterID: currentUserID,
-		PostID:      p.PostID,
+		PostID:      post.PostID,
 		GroupID:     nil, // Regular posts (not group)
 		Content:     content,
 		CreatedAt:   timeNow,
@@ -267,6 +274,7 @@ func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) 
 		return fmt.Errorf("missing post UUID")
 	}
 	postUUID := parts[3]
+	log.Print("postUUID:", postUUID)
 
 	// Get all comments for the post
 	comments, err := db.GetCommentsForPost(r.Context(), postUUID)
@@ -275,6 +283,7 @@ func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) 
 		log.Print("Failed to retrieve comments:", err)
 		return err
 	}
+	log.Print("Context: ", r.Context(), "| Retrieved comments:", comments)
 
 	// Return the comments as JSON
 	w.Header().Set("Content-Type", "application/json")
