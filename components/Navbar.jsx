@@ -10,7 +10,7 @@ import {
   Avatar,
   Box
 } from '@mui/material';
-import { Home, Group, Notifications, Person, ExitToApp } from '@mui/icons-material';
+import { Home, Group, Notifications, Person, ExitToApp, Forum } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
@@ -18,6 +18,7 @@ const Navbar = () => {
   const { currentUser, logout } = useAuth();
 
   const handleHome = () => router.push('/');
+  const handleSocial = () => router.push('/social');
   const handleGroup = () => router.push('/groups');
   const handleNotifications = () => router.push('/notifications');
   const handleProfile = () => router.push('/profile/me');
@@ -40,16 +41,19 @@ const Navbar = () => {
         
         {currentUser ? (
           <>
-            <IconButton color="inherit" onClick={handleHome}>
+            <IconButton color="inherit" onClick={handleHome} title="Home">
               <Home />
             </IconButton>
-            <IconButton color="inherit" onClick={handleGroup}>
+            <IconButton color="inherit" onClick={handleSocial} title="Social Feed">
+              <Forum />
+            </IconButton>
+            <IconButton color="inherit" onClick={handleGroup} title="Groups">
               <Group />
             </IconButton>
-            <IconButton color="inherit" onClick={handleNotifications}>
+            <IconButton color="inherit" onClick={handleNotifications} title="Notifications">
               <Notifications />
             </IconButton>
-            <IconButton color="inherit" onClick={handleProfile}>
+            <IconButton color="inherit" onClick={handleProfile} title="Profile">
               <Person />
             </IconButton>
             <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>

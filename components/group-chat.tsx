@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { X, Send, Smile, Minimize2, Maximize2, Users, Settings } from "lucide-react"
-import type { Message, ChatUser } from "../hooks/useWebSocket"
+import type { Message, ChatUser } from "@/hooks/useWebSocket"
 
 interface GroupChatProps {
   group: {

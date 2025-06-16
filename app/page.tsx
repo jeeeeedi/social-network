@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -31,12 +31,14 @@ import {
   Users,
 } from "lucide-react"
 import Image from "next/image"
-import { ChatInterface } from "../components/chat-interface"
-import { GroupChat } from "../components/group-chat"
-import { useWebSocket, type ChatUser } from "../hooks/useWebSocket"
+import { ChatInterface } from "@/components/chat-interface"
+import { GroupChat } from "@/components/group-chat"
+import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
 import { UsersIcon } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function SocialNetworkPage() {
+  const { currentUser, logout } = useAuth()
   const [newPost, setNewPost] = useState("")
   const [posts, setPosts] = useState([
     {
@@ -82,7 +84,7 @@ export default function SocialNetworkPage() {
   const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isGroupChatMinimized, setIsGroupChatMinimized] = useState(false)
 
-  // Mock users data
+  // Mock users data - in real app, fetch from backend
   const [chatUsers] = useState<ChatUser[]>([
     {
       id: "1",
@@ -171,7 +173,11 @@ export default function SocialNetworkPage() {
     if (newPost.trim()) {
       const post = {
         id: posts.length + 1,
-        user: { name: "You", username: "you", avatar: "/placeholder.svg?height=40&width=40" },
+        user: { 
+          name: currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : "You", 
+          username: currentUser?.nickname || "you", 
+          avatar: currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=40&width=40" 
+        },
         content: newPost,
         timestamp: "now",
         likes: 0,
@@ -182,6 +188,46 @@ export default function SocialNetworkPage() {
       setPosts([post, ...posts])
       setNewPost("")
     }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Failed to log out:', error)
+    }
+  }
+
+  // Show login/register interface if not authenticated
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardHeader>
+            <h2 className="text-3xl font-bold text-center">Welcome to SocialHub</h2>
+            <p className="text-center text-muted-foreground">
+              Connect with friends and the world around you.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              className="w-full" 
+              onClick={() => window.location.href = '/login'}
+            >
+              Login
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => window.location.href = '/register'}
+            >
+              Register
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -205,13 +251,18 @@ export default function SocialNetworkPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" alt="@you" />
-                    <AvatarFallback>YU</AvatarFallback>
+                    <AvatarImage 
+                      src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=32&width=32"} 
+                      alt={currentUser?.nickname || "User"} 
+                    />
+                    <AvatarFallback>
+                      {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.location.href = '/profile/me'}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
@@ -220,7 +271,7 @@ export default function SocialNetworkPage() {
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -236,12 +287,21 @@ export default function SocialNetworkPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src="/placeholder.svg?height=48&width=48" alt="@you" />
-                  <AvatarFallback>YU</AvatarFallback>
+                  <AvatarImage 
+                    src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
+                    alt={currentUser?.nickname || "User"} 
+                  />
+                  <AvatarFallback>
+                    {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold">Your Name</h3>
-                  <p className="text-sm text-muted-foreground">@yourhandle</p>
+                  <h3 className="font-semibold">
+                    {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : "Your Name"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    @{currentUser?.nickname || "yourhandle"}
+                  </p>
                 </div>
               </div>
 
@@ -250,13 +310,13 @@ export default function SocialNetworkPage() {
                   <Home className="h-5 w-5" />
                   Home
                 </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3">
+                <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/profile/me'}>
                   <User className="h-5 w-5" />
                   Profile
                 </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3">
+                <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/groups'}>
                   <Users className="h-5 w-5" />
-                  Friends
+                  Groups
                 </Button>
                 <Button variant="ghost" className="w-full justify-start gap-3">
                   <Bookmark className="h-5 w-5" />
@@ -278,8 +338,13 @@ export default function SocialNetworkPage() {
             <CardContent className="p-6">
               <div className="flex gap-4">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src="/placeholder.svg?height=40&width=40" alt="@you" />
-                  <AvatarFallback>YU</AvatarFallback>
+                  <AvatarImage 
+                    src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=40&width=40"} 
+                    alt={currentUser?.nickname || "User"} 
+                  />
+                  <AvatarFallback>
+                    {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-4">
                   <Textarea
@@ -498,15 +563,12 @@ export default function SocialNetworkPage() {
                 <span className="text-sm text-muted-foreground">New followers</span>
                 <Badge variant="secondary">+5</Badge>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Messages sent</span>
-                <Badge variant="secondary">48</Badge>
-              </div>
             </CardContent>
           </Card>
         </aside>
       </div>
-      {/* Chat Interfaces */}
+
+      {/* Chat Interface */}
       {activeChat && (
         <ChatInterface
           user={activeChat}
@@ -518,6 +580,7 @@ export default function SocialNetworkPage() {
         />
       )}
 
+      {/* Group Chat Interface */}
       {activeGroupChat && (
         <GroupChat
           group={activeGroupChat}
@@ -530,4 +593,4 @@ export default function SocialNetworkPage() {
       )}
     </div>
   )
-}
+} 
