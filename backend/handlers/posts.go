@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
@@ -144,11 +145,11 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 	if err == nil {
 		defer file.Close()
 		fileMeta := &dbTools.File{
-			UploaderID: currentUserID,
-			FilenameOrig:   handler.Filename,
-			ParentType: "post",
-			ParentID:   postID,
-			CreatedAt:  timeNow,
+			UploaderID:   currentUserID,
+			FilenameOrig: handler.Filename,
+			ParentType:   "post",
+			ParentID:     postID,
+			CreatedAt:    timeNow,
 		}
 		uploadErr := db.FileUpload(file, fileMeta, r, w)
 		if uploadErr != nil {
@@ -167,6 +168,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 
 // CreateCommentHandler handles creating new comments
 func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	log.Println("CreateCommentHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -192,9 +194,11 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 	}
 	content = utils.Sanitize(content)
 
+	p := dbTools.Post{}
+
 	// Validate privacy
 	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
-	if !validPrivacy[privacy] {
+	if !validPrivacy[p.Privacy] {
 		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
 		return err
 	}
@@ -206,16 +210,16 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 		return err
 	}
 
-	post := dbTools.Post{
-		PosterID:  currentUserID,
-		GroupID:   nil, // Regular posts (not group)
-		Content:   content,
-		Privacy:   privacy,
-		CreatedAt: timeNow,
+	comment := dbTools.Comment{
+		CommenterID: currentUserID,
+		PostID:      p.PostID,
+		GroupID:     nil, // Regular posts (not group)
+		Content:     content,
+		CreatedAt:   timeNow,
 	}
-	postID, err = db.InsertPostToDB(&post)
+	commentID, err := db.InsertCommentToDB(&comment)
 	if err != nil {
-		http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
+		http.Error(w, "Failed InsertCommentToDB", http.StatusInternalServerError)
 		return err
 	}
 
@@ -223,11 +227,11 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 	if err == nil {
 		defer file.Close()
 		fileMeta := &dbTools.File{
-			UploaderID: currentUserID,
-			FilenameOrig:   handler.Filename,
-			ParentType: "post",
-			ParentID:   postID,
-			CreatedAt:  timeNow,
+			UploaderID:   currentUserID,
+			FilenameOrig: handler.Filename,
+			ParentType:   "comment",
+			ParentID:     commentID,
+			CreatedAt:    timeNow,
 		}
 		uploadErr := db.FileUpload(file, fileMeta, r, w)
 		if uploadErr != nil {
@@ -240,8 +244,35 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(post)
+	json.NewEncoder(w).Encode(comment)
 	return nil
 }
 
-//TODO: GetCommnentsHandler to get comments for a post
+// GetCommentsHandler for a specific post
+func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	log.Println("GetCommentsHandler called")
+	middleware.SetCORSHeaders(w)
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return fmt.Errorf("method not allowed")
+	}
+
+	// Get the post UUID
+	/* 	postUUID := chi.URLParam(r, "postUUID")
+    if postUUID == "" {
+        http.Error(w, "Missing post UUID", http.StatusBadRequest)
+        return fmt.Errorf("missing post UUID")
+    } */
+
+	// Get all comments for the post
+	comments, err := db.GetCommentsForPost(postUUID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+		return err
+	}
+
+	// Return the comments as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
+	return nil
+}

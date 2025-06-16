@@ -43,8 +43,8 @@ const SocialFeed = () => {
           headers: { "Content-Type": "application/json" },
         });
         if (!res.ok) throw new Error("Failed to fetch posts");
-        const postData = await res.json();
-        setPosts(postData);
+        const posts = await res.json();
+        setPosts(posts);
       } catch {
         setIsAuthenticated(false);
         setPosts([]);
@@ -52,6 +52,8 @@ const SocialFeed = () => {
     };
     verifySessionAndFetch();
   }, []);
+
+  console.log("Posts:", posts);
 
   const handleAddPhoto = (e) => {
     const file = e.target.files[0];
@@ -68,25 +70,6 @@ const SocialFeed = () => {
   const handlePost = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-
-    /* const post = {
-      id: posts.length + 1,
-      user: {
-        name: currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Current User',
-        username: currentUser ? currentUser.nickname || 'user' : 'user',
-        avatar: currentUser ? currentUser.avatar || '' : ''
-      },
-      content: newPost,
-      timestamp: 'Just now',
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      liked: false,
-      image: ''
-    }; */
-    /* setPosts([post, ...posts]);
-    setNewPost(""); */
-    // TODO: Send post to backend API
 
     const sanitizedContent = sanitize(content);
 
@@ -117,10 +100,10 @@ const SocialFeed = () => {
     }
   };
 
-  const handleLike = (postId) => {
+  const handleLike = (postUUID) => {
     setPosts(
       posts.map((post) =>
-        post.post_id === postId
+        post.post_uuid === postUUID
           ? {
               ...post,
               liked: !post.liked,
@@ -132,16 +115,23 @@ const SocialFeed = () => {
     // TODO: Send like status to backend API
   };
 
-  const handleCommentClick = (postId) => {
-    setExpandedComments(prev => ({
+  const handleCommentClick = async (postUUID) => {
+    const res = await fetch(`http://localhost:8080/api/getcomments/${postUUID}`, {
+      method: "GET",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) throw new Error("Failed to fetch comments");
+    const comments = await res.json();
+    setExpandedComments((prev) => ({
       ...prev,
-      [postId]: !prev[postId]
+      [postUUID]: !prev[postUUID],
     }));
   };
 
-  const handleCommentSubmit = async (postId, e) => {
+  const handleCommentSubmit = async (postUUID, e) => {
     e.preventDefault();
-    const content = commentContent[postId];
+    const content = commentContent[postUUID];
     if (!content?.trim()) return;
 
     try {
@@ -152,7 +142,7 @@ const SocialFeed = () => {
         },
         credentials: "include",
         body: JSON.stringify({
-          post_id: postId,
+          post_uuid: postUUID,
           content: content,
         }),
       });
@@ -160,13 +150,13 @@ const SocialFeed = () => {
       if (!res.ok) throw new Error("Failed to create comment");
 
       // Reset the comment form
-      setCommentContent(prev => ({
+      setCommentContent((prev) => ({
         ...prev,
-        [postId]: ""
+        [postUUID]: "",
       }));
-      setExpandedComments(prev => ({
+      setExpandedComments((prev) => ({
         ...prev,
-        [postId]: false
+        [postUUID]: false,
       }));
 
       // Refresh posts to show new comment
@@ -176,20 +166,13 @@ const SocialFeed = () => {
         headers: { "Content-Type": "application/json" },
       });
       if (!feedRes.ok) throw new Error("Failed to fetch posts");
-      const postData = await feedRes.json();
-      setPosts(postData);
+      const posts = await feedRes.json();
+      setPosts(posts);
     } catch (err) {
       alert("Error creating comment: " + err.message);
     }
   };
 
-  /*   if (loading) {
-    return (
-      <div className="border rounded p-4 mb-4 bg-gray-50">
-        <p className="text-gray-700">Loading feed...</p>
-      </div>
-    );
-  } */
   if (!isAuthenticated) {
     return (
       <div className="border rounded p-4 mb-4 bg-gray-50">
@@ -248,7 +231,17 @@ const SocialFeed = () => {
               />
             </Button>
             {imagePreview && (
-              <Box sx={{ ml: 2, maxWidth: 100, maxHeight: 100, borderRadius: 2, overflow: "hidden", border: "1px solid #eee", bgcolor: "#fafafa" }}>
+              <Box
+                sx={{
+                  ml: 2,
+                  maxWidth: 100,
+                  maxHeight: 100,
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  border: "1px solid #eee",
+                  bgcolor: "#fafafa",
+                }}
+              >
                 <img
                   src={imagePreview}
                   alt="Preview"
@@ -289,13 +282,13 @@ const SocialFeed = () => {
 
       {/* Posts Feed */}
       <Box sx={{ spaceY: 3 }}>
-        {(!posts || posts.length === 0) ? (
+        {!posts || posts.length === 0 ? (
           <Typography variant="body1" color="text.secondary" align="center">
             No posts yet.
           </Typography>
         ) : (
           posts.map((post) => (
-            <Card key={post.post_id} sx={{ mb: 3 }}>
+            <Card key={post.post_uuid} sx={{ mb: 3 }}>
               <CardHeader
                 avatar={
                   <Avatar
@@ -334,12 +327,16 @@ const SocialFeed = () => {
                   </Box>
                 )}
                 <Box
-                  sx={{ display: "flex", justifyContent: "space-between", pt: 2 }}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    pt: 2,
+                  }}
                 >
                   <Box sx={{ display: "flex", gap: 1 }}>
                     {/* Like Button */}
                     <IconButton
-                      onClick={() => handleLike(post.post_id)}
+                      onClick={() => handleLike(post.post_uuid)}
                       color={post.liked ? "error" : "default"}
                       size="small"
                     >
@@ -349,9 +346,9 @@ const SocialFeed = () => {
                       </Typography>
                     </IconButton>
                     {/* Comment Button */}
-                    <IconButton 
+                    <IconButton
                       size="small"
-                      onClick={() => handleCommentClick(post.post_id)}
+                      onClick={() => handleCommentClick(post.post_uuid)}
                     >
                       <Comment fontSize="small" />
                       <Typography variant="caption" sx={{ ml: 0.5 }}>
@@ -368,23 +365,29 @@ const SocialFeed = () => {
                   </Box>
                 </Box>
                 {/* Comment Section */}
-                <Collapse in={expandedComments[post.post_id]}>
-                  <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default' }}>
-                    <form onSubmit={(e) => handleCommentSubmit(post.post_id, e)}>
+                <Collapse in={expandedComments[post.post_uuid]}>
+                  <Box sx={{ mt: 2, p: 2, bgcolor: "background.default" }}>
+                    <form
+                      onSubmit={(e) => handleCommentSubmit(post.post_uuid, e)}
+                    >
                       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
                         <Avatar
                           src={currentUser ? currentUser.avatar || "" : ""}
-                          alt={currentUser ? currentUser.nickname || "User" : "User"}
+                          alt={
+                            currentUser
+                              ? currentUser.nickname || "User"
+                              : "User"
+                          }
                           sx={{ width: 32, height: 32 }}
                         />
                         <TextField
                           placeholder="Write a comment..."
-                          value={commentContent[post.post_id] || ""}
+                          value={commentContent[post.post_uuid] || ""}
                           onChange={(e) => {
                             if (e.target.value.length <= 1000) {
-                              setCommentContent(prev => ({
+                              setCommentContent((prev) => ({
                                 ...prev,
-                                [post.post_id]: e.target.value
+                                [post.post_uuid]: e.target.value,
                               }));
                             }
                           }}
@@ -402,7 +405,7 @@ const SocialFeed = () => {
                           type="submit"
                           variant="contained"
                           size="small"
-                          disabled={!commentContent[post.post_id]?.trim()}
+                          disabled={!commentContent[post.post_uuid]?.trim()}
                           endIcon={<Send />}
                         >
                           Comment

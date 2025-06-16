@@ -37,6 +37,9 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/createcomments", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateCommentHandler(db, w, r)
 	})
+	http.HandleFunc("/api/getcomments/{postUUID}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetCommentsHandler(db, w, r)
+	})
 
 	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
 	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)

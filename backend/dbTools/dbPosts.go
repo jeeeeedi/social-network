@@ -1,6 +1,7 @@
 package dbTools
 
 import (
+	"context"
 	"database/sql"
 	"social_network/utils"
 )
@@ -159,4 +160,85 @@ func (d *DB) GetMyPosts(userID int) ([]PostWithUserAndFile, error) {
 		postsWUAFstruct = append(postsWUAFstruct, postWUAF)
 	}
 	return postsWUAFstruct, nil
+}
+
+// InsertCommentToDB inserts a new comment into the database and sets the CommentID on success.
+func (d *DB) InsertCommentToDB(c *Comment) (int, error) {
+
+	// Generate UUID for the comment if not already set
+	/* 	if c.CommentUUID == "" {
+		uuid, err := utils.GenerateUUID()
+		if err != nil {
+			return -1, err
+		}
+		c.CommentUUID = uuid
+	} */
+
+	query := `
+        INSERT INTO comments 
+            (commenter_id, post_id, content, created_at)
+        VALUES (?, ?, ?, ?)
+    `
+	result, err := d.Exec(
+		query,
+		c.CommenterID,
+		c.PostID,
+		c.Content,
+		c.CreatedAt,
+	)
+	if err != nil {
+		return -1, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -1, err
+	}
+	c.CommentID = int(id)
+	return c.CommentID, nil
+}
+
+func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment, error) {
+	var postID int
+	// Query the posts table for the post_id using the UUID
+	err := d.db.QueryRowContext(ctx, `
+	SELECT id FROM posts
+	WHERE uuid = ?
+	`, postUUID).Scan(&postID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Query the comments table for all comments with the found post_id
+	rows, err := d.db.QueryContext(ctx, `
+	SELECT
+		c.comment_id, c.commenter_id, c.post_id, c.content, c.status, c.created_at
+	FROM comments c
+	WHERE c.post_id = ? AND c.status = 'active'
+	ORDER BY c.created_at ASC
+	`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []Comment
+	for rows.Next() {
+		var comment Comment
+		err := rows.Scan(
+			&comment.CommentID,
+			&comment.CommenterID,
+			&comment.PostID,
+			/* &comment.GroupID, */
+			&comment.Content,
+			&comment.Status,
+			&comment.CreatedAt,
+			/* &comment.UpdatedAt,
+			&comment.UpdaterID, */
+		)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, comment)
+	}
+	return comments, nil
 }

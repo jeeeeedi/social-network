@@ -79,7 +79,7 @@ type Comment struct {
 	CommentID   int    `json:"comment_id"`
 	CommenterID int    `json:"commenter_id"`
 	PostID      int    `json:"post_id"`
-	GroupID     int    `json:"group_id"`
+	GroupID     *int   `json:"group_id"`
 	Content     string `json:"content"`
 	// PostPrivacy string // seems redundant, can be derived from Post
 	Status    string     `json:"status"` // active, inactive
