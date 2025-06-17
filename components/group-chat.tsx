@@ -95,7 +95,15 @@ export function GroupChat({ group, messages, onSendMessage, onClose, isMinimized
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const groupMessages = messages.filter((msg) => msg.chatId === `group_${group.id}`)
+
+  // Safety checks
+  if (!group) {
+    return null
+  }
+
+  const groupMessages = messages?.filter((msg) => msg.chatId === `group_${group.id}`) || []
+  const members = group.members || []
+  const groupName = group.name || "Unknown Group"
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
