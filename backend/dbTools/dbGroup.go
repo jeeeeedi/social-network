@@ -39,7 +39,7 @@ func (db *DB) GetGroupByID(id int) (*Group, error) {
 		return nil, err
 	}
 	// Parse the time string into a time.Time
-	g.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAtStr)
+	g.CreatedAt, err = time.Parse(time.RFC3339, createdAtStr)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (db *DB) GetAllGroups() ([]*Group, error) {
 			return nil, err
 		}
 		// Parse the time string into a time.Time
-		g.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAtStr)
+		g.CreatedAt, err = time.Parse(time.RFC3339, createdAtStr)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func (db *DB) GetGroupsByUserID(userID int) ([]*Group, error) {
 			return nil, err
 		}
 		// Parse the time string into a time.Time
-		g.CreatedAt, err = time.Parse("2006-01-02 15:04:05", createdAtStr)
+		g.CreatedAt, err = time.Parse(time.RFC3339, createdAtStr)
 		if err != nil {
 			return nil, err
 		}

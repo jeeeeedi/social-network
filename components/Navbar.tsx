@@ -23,6 +23,48 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react';
+import { NotificationCenter } from '@/components/notification-center';
+
+// Mock data for notifications (to be replaced with API calls in the future)
+const mockNotifications = [
+  {
+    id: "1",
+    type: "follow_request" as const,
+    title: "New Friend Request",
+    message: "John Doe has sent you a friend request.",
+    timestamp: new Date(),
+    isRead: false,
+    actionRequired: true,
+    fromUser: {
+      id: "user123",
+      name: "John Doe",
+      avatar: "/placeholder.svg"
+    }
+  },
+  {
+    id: "2",
+    type: "group_invitation" as const,
+    title: "Group Invitation",
+    message: "You have been invited to join Tech Enthusiasts.",
+    timestamp: new Date(Date.now() - 3600000),
+    isRead: false,
+    actionRequired: true,
+    groupId: "group456"
+  },
+  {
+    id: "3",
+    type: "message" as const,
+    title: "New Message",
+    message: "Jane Smith sent you a message.",
+    timestamp: new Date(Date.now() - 7200000),
+    isRead: true,
+    fromUser: {
+      id: "user789",
+      name: "Jane Smith",
+      avatar: "/placeholder.svg"
+    }
+  }
+];
 
 export const Navbar: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -36,6 +78,35 @@ export const Navbar: React.FC = () => {
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    // Logic to mark notification as read (API call in the future)
+    console.log("Marking notification as read:", id);
+  };
+
+  const handleAcceptFollowRequest = (userId: string) => {
+    console.log("Accepting follow request from:", userId);
+  };
+
+  const handleDeclineFollowRequest = (userId: string) => {
+    console.log("Declining follow request from:", userId);
+  };
+
+  const handleAcceptGroupInvitation = (groupId: string) => {
+    console.log("Accepting group invitation for:", groupId);
+  };
+
+  const handleDeclineGroupInvitation = (groupId: string) => {
+    console.log("Declining group invitation for:", groupId);
+  };
+
+  const handleAcceptGroupJoinRequest = (userId: string, groupId: string) => {
+    console.log(`Accepting group join request from user ${userId} for group ${groupId}`);
+  };
+
+  const handleDeclineGroupJoinRequest = (userId: string, groupId: string) => {
+    console.log(`Declining group join request from user ${userId} for group ${groupId}`);
   };
 
   const isActivePage = (path: string) => {
@@ -63,13 +134,6 @@ export const Navbar: React.FC = () => {
       icon: Users,
       label: 'Groups',
       isActive: isActivePage('/groups'),
-    },
-    {
-      href: '/notifications',
-      icon: Bell,
-      label: 'Notifications',
-      isActive: isActivePage('/notifications'),
-      badge: 0, // TODO: Get real notification count
     },
     {
       href: '#',
@@ -147,12 +211,22 @@ export const Navbar: React.FC = () => {
 
         {/* User Menu */}
         <div className="flex items-center space-x-4">
+          <NotificationCenter
+            notifications={mockNotifications}
+            onMarkAsRead={handleMarkAsRead}
+            onAcceptFollowRequest={handleAcceptFollowRequest}
+            onDeclineFollowRequest={handleDeclineFollowRequest}
+            onAcceptGroupInvitation={handleAcceptGroupInvitation}
+            onDeclineGroupInvitation={handleDeclineGroupInvitation}
+            onAcceptGroupJoinRequest={handleAcceptGroupJoinRequest}
+            onDeclineGroupJoinRequest={handleDeclineGroupJoinRequest}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : undefined}
+                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : undefined}
                     alt={currentUser?.nickname || "User"}
                   />
                   <AvatarFallback>
@@ -190,7 +264,7 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center space-x-1">
-          {navItems.slice(0, 3).map((item) => (
+          {navItems.slice(0, 2).map((item) => (
             <Link key={item.href} href={item.href}>
               <Button
                 variant={item.isActive ? "default" : "ghost"}
@@ -209,6 +283,16 @@ export const Navbar: React.FC = () => {
               </Button>
             </Link>
           ))}
+          <NotificationCenter
+            notifications={mockNotifications}
+            onMarkAsRead={handleMarkAsRead}
+            onAcceptFollowRequest={handleAcceptFollowRequest}
+            onDeclineFollowRequest={handleDeclineFollowRequest}
+            onAcceptGroupInvitation={handleAcceptGroupInvitation}
+            onDeclineGroupInvitation={handleDeclineGroupInvitation}
+            onAcceptGroupJoinRequest={handleAcceptGroupJoinRequest}
+            onDeclineGroupJoinRequest={handleDeclineGroupJoinRequest}
+          />
         </div>
       </div>
     </nav>

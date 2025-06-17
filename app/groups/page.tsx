@@ -60,11 +60,18 @@ export default function GroupsPage() {
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (jsonErr) {
+        console.error('Failed to parse JSON:', jsonErr, 'Raw response:', text);
+        throw new Error('Invalid JSON response from server');
+      }
       setGroups(data);
     } catch (err) {
-      console.error("Failed to fetch groups:", err);
-      setError("Failed to load groups. Please try again later.");
+      console.error('Failed to fetch groups:', err);
+      setError('Failed to load groups. Please try again later.');
     } finally {
       setIsLoadingGroups(false);
     }
