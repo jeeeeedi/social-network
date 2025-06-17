@@ -18,18 +18,6 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
   const isAuthPage = ['/login', '/register'].includes(pathname);
   const showNavbar = isAuthenticated && !isAuthPage;
 
-  // Show a loading screen while session is being checked
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-lg text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Handle route protection in effect rather than routing (since Next.js handles routing)
   React.useEffect(() => {
     // Don't redirect during loading
@@ -53,6 +41,18 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
       return;
     }
   }, [isAuthenticated, pathname, loading, router, isAuthPage]);
+
+  // Show a loading screen while session is being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

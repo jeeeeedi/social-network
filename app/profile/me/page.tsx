@@ -360,13 +360,13 @@ export default function MyProfilePage() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Posts ({posts.length})</CardTitle>
+                <CardTitle>Posts ({posts?.length || 0})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {posts.length === 0 ? (
+                {posts?.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">No posts yet.</p>
                 ) : (
-                  posts.map((post) => (
+                  posts?.map((post) => (
                     <Card key={post.post_uuid} className="border-border/50">
                       <CardContent className="p-4">
                         <div className="flex items-center mb-2">
