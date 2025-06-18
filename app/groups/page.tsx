@@ -14,15 +14,16 @@ interface Group {
   title: string;
   description: string;
   creator_id: number;
+  creator_name: string;
   created_at: string;
   isMember?: boolean;
   isPending?: boolean;
-  avatar: string;
-  creatorId: string;
-  creatorName: string;
-  memberCount: number;
-  isPrivate: boolean;
-  events: any[];
+  // Optional fields that might not be provided by backend
+  avatar?: string;
+  creatorId?: string;
+  memberCount?: number;
+  isPrivate?: boolean;
+  events?: any[];
 }
 
 export default function GroupsPage() {
@@ -200,11 +201,17 @@ export default function GroupsPage() {
             <GroupCard 
               key={group.group_id} 
               group={{ 
-                ...group, 
                 id: group.group_id.toString(), 
-                name: group.title, 
+                name: group.title,
+                description: group.description,
+                avatar: group.avatar || "/placeholder.svg",
+                creatorId: group.creator_id.toString(),
+                creatorName: group.creator_name || "Unknown",
+                memberCount: group.memberCount || 0,
+                isPrivate: group.isPrivate || false,
                 isMember: group.isMember || false, 
-                isPending: group.isPending || false 
+                isPending: group.isPending || false,
+                events: group.events || []
               }} 
               onJoinGroup={handleJoinGroup} 
               onLeaveGroup={handleLeaveGroup} 

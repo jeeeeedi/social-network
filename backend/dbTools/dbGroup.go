@@ -46,28 +46,43 @@ func (db *DB) GetGroupByID(id int) (*Group, error) {
 	return g, nil
 }
 
-// GetAllGroups retrieves all groups for browsing
-func (db *DB) GetAllGroups() ([]*Group, error) {
-	query := `SELECT group_id, title, description, creator_id, created_at FROM groups`
+// GetAllGroups retrieves all groups for browsing with creator names
+func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
+	query := `SELECT g.group_id, g.title, g.description, g.creator_id, g.created_at,
+	          COALESCE(u.nickname, u.first_name) as creator_name
+	          FROM groups g
+	          JOIN users u ON g.creator_id = u.user_id AND u.status = 'active'`
 	rows, err := db.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	groups := []*Group{}
+
+	var groups []map[string]interface{}
 	for rows.Next() {
-		g := &Group{}
-		var createdAtStr string
-		err := rows.Scan(&g.GroupID, &g.Title, &g.Description, &g.CreatorID, &createdAtStr)
+		var groupID, creatorID int
+		var title, description, createdAtStr, creatorName string
+
+		err := rows.Scan(&groupID, &title, &description, &creatorID, &createdAtStr, &creatorName)
 		if err != nil {
 			return nil, err
 		}
+
 		// Parse the time string into a time.Time
-		g.CreatedAt, err = time.Parse(time.RFC3339, createdAtStr)
+		createdAt, err := time.Parse(time.RFC3339, createdAtStr)
 		if err != nil {
 			return nil, err
 		}
-		groups = append(groups, g)
+
+		group := map[string]interface{}{
+			"group_id":     groupID,
+			"title":        title,
+			"description":  description,
+			"creator_id":   creatorID,
+			"creator_name": creatorName,
+			"created_at":   createdAt,
+		}
+		groups = append(groups, group)
 	}
 	return groups, nil
 }

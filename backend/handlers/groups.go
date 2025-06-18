@@ -260,7 +260,7 @@ func getAllGroups(w http.ResponseWriter, db *dbTools.DB) {
 	log.Println("db.GetAllGroups() returned successfully")
 	if groups == nil {
 		log.Println("Groups result is nil, initializing empty slice")
-		groups = []*dbTools.Group{}
+		groups = []map[string]interface{}{}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(groups)
@@ -590,4 +590,3 @@ func getUserIDFromContext(r *http.Request, db *dbTools.DB) int {
 	}
 	return int(userID)
 }
-
