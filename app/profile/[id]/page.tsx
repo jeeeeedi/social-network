@@ -364,7 +364,7 @@ export default function UserProfilePage() {
               <div className="flex-shrink-0">
                 <Avatar className="h-32 w-32">
                   <AvatarImage
-                    src={profile.avatar ? `http://localhost:8080${profile.avatar}` : undefined}
+                    src={profile.avatar && profile.avatar.trim() !== '' ? `http://localhost:8080${profile.avatar}` : undefined}
                     alt={`${displayName}'s avatar`}
                   />
                   <AvatarFallback className="text-2xl">
@@ -545,7 +545,7 @@ export default function UserProfilePage() {
                       >
                         <Avatar className="h-8 w-8">
                           <AvatarImage
-                            src={follower.avatar ? `http://localhost:8080${follower.avatar}` : undefined}
+                            src={follower.avatar && follower.avatar.trim() !== '' ? `http://localhost:8080${follower.avatar}` : undefined}
                             alt={follower.nickname}
                           />
                           <AvatarFallback>
@@ -592,7 +592,7 @@ export default function UserProfilePage() {
                       >
                         <Avatar className="h-8 w-8">
                           <AvatarImage
-                            src={follow.avatar ? `http://localhost:8080${follow.avatar}` : undefined}
+                            src={follow.avatar && follow.avatar.trim() !== '' ? `http://localhost:8080${follow.avatar}` : undefined}
                             alt={follow.nickname}
                           />
                           <AvatarFallback>

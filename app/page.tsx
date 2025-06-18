@@ -291,7 +291,7 @@ export default function SocialNetworkPage() {
               <div className="flex items-center gap-3 mb-6">
                 <Avatar className="h-12 w-12">
                   <AvatarImage 
-                    src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
+                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
                     alt={currentUser?.nickname || "User"} 
                   />
                   <AvatarFallback>
@@ -342,7 +342,7 @@ export default function SocialNetworkPage() {
               <div className="flex gap-4">
                 <Avatar className="h-10 w-10">
                   <AvatarImage 
-                    src={currentUser?.avatar ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=40&width=40"} 
+                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=40&width=40"} 
                     alt={currentUser?.nickname || "User"} 
                   />
                   <AvatarFallback>
@@ -434,7 +434,7 @@ export default function SocialNetworkPage() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                           <AvatarImage 
-                            src={post.avatar ? `http://localhost:8080${post.avatar}` : "/placeholder.svg"} 
+                            src={post.avatar && post.avatar.trim() !== '' ? `http://localhost:8080${post.avatar}` : "/placeholder.svg"} 
                             alt={`@${post.nickname}`} 
                           />
                           <AvatarFallback>

@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Users, 
   UserPlus, 
@@ -104,6 +107,7 @@ export default function MyProfilePage() {
         );
         const followersData = await followersResponse.json();
         console.log("Followers Response:", followersData);
+        console.log("First follower avatar:", followersData.followers?.[0]?.avatar);
         if (followersData.success) {
           setFollowers(followersData.followers || []);
         } else {
@@ -152,13 +156,13 @@ export default function MyProfilePage() {
     verifySessionAndFetch();
   }, [currentUser]);
 
-  const handlePrivacyToggle = async () => {
+  const handlePrivacyToggle = async (newPrivacyValue?: string) => {
     if (!currentUser) {
       router.push("/login");
       return;
     }
 
-    const newPrivacy = privacy === "public" ? "private" : "public";
+    const newPrivacy = newPrivacyValue || (privacy === "public" ? "private" : "public");
     try {
       const response = await fetch(
         "http://localhost:8080/api/profile/privacy",
@@ -216,297 +220,208 @@ export default function MyProfilePage() {
     );
   }
 
-  if (error) {
+  if (error || !profile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="p-6 text-center">
-            <Alert className="mb-4">
-              <AlertDescription>Error: {error}</AlertDescription>
-            </Alert>
-            <Button onClick={handleRetry}>
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto py-6">
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{error || "Profile data not available."}</AlertDescription>
+        </Alert>
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={handleRetry}>Retry</Button>
+        </div>
       </div>
     );
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">Profile not found</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const displayName =
-    profile.first_name && profile.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile.nickname || "Unknown User";
+  const displayName = profile.nickname || `${profile.first_name} ${profile.last_name}`;
+  const fullName = `${profile.first_name} ${profile.last_name}`;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push('/')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold">Profile</h1>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto py-6 space-y-6 max-w-4xl">
+      {/* Profile Header */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            <Avatar className="h-32 w-32 mx-auto md:mx-0">
+              <AvatarImage 
+                src={profile.avatar && profile.avatar.trim() !== '' ? `http://localhost:8080${profile.avatar}` : "/placeholder.svg"} 
+                alt={displayName} 
+              />
+              <AvatarFallback className="text-2xl">
+                {profile.first_name[0]}
+                {profile.last_name[0]}
+              </AvatarFallback>
+            </Avatar>
 
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
-        {/* Profile Header */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-shrink-0">
-                <Avatar className="h-32 w-32">
-                  <AvatarImage
-                    src={profile.avatar ? `http://localhost:8080${profile.avatar}` : undefined}
-                    alt={`${displayName}'s avatar`}
-                  />
-                  <AvatarFallback className="text-2xl">
-                    {profile.first_name?.charAt(0)}{profile.last_name?.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+            <div className="flex-1 space-y-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-bold">{displayName}</h1>
+                  {profile.privacy === "public" ? (
+                    <Unlock className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                {profile.nickname && <p className="text-lg text-muted-foreground">{fullName}</p>}
               </div>
-              
-              <div className="flex-1 space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{displayName}</h2>
-                  {profile.nickname && (
-                    <p className="text-muted-foreground">@{profile.nickname}</p>
-                  )}
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  Joined {formatDateOnly(profile.created_at)}
                 </div>
-
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Mail className="h-4 w-4" />
-                    {profile.email}
-                  </div>
-                  {profile.date_of_birth && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Born {formatDateOnly(profile.date_of_birth)}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    Joined {formatDateTime(profile.created_at)}
-                  </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  {followers.length} followers · {following.length} following
                 </div>
+              </div>
 
-                {profile.about_me && (
-                  <p className="text-sm">{profile.about_me}</p>
-                )}
+              {profile.about_me && <p className="text-muted-foreground">{profile.about_me}</p>}
 
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span className="font-semibold">{followers.length}</span>
-                    <span className="text-muted-foreground">followers</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    <span className="font-semibold">{following.length}</span>
-                    <span className="text-muted-foreground">following</span>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="privacy-toggle" 
+                    checked={privacy === "private"} 
+                    onCheckedChange={async (checked) => {
+                      const newPrivacy = checked ? "private" : "public";
+                      await handlePrivacyToggle(newPrivacy);
+                    }} 
+                  />
+                  <Label htmlFor="privacy-toggle">Private Profile</Label>
                 </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant={privacy === "public" ? "default" : "secondary"}>
-                    {privacy === "public" ? (
-                      <>
-                        <Unlock className="h-3 w-3 mr-1" />
-                        Public
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3 w-3 mr-1" />
-                        Private
-                      </>
-                    )}
-                  </Badge>
-                  {profile.role && (
-                    <Badge variant="outline">{profile.role}</Badge>
-                  )}
-                </div>
-
-                <Button onClick={handlePrivacyToggle} variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Make Profile {privacy === "public" ? "Private" : "Public"}
-                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Posts */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Posts ({posts?.length || 0})</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {posts?.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No posts yet.</p>
-                ) : (
-                  posts?.map((post) => (
-                    <Card key={post.post_uuid} className="border-border/50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center mb-2">
-                          <span className="text-xs text-muted-foreground">
-                            Posted on {formatDateTime(post.created_at)}
-                          </span>
-                          <Badge variant="outline" className="ml-auto text-xs">
-                            {post.privacy}
-                          </Badge>
-                        </div>
-                        <p className="text-sm mb-3">{post.content}</p>
-                        {post.filename_new && (
-                          <div className="mb-3">
-                            <img
-                              src={`http://localhost:8080/uploads/${post.filename_new}`}
-                              alt="Post attachment"
-                              className="max-w-xs max-h-48 rounded border object-cover"
-                            />
-                          </div>
-                        )}
-                        <div className="flex gap-4 text-muted-foreground">
-                          <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <Heart className="h-3 w-3" />
-                            0
-                          </button>
-                          <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <MessageCircle className="h-3 w-3" />
-                            0
-                          </button>
-                          <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <Share className="h-3 w-3" />
-                            0
-                          </button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </CardContent>
-            </Card>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Followers */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Followers ({followers.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {followers.length > 0 ? (
-                  <div className="space-y-3">
-                    {followers.slice(0, 5).map((follower) => (
-                      <Link
-                        key={follower.user_uuid}
-                        href={`/profile/${follower.user_uuid}`}
-                        className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage
-                            src={follower.avatar ? `http://localhost:8080${follower.avatar}` : undefined}
-                            alt={follower.nickname}
-                          />
-                          <AvatarFallback>
-                            {follower.first_name?.charAt(0)}{follower.last_name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {follower.first_name} {follower.last_name}
-                          </p>
-                          {follower.nickname && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              @{follower.nickname}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
-                    {followers.length > 5 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{followers.length - 5} more
+      {/* Profile Content */}
+      <Tabs defaultValue="posts" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="posts">Posts ({posts?.length || 0})</TabsTrigger>
+          <TabsTrigger value="followers">Followers ({followers.length})</TabsTrigger>
+          <TabsTrigger value="following">Following ({following.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="posts" className="space-y-4">
+          {posts?.length > 0 ? (
+            posts.map((post) => (
+              <Card key={post.post_uuid} className="border-border/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center mb-2">
+                    <span className="text-xs text-muted-foreground">
+                      Posted on {formatDateTime(post.created_at)}
+                    </span>
+                    <Badge variant="outline" className="ml-auto text-xs">
+                      {post.privacy}
+                    </Badge>
+                  </div>
+                  <p className="text-sm mb-3">{post.content}</p>
+                  {post.filename_new && (
+                    <div className="mb-3">
+                      <img
+                        src={`http://localhost:8080/uploads/${post.filename_new}`}
+                        alt="Post attachment"
+                        className="max-w-xs max-h-48 rounded border object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex gap-4 text-muted-foreground">
+                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                      <Heart className="h-3 w-3" />
+                      0
+                    </button>
+                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                      <MessageCircle className="h-3 w-3" />
+                      0
+                    </button>
+                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                      <Share className="h-3 w-3" />
+                      0
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">No posts yet.</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="followers" className="space-y-4">
+          {followers.length > 0 ? (
+            <div className="space-y-3">
+              {followers.map((follower) => (
+                <Link
+                  key={follower.user_uuid}
+                  href={`/profile/${follower.user_uuid}`}
+                  className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={follower.avatar && follower.avatar.trim() !== '' ? `http://localhost:8080${follower.avatar}` : undefined}
+                      alt={follower.nickname}
+                    />
+                    <AvatarFallback>
+                      {follower.first_name?.charAt(0)}{follower.last_name?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {follower.first_name} {follower.last_name}
+                    </p>
+                    {follower.nickname && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{follower.nickname}
                       </p>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No followers yet</p>
-                )}
-              </CardContent>
-            </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">No followers yet.</div>
+          )}
+        </TabsContent>
 
-            {/* Following */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Following ({following.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {following.length > 0 ? (
-                  <div className="space-y-3">
-                    {following.slice(0, 5).map((follow) => (
-                      <Link
-                        key={follow.user_uuid}
-                        href={`/profile/${follow.user_uuid}`}
-                        className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage
-                            src={follow.avatar ? `http://localhost:8080${follow.avatar}` : undefined}
-                            alt={follow.nickname}
-                          />
-                          <AvatarFallback>
-                            {follow.first_name?.charAt(0)}{follow.last_name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {follow.first_name} {follow.last_name}
-                          </p>
-                          {follow.nickname && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              @{follow.nickname}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
-                    {following.length > 5 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{following.length - 5} more
+        <TabsContent value="following" className="space-y-4">
+          {following.length > 0 ? (
+            <div className="space-y-3">
+              {following.map((follow) => (
+                <Link
+                  key={follow.user_uuid}
+                  href={`/profile/${follow.user_uuid}`}
+                  className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={follow.avatar && follow.avatar.trim() !== '' ? `http://localhost:8080${follow.avatar}` : undefined}
+                      alt={follow.nickname}
+                    />
+                    <AvatarFallback>
+                      {follow.first_name?.charAt(0)}{follow.last_name?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {follow.first_name} {follow.last_name}
+                    </p>
+                    {follow.nickname && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        @{follow.nickname}
                       </p>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Not following anyone yet</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">Not following anyone yet.</div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 
