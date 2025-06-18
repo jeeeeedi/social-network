@@ -141,13 +141,6 @@ export const Navbar: React.FC = () => {
       label: 'Messages',
       isActive: false,
     },
-    {
-      href: '#',
-      icon: LogOut,
-      label: 'Logout',
-      isActive: false,
-      onClick: handleLogout,
-    },
   ];
 
   if (!currentUser) {

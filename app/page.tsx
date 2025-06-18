@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Bookmark,
   Camera,
   Heart,
   Home,
@@ -22,8 +21,6 @@ import {
   MoreHorizontal,
   Repeat2,
   Send,
-  Settings,
-  Share,
   User,
   Users,
   X,
@@ -321,14 +318,6 @@ export default function SocialNetworkPage() {
                   <Users className="h-5 w-5" />
                   Groups
                 </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <Bookmark className="h-5 w-5" />
-                  Saved
-                </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <Settings className="h-5 w-5" />
-                  Settings
-                </Button>
               </nav>
             </CardContent>
           </Card>
@@ -448,17 +437,6 @@ export default function SocialNetworkPage() {
                           </p>
                         </div>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Save post</DropdownMenuItem>
-                          <DropdownMenuItem>Report</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -487,14 +465,7 @@ export default function SocialNetworkPage() {
                           <MessageCircle className="h-4 w-4 mr-2" />
                           {post.comments || 0}
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Repeat2 className="h-4 w-4 mr-2" />
-                          {post.shares || 0}
-                        </Button>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Share className="h-4 w-4" />
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
