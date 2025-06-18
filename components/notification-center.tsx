@@ -141,6 +141,7 @@ export function NotificationCenter({
                                   <AvatarImage
                                     src={notification.fromUser.avatar || "/placeholder.svg"}
                                     alt={notification.fromUser.name}
+                                    className="object-cover"
                                   />
                                   <AvatarFallback className="text-xs">
                                     {notification.fromUser.name

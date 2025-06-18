@@ -245,7 +245,8 @@ export default function MyProfilePage() {
             <Avatar className="h-32 w-32 mx-auto md:mx-0">
               <AvatarImage 
                 src={profile.avatar && profile.avatar.trim() !== '' ? `http://localhost:8080${profile.avatar}` : "/placeholder.svg"} 
-                alt={displayName} 
+                alt={displayName}
+                className="object-cover" 
               />
               <AvatarFallback className="text-2xl">
                 {profile.first_name[0]}
@@ -363,6 +364,7 @@ export default function MyProfilePage() {
                     <AvatarImage
                       src={follower.avatar && follower.avatar.trim() !== '' ? `http://localhost:8080${follower.avatar}` : undefined}
                       alt={follower.nickname}
+                      className="object-cover"
                     />
                     <AvatarFallback>
                       {follower.first_name?.charAt(0)}{follower.last_name?.charAt(0)}
@@ -399,6 +401,7 @@ export default function MyProfilePage() {
                     <AvatarImage
                       src={follow.avatar && follow.avatar.trim() !== '' ? `http://localhost:8080${follow.avatar}` : undefined}
                       alt={follow.nickname}
+                      className="object-cover"
                     />
                     <AvatarFallback>
                       {follow.first_name?.charAt(0)}{follow.last_name?.charAt(0)}

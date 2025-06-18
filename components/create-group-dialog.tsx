@@ -75,7 +75,7 @@ export function CreateGroupDialog({ onCreateGroup }: CreateGroupDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col items-center space-y-2">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={formData.avatar || "/placeholder.svg"} alt="Group avatar" />
+              <AvatarImage src={formData.avatar || "/placeholder.svg"} alt="Group avatar" className="object-cover"/>
               <AvatarFallback>
                 {formData.name
                   .split(" ")

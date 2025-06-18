@@ -366,6 +366,7 @@ export default function UserProfilePage() {
                   <AvatarImage
                     src={profile.avatar && profile.avatar.trim() !== '' ? `http://localhost:8080${profile.avatar}` : undefined}
                     alt={`${displayName}'s avatar`}
+                    className="object-cover"
                   />
                   <AvatarFallback className="text-2xl">
                     {profile.first_name?.charAt(0)}{profile.last_name?.charAt(0)}
@@ -547,6 +548,7 @@ export default function UserProfilePage() {
                           <AvatarImage
                             src={follower.avatar && follower.avatar.trim() !== '' ? `http://localhost:8080${follower.avatar}` : undefined}
                             alt={follower.nickname}
+                            className="object-cover"
                           />
                           <AvatarFallback>
                             {follower.first_name?.charAt(0)}{follower.last_name?.charAt(0)}
@@ -594,6 +596,7 @@ export default function UserProfilePage() {
                           <AvatarImage
                             src={follow.avatar && follow.avatar.trim() !== '' ? `http://localhost:8080${follow.avatar}` : undefined}
                             alt={follow.nickname}
+                            className="object-cover"
                           />
                           <AvatarFallback>
                             {follow.first_name?.charAt(0)}{follow.last_name?.charAt(0)}
