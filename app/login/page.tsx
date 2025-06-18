@@ -14,11 +14,13 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, error: authError } = useAuth();
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setLoginError(null); // Reset error on input change
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,11 +29,13 @@ export default function LoginPage() {
     
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
+      setLoginError(null);
       try {
         await login(formData);
         router.push('/');
       } catch (err) {
         console.error('Login failed:', err);
+        setLoginError(err.message || 'Login failed. Please check your credentials and try again.');
       } finally {
         setIsSubmitting(false);
       }
@@ -47,9 +51,9 @@ export default function LoginPage() {
           <CardTitle className="text-2xl text-center">Login</CardTitle>
         </CardHeader>
         <CardContent>
-          {authError && (
+          {loginError && (
             <Alert className="mb-4">
-              <AlertDescription>{authError}</AlertDescription>
+              <AlertDescription>{loginError}</AlertDescription>
             </Alert>
           )}
           
