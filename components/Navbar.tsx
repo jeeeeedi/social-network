@@ -136,10 +136,10 @@ export const Navbar: React.FC = () => {
       isActive: isActivePage('/groups'),
     },
     {
-      href: '#',
+      href: '/messages',
       icon: MessageCircle,
       label: 'Messages',
-      isActive: false,
+      isActive: isActivePage('/messages'),
     },
     {
       href: '#',

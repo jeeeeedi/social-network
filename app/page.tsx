@@ -61,7 +61,7 @@ export default function SocialNetworkPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const { messages, sendMessage, isConnected } = useWebSocket()
+  const { isConnected, messages, onlineUsers, sendMessage, setOnlineUsers } = useWebSocket()
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
   const [activeGroupChat, setActiveGroupChat] = useState<any>(null)
   const [isChatMinimized, setIsChatMinimized] = useState(false)

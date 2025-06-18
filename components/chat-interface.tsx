@@ -203,7 +203,7 @@ export function ChatInterface({
       onSendMessage({
         senderId: "you",
         senderName: "You",
-        senderAvatar: "/placeholder.svg?height=40&width=40",
+        senderAvatar: "/placeholder.svg?height=40&width=40", // Change
         content: newMessage,
         type: "text",
         chatId: `private_${user.id}`,
@@ -217,7 +217,7 @@ export function ChatInterface({
     onSendMessage({
       senderId: "you",
       senderName: "You",
-      senderAvatar: "/placeholder.svg?height=40&width=40",
+      senderAvatar: "/placeholder.svg?height=40&width=40", // Change
       content: emoji,
       type: "emoji",
       chatId: `private_${user.id}`,
