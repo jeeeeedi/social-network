@@ -25,12 +25,13 @@ export default function RegisterPage() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { error } = useAuth();
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    setRegisterError(null); // Reset error on input change
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +46,7 @@ export default function RegisterPage() {
     if (Object.keys(newErrors).length > 0) return;
 
     setIsSubmitting(true);
+    setRegisterError(null);
     const submitData = new FormData();
     submitData.append('email', formData.email);
     submitData.append('password', formData.password);
@@ -59,7 +61,8 @@ export default function RegisterPage() {
       await registerUser(submitData);
       router.push('/login');
     } catch (err) {
-      console.error(err);
+      console.error('Registration error:', err);
+      setRegisterError(err.message || 'Registration failed. There was a server error. Please try again later.');
     } finally {
       setIsSubmitting(false);
     }
@@ -72,9 +75,9 @@ export default function RegisterPage() {
           <CardTitle className="text-2xl text-center">Register</CardTitle>
         </CardHeader>
         <CardContent>
-          {error && (
+          {registerError && (
             <Alert className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{registerError}</AlertDescription>
             </Alert>
           )}
           
@@ -198,7 +201,7 @@ export default function RegisterPage() {
             >
               {isSubmitting ? 'Registering...' : 'Register'}
             </Button>
-
+            
             <Button
               type="button"
               variant="ghost"

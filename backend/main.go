@@ -22,6 +22,8 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/profile/me", handlers.ProfileMeHandler)
 	http.HandleFunc("/api/profile/", handlers.ProfileHandler) // Will handle /api/profile/{uuid}
 	http.HandleFunc("/api/profile/privacy", handlers.PrivacyHandler)
+	http.HandleFunc("/api/groups", handlers.GroupsHandler)  // Adding route for groups
+	http.HandleFunc("/api/groups/", handlers.GroupsHandler) // Handle subroutes under groups
 
 	// Routes for POSTS and COMMENTS
 	http.HandleFunc("/api/createposts", func(w http.ResponseWriter, r *http.Request) {

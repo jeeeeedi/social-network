@@ -239,7 +239,7 @@ export function ChatInterface({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} className="object-cover"/>
+            <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
             <AvatarFallback>
               {user.name
                 .split(" ")
@@ -290,7 +290,7 @@ export function ChatInterface({
                   >
                     {message.senderId !== "you" && (
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} className="object-cover"/>
+                        <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} />
                         <AvatarFallback className="text-xs">
                           {message.senderName
                             .split(" ")

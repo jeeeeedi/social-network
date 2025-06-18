@@ -141,13 +141,6 @@ export const Navbar: React.FC = () => {
       label: 'Messages',
       isActive: false,
     },
-    {
-      href: '#',
-      icon: LogOut,
-      label: 'Logout',
-      isActive: false,
-      onClick: handleLogout,
-    },
   ];
 
   if (!currentUser) {
@@ -228,7 +221,6 @@ export const Navbar: React.FC = () => {
                   <AvatarImage
                     src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : undefined}
                     alt={currentUser?.nickname || "User"}
-                    className="object-cover"
                   />
                   <AvatarFallback>
                     {currentUser?.first_name?.charAt(0)}{currentUser?.last_name?.charAt(0)}
