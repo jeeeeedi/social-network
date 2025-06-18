@@ -246,6 +246,7 @@ export default function MyProfilePage() {
               <AvatarImage 
                 src={profile.avatar && profile.avatar.trim() !== '' ? `http://localhost:8080${profile.avatar}` : "/placeholder.svg"} 
                 alt={displayName} 
+                className="object-cover"
               />
               <AvatarFallback className="text-2xl">
                 {profile.first_name[0]}

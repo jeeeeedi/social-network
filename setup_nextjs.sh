@@ -73,9 +73,14 @@ if ! command -v sqlite3 &> /dev/null; then
     echo ""
 fi
 
-# Install frontend dependencies
-npm install next react react-dom typescript @types/react @types/react-dom @types/node --save-dev
+npm install next react react-dom
 npm install
+
+# Setup frontend dependencies
+
+echo "Ensuring Next.js and React dependencies are installed..."
+echo "Installing frontend dependencies (including React, MUI, and others as per package.json)..."
+cd ..
 
 echo -e "${GREEN}Frontend dependencies installed.${NC}"
 
@@ -102,17 +107,17 @@ echo ""
 # CHANGE NOTE: Added detailed instructions for starting both frontend and backend with updated context.
 echo -e "${GREEN}Full Setup Complete!${NC}"
 echo -e "You can now start the applications:"
-echo -e "${YELLOW}Frontend:${NC} npm run dev"
+echo -e "${YELLOW}Frontend:${NC} cd frontend && npm run dev"
 echo -e "${YELLOW}   - This will start the Next.js development server, typically on port 3000."
 echo -e "${YELLOW}   - Ensure the backend is running to handle API requests (proxy set to http://localhost:8080)."
-echo -e "${YELLOW}Backend:${NC} go run ./backend/main.go"
+echo -e "${YELLOW}Backend:${NC} go run main.go"
 echo -e "${YELLOW}   - This will start the Go backend server, typically on port 8080."
 echo -e "${YELLOW}   - Run this in a separate terminal if developing locally."
 echo ""
 # CHANGE NOTE: Added note about project updates and new dependencies.
 echo -e "${GREEN}Notes on Updates:${NC}"
-echo -e "${YELLOW} - TypeScript and type declarations for React and Next.js have been added to resolve linter errors.${NC}"
-echo -e "${YELLOW} - Proxy setting should be configured in package.json to forward API requests to backend (http://localhost:8080).${NC}"
-echo -e "${YELLOW} - Adjusted setup to run in the root directory for Next.js app.${NC}"
+echo -e "${YELLOW} - Material-UI (MUI) and related packages (@emotion/react, @emotion/styled) have been integrated for UI components.${NC}"
+echo -e "${YELLOW} - Proxy setting added in frontend/package.json to forward API requests to backend (http://localhost:8080).${NC}"
+echo -e "${YELLOW} - Removed root npm install as root dependencies were deemed unnecessary after review.${NC}"
 echo ""
 echo -e "${GREEN}Happy coding!${NC}"
