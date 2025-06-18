@@ -22,7 +22,9 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/profile/me", handlers.ProfileMeHandler)
 	http.HandleFunc("/api/profile/", handlers.ProfileHandler) // Will handle /api/profile/{uuid}
 	http.HandleFunc("/api/profile/privacy", handlers.PrivacyHandler)
-	http.HandleFunc("/api/ws", handlers.WebSocketsHandler)
+	http.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		handlers.WebSocketsHandler(db, w, r)
+	})
 
 	// Routes for POSTS and COMMENTS
 	// TODO: Check if these work

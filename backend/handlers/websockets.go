@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
+	"social_network/dbTools"
 
 	"github.com/gorilla/websocket"
 )
@@ -21,7 +21,7 @@ import (
 	chatType: "private" | "group"
   } */
 
-type message struct {
+/* type message struct {
 	ID           string    `json:"id"`
 	SenderID     string    `json:"senderId"`
 	SenderName   string    `json:"senderName"`
@@ -31,9 +31,9 @@ type message struct {
 	MessageType  string    `json:"type"` // "text" | "emoji"
 	ChatID       string    `json:"chatId"`
 	ChatType     string    `json:"chatType"` // "private" | "group"
-}
+} */
 
-func WebSocketsHandler(w http.ResponseWriter, r *http.Request) {
+func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	// Check user validity?
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -55,13 +55,24 @@ func WebSocketsHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		var decodedMessage message
+		var decodedMessage dbTools.ChatMessage
 		err = json.Unmarshal(rawMessage, &decodedMessage)
 
-		fmt.Println(string(decodedMessage.Content))
 		if err != nil {
 			fmt.Println("Error unmarshalling message:", err)
 			continue
+		}
+		fmt.Println(string(decodedMessage.Content))
+
+		db.AddMessageToDB(&decodedMessage)
+		// For testing:
+		allMessages, err := db.GetAllMessagesFromDB()
+		if err != nil {
+			return
+		}
+		for i, msg := range allMessages {
+			fmt.Println(i, "th message is:")
+			fmt.Println(msg.Content)
 		}
 	}
 }
