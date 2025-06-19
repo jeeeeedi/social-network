@@ -73,7 +73,6 @@ export default function GroupDetailPage() {
   // TODO: Fetch group, posts, events, availableUsers from backend
 
   // Handlers for actions (replace with real logic)
-  const handleBack = () => router.push("/groups")
   const handleCreatePost = (content, image) => {
     // Implement post creation logic
     alert(`Post created: ${content}`)
@@ -112,8 +111,6 @@ export default function GroupDetailPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-6xl">
-      <Button variant="outline" onClick={handleBack} className="mb-6">Back to Groups</Button>
-      
       {/* Group Header */}
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center gap-4">
