@@ -46,16 +46,35 @@ func (db *DB) GetGroupByID(id int) (*Group, error) {
 	return g, nil
 }
 
-// GetAllGroups retrieves all groups for browsing with creator names and member counts
-func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
-	query := `SELECT g.group_id, g.title, g.description, g.creator_id, g.created_at,
-	          COALESCE(u.nickname, u.first_name) as creator_name,
-	          COALESCE(COUNT(gm.member_id), 0) as member_count
-	          FROM groups g
-	          JOIN users u ON g.creator_id = u.user_id AND u.status = 'active'
-	          LEFT JOIN group_members gm ON g.group_id = gm.group_id AND gm.status = 'accepted'
-	          GROUP BY g.group_id, g.title, g.description, g.creator_id, g.created_at, u.nickname, u.first_name`
-	rows, err := db.db.Query(query)
+// GetAllGroups retrieves all groups for browsing with creator names, member counts, and optional user status
+func (db *DB) GetAllGroups(userID ...int) ([]map[string]interface{}, error) {
+	var query string
+	var args []interface{}
+
+	if len(userID) > 0 && userID[0] > 0 {
+		// Include user membership status when userID is provided
+		query = `SELECT g.group_id, g.title, g.description, g.creator_id, g.created_at,
+		          COALESCE(u.nickname, u.first_name) as creator_name,
+		          COALESCE(COUNT(CASE WHEN gm_all.status = 'accepted' THEN 1 END), 0) as member_count,
+		          COALESCE(gm_user.status, 'none') as user_status
+		          FROM groups g
+		          JOIN users u ON g.creator_id = u.user_id AND u.status = 'active'
+		          LEFT JOIN group_members gm_all ON g.group_id = gm_all.group_id AND gm_all.status = 'accepted'
+		          LEFT JOIN group_members gm_user ON g.group_id = gm_user.group_id AND gm_user.member_id = ?
+		          GROUP BY g.group_id, g.title, g.description, g.creator_id, g.created_at, u.nickname, u.first_name, gm_user.status`
+		args = append(args, userID[0])
+	} else {
+		// Original query without user status
+		query = `SELECT g.group_id, g.title, g.description, g.creator_id, g.created_at,
+		          COALESCE(u.nickname, u.first_name) as creator_name,
+		          COALESCE(COUNT(gm.member_id), 0) as member_count
+		          FROM groups g
+		          JOIN users u ON g.creator_id = u.user_id AND u.status = 'active'
+		          LEFT JOIN group_members gm ON g.group_id = gm.group_id AND gm.status = 'accepted'
+		          GROUP BY g.group_id, g.title, g.description, g.creator_id, g.created_at, u.nickname, u.first_name`
+	}
+
+	rows, err := db.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,10 +84,22 @@ func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
 	for rows.Next() {
 		var groupID, creatorID, memberCount int
 		var title, description, createdAtStr, creatorName string
+		var userStatus *string // Use pointer for optional field
 
-		err := rows.Scan(&groupID, &title, &description, &creatorID, &createdAtStr, &creatorName, &memberCount)
-		if err != nil {
-			return nil, err
+		if len(userID) > 0 && userID[0] > 0 {
+			// Scan with user status
+			var status string
+			err := rows.Scan(&groupID, &title, &description, &creatorID, &createdAtStr, &creatorName, &memberCount, &status)
+			if err != nil {
+				return nil, err
+			}
+			userStatus = &status
+		} else {
+			// Scan without user status
+			err := rows.Scan(&groupID, &title, &description, &creatorID, &createdAtStr, &creatorName, &memberCount)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Parse the time string into a time.Time
@@ -86,6 +117,12 @@ func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
 			"created_at":   createdAt,
 			"member_count": memberCount,
 		}
+
+		// Add user status if available
+		if userStatus != nil {
+			group["user_status"] = *userStatus
+		}
+
 		groups = append(groups, group)
 	}
 	return groups, nil

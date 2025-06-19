@@ -17,6 +17,7 @@ interface Group {
   creator_name: string;
   created_at: string;
   member_count: number;
+  user_status?: string;
   isMember?: boolean;
   isPending?: boolean;
   // Optional fields that might not be provided by backend
@@ -94,7 +95,8 @@ export default function GroupsPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const newGroup = await response.json();
-      setGroups([...groups, newGroup]);
+      // Refetch all groups to get enriched data with creator name and member count
+      await fetchGroups();
     } catch (err) {
       console.error("Failed to create group:", err);
       alert("Failed to create group. Please try again.");
@@ -117,7 +119,8 @@ export default function GroupsPage() {
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      setGroups(groups.map((group: Group) => group.group_id === parseInt(groupId) ? { ...group, isPending: true } : group));
+      // Refetch groups to get updated status instead of manually setting isPending
+      await fetchGroups();
     } catch (err) {
       console.error("Failed to join group:", err);
       alert("Failed to join group. Please try again.");
@@ -128,7 +131,7 @@ export default function GroupsPage() {
     // Note: This is a placeholder as the backend might not have a direct leave endpoint yet
     try {
       // Assuming there's a way to leave or update membership status to declined
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${currentUser.id}`, {
+      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${currentUser.user_id}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -199,14 +202,14 @@ export default function GroupsPage() {
                 creatorName: group.creator_name || "Unknown",
                 memberCount: group.member_count || 0,
                 isPrivate: group.isPrivate || false,
-                isMember: group.isMember || false, 
-                isPending: group.isPending || false,
+                isMember: group.user_status === 'accepted',
+                isPending: group.user_status === 'requested' || group.user_status === 'invited',
                 events: group.events || []
               }} 
               onJoinGroup={handleJoinGroup} 
               onLeaveGroup={handleLeaveGroup} 
               onViewGroup={handleViewGroup} 
-              currentUserId={currentUser?.id?.toString() || "0"} 
+              currentUserId={currentUser?.user_id?.toString() || "0"} 
             />
           ))
         ) : (
