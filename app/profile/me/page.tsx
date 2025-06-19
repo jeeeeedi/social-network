@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -15,11 +15,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { 
-  Users, 
-  UserPlus, 
-  Settings, 
-  Lock, 
+import {
+  Users,
+  UserPlus,
+  Settings,
+  Lock,
   Unlock,
   ArrowLeft,
   Calendar,
@@ -27,8 +27,9 @@ import {
   User,
   Heart,
   MessageCircle,
-  Share
+  Share,
 } from "lucide-react";
+import { Post } from "@/components/feed";
 
 interface ProfileData {
   user_uuid: string;
@@ -42,14 +43,6 @@ interface ProfileData {
   created_at: string;
   privacy: string;
   role: string;
-}
-
-interface PostData {
-  post_uuid: string;
-  content: string;
-  created_at: string;
-  filename_new: string;
-  privacy: string;
 }
 
 interface FollowerData {
@@ -67,7 +60,7 @@ export default function MyProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [followers, setFollowers] = useState<FollowerData[]>([]);
   const [following, setFollowing] = useState<FollowerData[]>([]);
-  const [posts, setPosts] = useState<PostData[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [privacy, setPrivacy] = useState("public");
@@ -107,7 +100,10 @@ export default function MyProfilePage() {
         );
         const followersData = await followersResponse.json();
         console.log("Followers Response:", followersData);
-        console.log("First follower avatar:", followersData.followers?.[0]?.avatar);
+        console.log(
+          "First follower avatar:",
+          followersData.followers?.[0]?.avatar
+        );
         if (followersData.success) {
           setFollowers(followersData.followers || []);
         } else {
@@ -162,7 +158,8 @@ export default function MyProfilePage() {
       return;
     }
 
-    const newPrivacy = newPrivacyValue || (privacy === "public" ? "private" : "public");
+    const newPrivacy =
+      newPrivacyValue || (privacy === "public" ? "private" : "public");
     try {
       const response = await fetch(
         "http://localhost:8080/api/profile/privacy",
@@ -210,10 +207,10 @@ export default function MyProfilePage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground mb-4">Please log in to view your profile.</p>
-            <Button onClick={() => router.push('/login')}>
-              Login
-            </Button>
+            <p className="text-muted-foreground mb-4">
+              Please log in to view your profile.
+            </p>
+            <Button onClick={() => router.push("/login")}>Login</Button>
           </CardContent>
         </Card>
       </div>
@@ -224,17 +221,24 @@ export default function MyProfilePage() {
     return (
       <div className="container mx-auto py-6">
         <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error || "Profile data not available."}</AlertDescription>
+          <AlertDescription>
+            {error || "Profile data not available."}
+          </AlertDescription>
         </Alert>
         <div className="flex justify-center">
-          <Button variant="outline" onClick={handleRetry}>Retry</Button>
+          <Button variant="outline" onClick={handleRetry}>
+            Retry
+          </Button>
         </div>
       </div>
     );
   }
 
-  const displayName = profile.nickname || `${profile.first_name} ${profile.last_name}`;
+  const displayName =
+    profile.nickname || `${profile.first_name} ${profile.last_name}`;
   const fullName = `${profile.first_name} ${profile.last_name}`;
+
+  console.log("MyProfile posts:", posts);
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-4xl">
@@ -243,10 +247,14 @@ export default function MyProfilePage() {
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6">
             <Avatar className="h-32 w-32 mx-auto md:mx-0">
-              <AvatarImage 
-                src={profile.avatar && profile.avatar.trim() !== '' ? `http://localhost:8080${profile.avatar}` : "/placeholder.svg"} 
+              <AvatarImage
+                src={
+                  profile.avatar && profile.avatar.trim() !== ""
+                    ? `http://localhost:8080${profile.avatar}`
+                    : "/placeholder.svg"
+                }
                 alt={displayName}
-                className="object-cover" 
+                className="object-cover"
               />
               <AvatarFallback className="text-2xl">
                 {profile.first_name[0]}
@@ -264,7 +272,9 @@ export default function MyProfilePage() {
                     <Lock className="h-5 w-5 text-muted-foreground" />
                   )}
                 </div>
-                {profile.nickname && <p className="text-lg text-muted-foreground">{fullName}</p>}
+                {profile.nickname && (
+                  <p className="text-lg text-muted-foreground">{fullName}</p>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -278,17 +288,19 @@ export default function MyProfilePage() {
                 </div>
               </div>
 
-              {profile.about_me && <p className="text-muted-foreground">{profile.about_me}</p>}
+              {profile.about_me && (
+                <p className="text-muted-foreground">{profile.about_me}</p>
+              )}
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="privacy-toggle" 
-                    checked={privacy === "private"} 
+                  <Switch
+                    id="privacy-toggle"
+                    checked={privacy === "private"}
                     onCheckedChange={async (checked) => {
                       const newPrivacy = checked ? "private" : "public";
                       await handlePrivacyToggle(newPrivacy);
-                    }} 
+                    }}
                   />
                   <Label htmlFor="privacy-toggle">Private Profile</Label>
                 </div>
@@ -302,8 +314,12 @@ export default function MyProfilePage() {
       <Tabs defaultValue="posts" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="posts">Posts ({posts?.length || 0})</TabsTrigger>
-          <TabsTrigger value="followers">Followers ({followers.length})</TabsTrigger>
-          <TabsTrigger value="following">Following ({following.length})</TabsTrigger>
+          <TabsTrigger value="followers">
+            Followers ({followers.length})
+          </TabsTrigger>
+          <TabsTrigger value="following">
+            Following ({following.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="space-y-4">
@@ -331,23 +347,24 @@ export default function MyProfilePage() {
                   )}
                   <div className="flex gap-4 text-muted-foreground">
                     <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                      <Heart className="h-3 w-3" />
-                      0
+                      <Heart className="h-3 w-3" />0
                     </button>
                     <button className="flex items-center gap-1 text-xs hover:text-foreground">
                       <MessageCircle className="h-3 w-3" />
-                      0
+                      {post.comments?.length || 0}
                     </button>
-                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                    {/* <button className="flex items-center gap-1 text-xs hover:text-foreground">
                       <Share className="h-3 w-3" />
                       0
-                    </button>
+                    </button> */}
                   </div>
                 </CardContent>
               </Card>
             ))
           ) : (
-            <div className="text-center py-8 text-muted-foreground">No posts yet.</div>
+            <div className="text-center py-8 text-muted-foreground">
+              No posts yet.
+            </div>
           )}
         </TabsContent>
 
@@ -362,12 +379,17 @@ export default function MyProfilePage() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={follower.avatar && follower.avatar.trim() !== '' ? `http://localhost:8080${follower.avatar}` : undefined}
+                      src={
+                        follower.avatar && follower.avatar.trim() !== ""
+                          ? `http://localhost:8080${follower.avatar}`
+                          : undefined
+                      }
                       alt={follower.nickname}
                       className="object-cover"
                     />
                     <AvatarFallback>
-                      {follower.first_name?.charAt(0)}{follower.last_name?.charAt(0)}
+                      {follower.first_name?.charAt(0)}
+                      {follower.last_name?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -384,7 +406,9 @@ export default function MyProfilePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">No followers yet.</div>
+            <div className="text-center py-8 text-muted-foreground">
+              No followers yet.
+            </div>
           )}
         </TabsContent>
 
@@ -399,12 +423,17 @@ export default function MyProfilePage() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={follow.avatar && follow.avatar.trim() !== '' ? `http://localhost:8080${follow.avatar}` : undefined}
+                      src={
+                        follow.avatar && follow.avatar.trim() !== ""
+                          ? `http://localhost:8080${follow.avatar}`
+                          : undefined
+                      }
                       alt={follow.nickname}
                       className="object-cover"
                     />
                     <AvatarFallback>
-                      {follow.first_name?.charAt(0)}{follow.last_name?.charAt(0)}
+                      {follow.first_name?.charAt(0)}
+                      {follow.last_name?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -421,10 +450,12 @@ export default function MyProfilePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">Not following anyone yet.</div>
+            <div className="text-center py-8 text-muted-foreground">
+              Not following anyone yet.
+            </div>
           )}
         </TabsContent>
       </Tabs>
     </div>
   );
-} 
+}

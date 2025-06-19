@@ -3,6 +3,7 @@ package dbTools
 import (
 	"context"
 	"database/sql"
+	"log"
 	"social_network/utils"
 )
 
@@ -49,7 +50,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-            u.nickname, 
+            u.nickname, u.avatar,
             COALESCE(f.file_id, 0) as file_id, 
             f.filename_new
         FROM posts p
@@ -61,6 +62,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
     `, userID)
 	// COALESCE(f.file_id, 0): If f.file_id != NULL, use its value. If f.file_id = NULL (no file w/post), use 0 instead.
 	if err != nil {
+		log.Print("GetFeedPosts: Error querying db:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -69,6 +71,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	for rows.Next() {
 		var postResponse PostResponse
 		var groupID sql.NullInt64
+		var fileID sql.NullInt64
 		var filenameNew sql.NullString
 
 		err := rows.Scan(
@@ -81,10 +84,12 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 			&postResponse.PostStatus,
 			&postResponse.PostCreatedAt,
 			&postResponse.Nickname,
-			&postResponse.FileID,
+			&postResponse.Avatar,
+			&fileID,
 			&filenameNew,
 		)
 		if err != nil {
+			log.Print("GetFeedPosts: Error scanning post row:", err)
 			return nil, err
 		}
 		if groupID.Valid {
@@ -93,11 +98,27 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 		} else {
 			postResponse.GroupID = nil
 		}
-		if filenameNew.Valid {
-			postResponse.FilenameNew = filenameNew.String
+		if fileID.Valid {
+			fid := int(fileID.Int64)
+			postResponse.FileID = &fid
 		} else {
-			postResponse.FilenameNew = ""
+			postResponse.FileID = nil
 		}
+		if filenameNew.Valid {
+			fn := filenameNew.String
+			postResponse.FilenameNew = &fn
+		} else {
+			postResponse.FilenameNew = nil
+		}
+
+		comments, err := d.GetCommentsForPost(context.Background(), postResponse.PostUUID)
+		if err != nil {
+			log.Print("GetFeedPosts: Error getting comments for post:", err)
+			return nil, err
+		}
+		log.Print("GetFeedPosts: Retrieved comments for post:", postResponse.PostUUID, comments)
+
+		postResponse.Comments = comments
 		postsResponse = append(postsResponse, postResponse)
 	}
 	return postsResponse, nil
@@ -108,7 +129,7 @@ func (d *DB) GetMyPosts(userID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-            u.nickname, 
+            u.nickname, u.avatar, 
             COALESCE(f.file_id, 0) as file_id, 
             f.filename_new
         FROM posts p
@@ -128,6 +149,7 @@ func (d *DB) GetMyPosts(userID int) ([]PostResponse, error) {
 	for rows.Next() {
 		var postResponse PostResponse
 		var groupID sql.NullInt64
+		var fileID sql.NullInt64
 		var filenameNew sql.NullString
 
 		err := rows.Scan(
@@ -140,10 +162,12 @@ func (d *DB) GetMyPosts(userID int) ([]PostResponse, error) {
 			&postResponse.PostStatus,
 			&postResponse.PostCreatedAt,
 			&postResponse.Nickname,
-			&postResponse.FileID,
+			&postResponse.Avatar,
+			&fileID,
 			&filenameNew,
 		)
 		if err != nil {
+			log.Print("GetMyPosts: Error scanning post row:", err)
 			return nil, err
 		}
 		if groupID.Valid {
@@ -152,13 +176,30 @@ func (d *DB) GetMyPosts(userID int) ([]PostResponse, error) {
 		} else {
 			postResponse.GroupID = nil
 		}
-		if filenameNew.Valid {
-			postResponse.FilenameNew = filenameNew.String
+		if fileID.Valid {
+			fid := int(fileID.Int64)
+			postResponse.FileID = &fid
 		} else {
-			postResponse.FilenameNew = ""
+			postResponse.FileID = nil
 		}
+		if filenameNew.Valid {
+			fn := filenameNew.String
+			postResponse.FilenameNew = &fn
+		} else {
+			postResponse.FilenameNew = nil
+		}
+
+		comments, err := d.GetCommentsForPost(context.Background(), postResponse.PostUUID)
+		if err != nil {
+			log.Print("GetMyPosts: Error getting comments for post:", err)
+			return nil, err
+		}
+		log.Print("GetMyPosts: Retrieved comments for post:", postResponse.PostUUID, comments)
+
+		postResponse.Comments = comments
 		postsResponse = append(postsResponse, postResponse)
 	}
+
 	return postsResponse, nil
 }
 
@@ -201,14 +242,15 @@ func (d *DB) InsertCommentToDB(c *Comment) (int, error) {
 
 	query := `
         INSERT INTO comments 
-            (commenter_id, post_id, content, created_at)
-        VALUES (?, ?, ?, ?)
+            (commenter_id, post_id, content, post_privacy, created_at)
+        VALUES (?, ?, ?, ?, ?)
     `
 	result, err := d.Exec(
 		query,
 		c.CommenterID,
 		c.PostID,
 		c.Content,
+		c.PostPrivacy,
 		c.CreatedAt,
 	)
 	if err != nil {
@@ -234,6 +276,7 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
             c.status,
             c.created_at,
             u.nickname,
+			u.avatar,
             COALESCE(f.file_id, 0) as file_id,
             f.filename_new
         FROM comments c
@@ -241,7 +284,7 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
         JOIN users u ON c.commenter_id = u.user_id
         LEFT JOIN files f ON f.parent_type = 'comment' AND f.parent_id = c.comment_id AND f.status = 'active'
         WHERE p.post_uuid = ?
-        ORDER BY c.created_at ASC
+        ORDER BY c.created_at DESC
     `, postUUID)
 	if err != nil {
 		return nil, err
@@ -265,7 +308,8 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
 			&comment.CommentStatus,
 			&comment.CommentCreatedAt,
 			&comment.Nickname,
-			&comment.FileID,
+			&comment.Avatar,
+			&fileID,
 			&filenameNew,
 		)
 		if err != nil {
@@ -276,10 +320,12 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
 			comment.GroupID = &gid
 		}
 		if fileID.Valid {
-			comment.FileID = int(fileID.Int64)
+			fid := int(fileID.Int64)
+			comment.FileID = &fid
 		}
 		if filenameNew.Valid {
-			comment.FilenameNew = filenameNew.String
+			fn := filenameNew.String
+			comment.FilenameNew = &fn
 		}
 		comments = append(comments, comment)
 	}

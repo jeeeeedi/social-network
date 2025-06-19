@@ -217,6 +217,7 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 		PostID:      post.PostID,
 		GroupID:     nil, // Regular posts (not group)
 		Content:     content,
+		PostPrivacy: post.Privacy,
 		CreatedAt:   timeNow,
 	}
 	commentID, err := db.InsertCommentToDB(&comment)

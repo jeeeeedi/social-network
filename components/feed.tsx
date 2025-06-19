@@ -26,7 +26,7 @@ import {
 import { sanitize } from "@/utils/sanitize";
 import { formatDateTime } from "@/utils/formatDate";
 
-interface Post {
+export interface Post {
   post_id: number;
   post_uuid: string;
   poster_id: number;

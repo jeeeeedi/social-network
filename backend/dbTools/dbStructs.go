@@ -62,30 +62,32 @@ type Post struct {
 }
 
 type PostResponse struct {
-	PostID        int       `json:"post_id"`
-	PostUUID      string    `json:"post_uuid"`
-	PosterID      int       `json:"poster_id"`
-	GroupID       *int      `json:"group_id,omitempty"`
-	Content       string    `json:"content"`
-	Privacy       string    `json:"privacy"` // public, semi-private, private
-	PostStatus    string    `json:"status"`  // active, inactive
-	PostCreatedAt time.Time `json:"created_at"`
-	Nickname      string    `json:"nickname,omitempty"`
-	FileID        int       `json:"file_id,omitempty"`
-	FilenameNew   string    `json:"filename_new,omitempty"`
+	PostID        int               `json:"post_id"`
+	PostUUID      string            `json:"post_uuid"`
+	PosterID      int               `json:"poster_id"`
+	GroupID       *int              `json:"group_id,omitempty"`
+	Content       string            `json:"content"`
+	Privacy       string            `json:"privacy"` // public, semi-private, private
+	PostStatus    string            `json:"status"`  // active, inactive
+	PostCreatedAt time.Time         `json:"created_at"`
+	Nickname      string            `json:"nickname,omitempty"`
+	Avatar        string            `json:"avatar"` // User's avatar
+	FileID        *int              `json:"file_id,omitempty"`
+	FilenameNew   *string           `json:"filename_new,omitempty"`
+	Comments      []CommentResponse `json:"comments,omitempty"` // Comments on the post
 }
 
 type Comment struct {
-	CommentID   int    `json:"comment_id"`
-	CommenterID int    `json:"commenter_id"`
-	PostID      int    `json:"post_id"`
-	GroupID     *int   `json:"group_id"`
-	Content     string `json:"content"`
-	// PostPrivacy string // seems redundant, can be derived from Post
-	Status    string     `json:"status"` // active, inactive
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at"`
-	UpdaterID int        `json:"updater_id"`
+	CommentID   int        `json:"comment_id"`
+	CommenterID int        `json:"commenter_id"`
+	PostID      int        `json:"post_id"`
+	GroupID     *int       `json:"group_id"`
+	Content     string     `json:"content"`
+	PostPrivacy string     `json:"post_privacy"`
+	Status      string     `json:"status"` // active, inactive
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   *time.Time `json:"updated_at"`
+	UpdaterID   int        `json:"updater_id"`
 }
 
 type CommentResponse struct {
@@ -98,8 +100,9 @@ type CommentResponse struct {
 	CommentStatus    string    `json:"status"`  // active, inactive
 	CommentCreatedAt time.Time `json:"created_at"`
 	Nickname         string    `json:"nickname,omitempty"`
-	FileID           int       `json:"file_id,omitempty"`
-	FilenameNew      string    `json:"filename_new,omitempty"`
+	Avatar           string    `json:"avatar"` // User's avatar
+	FileID           *int      `json:"file_id,omitempty"`
+	FilenameNew      *string   `json:"filename_new,omitempty"`
 }
 
 type PostCategory struct {
