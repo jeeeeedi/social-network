@@ -50,17 +50,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    console.log('Logout initiated');
     setLoggingOut(true);
     try {
       await logoutUser();
-      console.log('Logout API call successful');
     } catch (err) {
       console.error('Logout API call failed:', err);
       // Even if the API call fails, we should clear the user state
     } finally {
       // Always clear the user state regardless of API success/failure
-      console.log('Clearing user state');
       setCurrentUser(null);
       setLoggingOut(false);
     }

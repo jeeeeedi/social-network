@@ -20,22 +20,20 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
 
   // Handle route protection in effect rather than routing (since Next.js handles routing)
   React.useEffect(() => {
-    console.log('AppContent useEffect - isAuthenticated:', isAuthenticated, 'loading:', loading, 'pathname:', pathname);
-    
     // Don't redirect during loading
     if (loading) return;
 
     // Redirect unauthenticated users from protected routes
     if (!isAuthenticated && !isAuthPage) {
-      console.log('Redirecting unauthenticated user to login');
-      router.push('/login');
+      // Use replace instead of push to avoid back button issues
+      router.replace('/login');
       return;
     }
 
     // Redirect authenticated users from auth pages
     if (isAuthenticated && isAuthPage) {
-      console.log('Redirecting authenticated user to home');
-      router.push('/');
+      // Use window.location.href for immediate redirect to avoid Next.js delays
+      window.location.href = '/';
       return;
     }
   }, [isAuthenticated, pathname, loading, router, isAuthPage]);
