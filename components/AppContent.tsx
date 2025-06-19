@@ -20,24 +20,22 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
 
   // Handle route protection in effect rather than routing (since Next.js handles routing)
   React.useEffect(() => {
+    console.log('AppContent useEffect - isAuthenticated:', isAuthenticated, 'loading:', loading, 'pathname:', pathname);
+    
     // Don't redirect during loading
     if (loading) return;
 
     // Redirect unauthenticated users from protected routes
-    if (!isAuthenticated && !isAuthPage && pathname !== '/') {
+    if (!isAuthenticated && !isAuthPage) {
+      console.log('Redirecting unauthenticated user to login');
       router.push('/login');
       return;
     }
 
     // Redirect authenticated users from auth pages
     if (isAuthenticated && isAuthPage) {
+      console.log('Redirecting authenticated user to home');
       router.push('/');
-      return;
-    }
-
-    // Redirect unauthenticated users from home to login
-    if (!isAuthenticated && pathname === '/') {
-      router.push('/login');
       return;
     }
   }, [isAuthenticated, pathname, loading, router, isAuthPage]);
@@ -49,6 +47,18 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login redirect for unauthenticated users on protected routes
+  if (!isAuthenticated && !isAuthPage) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Redirecting to login...</p>
         </div>
       </div>
     );

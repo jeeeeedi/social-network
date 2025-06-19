@@ -34,14 +34,11 @@ export default function GroupsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !currentUser) {
-      router.push("/login");
-      return;
-    }
-    if (currentUser) {
+    // Only fetch groups if user is authenticated and not loading
+    if (!loading && currentUser) {
       fetchGroups();
     }
-  }, [currentUser, loading, router]);
+  }, [currentUser, loading]);
 
   const fetchGroups = async () => {
     setIsLoadingGroups(true);
@@ -55,10 +52,6 @@ export default function GroupsPage() {
         },
       });
       if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login');
-          return;
-        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const text = await response.text();
@@ -143,10 +136,6 @@ export default function GroupsPage() {
         body: JSON.stringify({ status: 'declined' }),
       });
       if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login');
-          return;
-        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       setGroups(groups.map((group: Group) => group.group_id === parseInt(groupId) ? { ...group, isMember: false, isPending: false } : group));

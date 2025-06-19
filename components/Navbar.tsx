@@ -67,16 +67,19 @@ const mockNotifications = [
 ];
 
 export const Navbar: React.FC = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, loggingOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/login');
+      // Force immediate navigation to login
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
+      // Even if logout fails, redirect to login
+      window.location.href = '/login';
     }
   };
 
@@ -247,9 +250,13 @@ export const Navbar: React.FC = () => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+              <DropdownMenuItem 
+                onClick={handleLogout} 
+                className="cursor-pointer"
+                disabled={loggingOut}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>{loggingOut ? 'Logging out...' : 'Log out'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
