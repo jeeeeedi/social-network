@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,90 +23,195 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react';
-import { NotificationCenter } from '@/components/notification-center';
-
-// Mock data for notifications (to be replaced with API calls in the future)
-const mockNotifications = [
-  {
-    id: "1",
-    type: "follow_request" as const,
-    title: "New Friend Request",
-    message: "John Doe has sent you a friend request.",
-    timestamp: new Date(),
-    isRead: false,
-    actionRequired: true,
-    fromUser: {
-      id: "user123",
-      name: "John Doe",
-      avatar: "/placeholder.svg"
-    }
-  },
-  {
-    id: "2",
-    type: "group_invitation" as const,
-    title: "Group Invitation",
-    message: "You have been invited to join Tech Enthusiasts.",
-    timestamp: new Date(Date.now() - 3600000),
-    isRead: false,
-    actionRequired: true,
-    groupId: "group456"
-  },
-  {
-    id: "3",
-    type: "message" as const,
-    title: "New Message",
-    message: "Jane Smith sent you a message.",
-    timestamp: new Date(Date.now() - 7200000),
-    isRead: true,
-    fromUser: {
-      id: "user789",
-      name: "Jane Smith",
-      avatar: "/placeholder.svg"
-    }
-  }
-];
+import { NotificationCenter, Notification } from '@/components/notification-center';
 
 export const Navbar: React.FC = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, loggingOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
 
-  const handleLogout = async () => {
+  // Fetch notifications on component mount and when user changes
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+    }
+  }, [currentUser]);
+
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
     try {
-      await logout();
-      router.push('/login');
+      const response = await fetch('http://localhost:8080/api/notifications', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const formattedNotifications = data.notifications?.map((n: any) => ({
+          id: n.id.toString(),
+          type: mapBackendTypeToFrontend(n.type),
+          title: generateNotificationTitle(n.type, n.message),
+          message: n.message,
+          timestamp: new Date(n.timestamp),
+          isRead: n.status === 'read',
+          actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
+          fromUser: n.actor_id ? {
+            id: n.actor_id.toString(),
+            name: n.sender,
+            avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
+          } : undefined,
+          groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
+        })) || [];
+        setNotifications(formattedNotifications);
+      }
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
     }
   };
 
-  const handleMarkAsRead = (id: string) => {
-    // Logic to mark notification as read (API call in the future)
-    console.log("Marking notification as read:", id);
+  const mapBackendTypeToFrontend = (backendType: string): Notification['type'] => {
+    switch (backendType) {
+      case 'friend_request':
+      case 'follow_request':
+        return 'follow_request';
+      case 'group_invite':
+      case 'group_invitation':
+        return 'group_invitation';
+      case 'group_join_request':
+        return 'group_join_request';
+      case 'event':
+      case 'group_event':
+        return 'event_created';
+      default:
+        return 'message';
+    }
+  };
+
+  const generateNotificationTitle = (type: string, message: string): string => {
+    // For join request responses, determine title from message content
+    if (message.includes('has been accepted')) {
+      return 'Join Request Accepted';
+    }
+    if (message.includes('has been declined')) {
+      return 'Join Request Declined';
+    }
+    
+    switch (type) {
+      case 'friend_request':
+      case 'follow_request':
+        return 'New Friend Request';
+      case 'group_invitation':
+        return 'Group Invitation';
+      case 'group_join_request':
+        return 'Group Join Request';
+      case 'group_event':
+        return 'New Event';
+      case 'follow_accepted':
+        return 'Request Accepted';
+      default:
+        return 'Notification';
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Set a timeout for logout to prevent infinite hanging
+      const logoutPromise = logout();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Logout timeout')), 5000)
+      );
+      
+      await Promise.race([logoutPromise, timeoutPromise]);
+    } catch (error) {
+      console.error('Logout failed or timed out:', error);
+      // Continue with redirect even if logout fails
+    } finally {
+      // Always redirect regardless of logout success/failure
+      window.location.replace('/login');
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/notifications/${id}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        setNotifications(notifications.map(n => 
+          n.id === id ? { ...n, isRead: true } : n
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
   };
 
   const handleAcceptFollowRequest = (userId: string) => {
     console.log("Accepting follow request from:", userId);
+    // TODO: Implement follow request acceptance
   };
 
   const handleDeclineFollowRequest = (userId: string) => {
     console.log("Declining follow request from:", userId);
+    // TODO: Implement follow request decline
   };
 
   const handleAcceptGroupInvitation = (groupId: string) => {
     console.log("Accepting group invitation for:", groupId);
+    // TODO: Implement group invitation acceptance
   };
 
   const handleDeclineGroupInvitation = (groupId: string) => {
     console.log("Declining group invitation for:", groupId);
+    // TODO: Implement group invitation decline
   };
 
-  const handleAcceptGroupJoinRequest = (userId: string, groupId: string) => {
-    console.log(`Accepting group join request from user ${userId} for group ${groupId}`);
+  const handleAcceptGroupJoinRequest = async (userId: string, groupId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${userId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'accepted' }),
+      });
+      if (response.ok) {
+        // Refresh notifications to remove the processed request
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error("Failed to accept group join request:", error);
+    }
   };
 
-  const handleDeclineGroupJoinRequest = (userId: string, groupId: string) => {
-    console.log(`Declining group join request from user ${userId} for group ${groupId}`);
+  const handleDeclineGroupJoinRequest = async (userId: string, groupId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${userId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'declined' }),
+      });
+      if (response.ok) {
+        // Refresh notifications to remove the processed request
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error("Failed to decline group join request:", error);
+    }
   };
 
   const isActivePage = (path: string) => {
@@ -205,7 +310,7 @@ export const Navbar: React.FC = () => {
         {/* User Menu */}
         <div className="flex items-center space-x-4">
           <NotificationCenter
-            notifications={mockNotifications}
+            notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
             onAcceptFollowRequest={handleAcceptFollowRequest}
             onDeclineFollowRequest={handleDeclineFollowRequest}
@@ -248,9 +353,13 @@ export const Navbar: React.FC = () => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+              <DropdownMenuItem 
+                onClick={handleLogout} 
+                className="cursor-pointer"
+                disabled={loggingOut}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>{loggingOut ? 'Logging out...' : 'Log out'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -278,7 +387,7 @@ export const Navbar: React.FC = () => {
             </Link>
           ))}
           <NotificationCenter
-            notifications={mockNotifications}
+            notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
             onAcceptFollowRequest={handleAcceptFollowRequest}
             onDeclineFollowRequest={handleDeclineFollowRequest}
