@@ -16,6 +16,32 @@ import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Heart } from "lucide-react"
 
+// Type definitions
+interface User {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string;
+  isOnline: boolean;
+}
+
+interface Post {
+  id: string;
+  user: User;
+  content: string;
+  timestamp: Date;
+  likes: number;
+  comments: number;
+  shares: number;
+  liked: boolean;
+}
+
+interface EventData {
+  title: string;
+  description: string;
+  dateTime: Date;
+}
+
 // Mock data for group, posts, events, and users
 // Replace with real data fetching logic later
 const mockGroup = {
@@ -57,10 +83,10 @@ export default function GroupDetailPage() {
   const [eventDescription, setEventDescription] = useState("")
 
   // Move mockPosts to state
-  const [posts, setPosts] = React.useState([
+  const [posts, setPosts] = React.useState<Post[]>([
     {
       id: "p1",
-      user: { id: "1", name: "Admin", username: "admin", avatar: "" },
+      user: { id: "1", name: "Admin", username: "admin", avatar: "", isOnline: true },
       content: "Welcome to the group!",
       timestamp: new Date(),
       likes: 2,
@@ -73,12 +99,12 @@ export default function GroupDetailPage() {
   // TODO: Fetch group, posts, events, availableUsers from backend
 
   // Handlers for actions (replace with real logic)
-  const handleBack = () => router.push("/groups")
-  const handleCreatePost = (content, image) => {
+  const handleCreatePost = (content: string, image?: File | null) => {
     // Implement post creation logic
     alert(`Post created: ${content}`)
   }
-  const handleLikePost = (postId) => {
+  
+  const handleLikePost = (postId: string) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post.id === postId
@@ -91,29 +117,31 @@ export default function GroupDetailPage() {
       )
     );
   }
-  const handleInviteUsers = (userIds) => {
+  
+  const handleInviteUsers = (userIds: string[]) => {
     // Implement invite logic
     alert(`Invited users: ${userIds.join(", ")}`)
     setIsInviteModalOpen(false)
   }
-  const handleCreateEvent = (eventData) => {
+  
+  const handleCreateEvent = (eventData: EventData) => {
     // Implement event creation logic
     alert(`Event created: ${eventData.title}`)
     setIsEventModalOpen(false)
   }
+  
   const handleLeaveGroup = () => {
     // Implement leave logic
     alert("Left group")
   }
-  const handleEventResponse = (eventId, response) => {
+  
+  const handleEventResponse = (eventId: string, response: string) => {
     // Implement event response logic
     alert(`Event ${eventId}: ${response}`)
   }
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-6xl">
-      <Button variant="outline" onClick={handleBack} className="mb-6">Back to Groups</Button>
-      
       {/* Group Header */}
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center gap-4">
@@ -237,7 +265,7 @@ export default function GroupDetailPage() {
             </CardHeader>
             <CardContent>
               <Textarea placeholder={`Share something with ${mockGroup.name}...`} className="mb-4" />
-              <Button onClick={() => handleCreatePost("New post content")}>Post</Button>
+              <Button onClick={() => handleCreatePost("New post content", null)}>Post</Button>
             </CardContent>
           </Card>
 
@@ -275,17 +303,6 @@ export default function GroupDetailPage() {
 
         {/* Sidebar */}
         <div>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              <Button variant="ghost" className="justify-start" onClick={() => setIsInviteModalOpen(true)}>Invite Friends</Button>
-              <Button variant="ghost" className="justify-start" onClick={() => setIsEventModalOpen(true)}>Create Event</Button>
-              <Button variant="ghost" className="justify-start" onClick={() => handleCreatePost("New post content")}>Create Post</Button>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Members ({mockGroup.members.length})</CardTitle>
