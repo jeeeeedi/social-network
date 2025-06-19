@@ -16,7 +16,6 @@ import {
 import {
   Camera,
   Heart,
-  Home,
   MessageCircle,
   MoreHorizontal,
   Repeat2,
@@ -309,10 +308,10 @@ export default function SocialNetworkPage() {
               </div>
 
               <nav className="space-y-2">
-                <Button variant="ghost" className="w-full justify-start gap-3">
+                {/* <Button variant="ghost" className="w-full justify-start gap-3">
                   <Home className="h-5 w-5" />
                   Home
-                </Button>
+                </Button> */}
                 <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/profile/me'}>
                   <User className="h-5 w-5" />
                   Profile
