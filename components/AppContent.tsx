@@ -21,7 +21,7 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
   // Handle route protection in effect rather than routing (since Next.js handles routing)
   React.useEffect(() => {
     // Don't redirect during loading
-    if (loading) return;
+    if (loading || loggingOut) return;
 
     // Redirect unauthenticated users from protected routes
     if (!isAuthenticated && !isAuthPage) {
@@ -32,11 +32,11 @@ export const AppContent: React.FC<AppContentProps> = ({ children }) => {
 
     // Redirect authenticated users from auth pages
     if (isAuthenticated && isAuthPage) {
-      // Use window.location.href for immediate redirect to avoid Next.js delays
-      window.location.href = '/';
+      // Use router.replace for proper Next.js navigation
+      router.replace('/');
       return;
     }
-  }, [isAuthenticated, pathname, loading, router, isAuthPage]);
+  }, [isAuthenticated, pathname, loading, loggingOut, router, isAuthPage]);
 
   // Show a loading screen while session is being checked or during logout
   if (loading || loggingOut) {
