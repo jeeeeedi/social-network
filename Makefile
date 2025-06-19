@@ -2,13 +2,15 @@
 # `make start` runs both the backend and frontend servers in parallel.
 # `make stop` stops both servers.
 
-.PHONY: start stop backend frontend
+.PHONY: start stop backend frontend open-chrome
 
 # Run both backend and frontend in parallel
 start: 
 	@echo "Starting backend and frontend..."
 	$(MAKE) backend &
 	$(MAKE) frontend &
+	sleep 3
+	$(MAKE) open-chrome
 	wait
 
 # Run backend
@@ -21,7 +23,10 @@ frontend:
 
 # Stop both backend and frontend servers
 stop:
-	@echo "Stopping backend (8080) and frontend (3000/3001)..."
-	@lsof -ti :3000 | xargs kill -9 2>/dev/null || echo "No process on port 3000"
-	@lsof -ti :3001 | xargs kill -9 2>/dev/null || echo "No process on port 3001"
-	@lsof -ti :8080 | xargs kill -9 2>/dev/null || echo "No process on port 8080"
+	@echo "Stopping backend (8080) and frontend (3000)..."
+	@lsof -ti :3000 | xargs kill -9 || echo "No process on port 3000"
+	@lsof -ti :8080 | xargs kill -9 || echo "No process on port 8080"
+
+# Open the frontend in Chrome in incognito mode
+open-chrome:
+	open -na "Google Chrome" --args --incognito http://localhost:3000/

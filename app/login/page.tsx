@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const { login } = useAuth();
@@ -25,6 +25,12 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+    
     const validationErrors = validateLogin(formData);
     
     if (Object.keys(validationErrors).length === 0) {
@@ -32,11 +38,11 @@ export default function LoginPage() {
       setLoginError(null);
       try {
         await login(formData);
-        router.push('/');
+        // Use window.location.href for immediate redirect to avoid Next.js router delays
+        window.location.href = '/';
       } catch (err) {
         console.error('Login failed:', err);
-        setLoginError(err.message || 'Login failed. Please check your credentials and try again.');
-      } finally {
+        setLoginError((err as Error).message || 'Login failed. Please check your credentials and try again.');
         setIsSubmitting(false);
       }
     } else {
@@ -96,7 +102,14 @@ export default function LoginPage() {
               className="w-full"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Logging in...' : 'Login'}
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  Logging in...
+                </div>
+              ) : (
+                'Login'
+              )}
             </Button>
             
             <Button

@@ -17,6 +17,8 @@ interface Group {
   creator_id: number;
   creator_name: string;
   created_at: string;
+  member_count: number;
+  user_status?: string;
   isMember?: boolean;
   isPending?: boolean;
   // Optional fields that might not be provided by backend
@@ -36,14 +38,11 @@ export default function GroupsPage() {
   const [selectedTab, setSelectedTab] = useState("all");
 
   useEffect(() => {
-    if (!loading && !currentUser) {
-      router.push("/login");
-      return;
-    }
-    if (currentUser) {
+    // Only fetch groups if user is authenticated and not loading
+    if (!loading && currentUser) {
       fetchGroups();
     }
-  }, [currentUser, loading, router]);
+  }, [currentUser, loading]);
 
   const fetchGroups = async () => {
     setIsLoadingGroups(true);
@@ -57,10 +56,6 @@ export default function GroupsPage() {
         },
       });
       if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login');
-          return;
-        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const text = await response.text();
@@ -102,7 +97,8 @@ export default function GroupsPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const newGroup = await response.json();
-      setGroups([...groups, newGroup]);
+      // Refetch all groups to get enriched data with creator name and member count
+      await fetchGroups();
     } catch (err) {
       console.error("Failed to create group:", err);
       alert("Failed to create group. Please try again.");
@@ -125,7 +121,8 @@ export default function GroupsPage() {
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      setGroups(groups.map((group: Group) => group.group_id === parseInt(groupId) ? { ...group, isPending: true } : group));
+      // Refetch groups to get updated status instead of manually setting isPending
+      await fetchGroups();
     } catch (err) {
       console.error("Failed to join group:", err);
       alert("Failed to join group. Please try again.");
@@ -136,7 +133,7 @@ export default function GroupsPage() {
     // Note: This is a placeholder as the backend might not have a direct leave endpoint yet
     try {
       // Assuming there's a way to leave or update membership status to declined
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${currentUser.id}`, {
+      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${currentUser.user_id}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -145,10 +142,6 @@ export default function GroupsPage() {
         body: JSON.stringify({ status: 'declined' }),
       });
       if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login');
-          return;
-        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       setGroups(groups.map((group: Group) => group.group_id === parseInt(groupId) ? { ...group, isMember: false, isPending: false } : group));
@@ -219,16 +212,16 @@ export default function GroupsPage() {
                 avatar: group.avatar || "/placeholder.svg",
                 creatorId: group.creator_id.toString(),
                 creatorName: group.creator_name || "Unknown",
-                memberCount: group.memberCount || 0,
+                memberCount: group.member_count || 0,
                 isPrivate: group.isPrivate || false,
-                isMember: group.isMember || false, 
-                isPending: group.isPending || false,
+                isMember: group.user_status === 'accepted',
+                isPending: group.user_status === 'requested' || group.user_status === 'invited',
                 events: group.events || []
               }} 
               onJoinGroup={handleJoinGroup} 
               onLeaveGroup={handleLeaveGroup} 
               onViewGroup={handleViewGroup} 
-              currentUserId={currentUser?.id?.toString() || "0"} 
+              currentUserId={currentUser?.user_id?.toString() || "0"} 
             />
           ))
         ) : (
