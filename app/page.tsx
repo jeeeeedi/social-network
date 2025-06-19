@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Bookmark,
   Camera,
   Heart,
   Home,
@@ -22,7 +21,6 @@ import {
   MoreHorizontal,
   Repeat2,
   Send,
-  Settings,
   Share,
   User,
   Users,
@@ -322,14 +320,6 @@ export default function SocialNetworkPage() {
                 <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/groups'}>
                   <Users className="h-5 w-5" />
                   Groups
-                </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <Bookmark className="h-5 w-5" />
-                  Saved
-                </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <Settings className="h-5 w-5" />
-                  Settings
                 </Button>
               </nav>
             </CardContent>
