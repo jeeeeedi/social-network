@@ -67,9 +67,6 @@ export function Feed({ currentUser }: { currentUser: any }) {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedPostUUID, setExpandedPostUUID] = useState<string | null>(null);
-  const [commentsByPost, setCommentsByPost] = useState<Record<number, any[]>>(
-    {}
-  );
   const [commentContent, setCommentContent] = useState<Record<string, string>>(
     {}
   );
@@ -174,29 +171,8 @@ export function Feed({ currentUser }: { currentUser: any }) {
     }
   };
 
-  const handleCommentClick = async (postUUID: string) => {
-    if (expandedPostUUID === postUUID) {
-      setExpandedPostUUID(null); // Collapse if already open
-      return;
-    }
-    // Fetch comments only if not already fetched
-    if (!commentsByPost[Number(postUUID)]) {
-      const res = await fetch(
-        `http://localhost:8080/api/getcomments/${postUUID}`,
-        {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      if (!res.ok) throw new Error(`Failed to fetch comments: ${res.status}`);
-      const comments = await res.json();
-      setCommentsByPost((prev) => ({
-        ...prev,
-        [postUUID]: comments,
-      }));
-    }
-    setExpandedPostUUID(postUUID);
+  const handleCommentClick = (postUUID: string) => {
+    setExpandedPostUUID(expandedPostUUID === postUUID ? null : postUUID);
   };
 
   const handleCommentSubmit = async (
@@ -233,34 +209,16 @@ export function Feed({ currentUser }: { currentUser: any }) {
         [postUUID]: null,
       }));
 
-      // Refresh comments for this post
-      const commentsRes = await fetch(
-        `http://localhost:8080/api/getcomments/${postUUID}`,
-        {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      if (!commentsRes.ok)
-        throw new Error(`Failed to fetch comments: ${commentsRes.status}`);
-      const comments = await commentsRes.json();
-      setCommentsByPost((prev) => ({
-        ...prev,
-        [postUUID]: comments,
-      }));
-
-      // Update the comment count in the posts state
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.post_uuid === postUUID
-            ? {
-                ...post,
-                comments: comments, // Update with fresh comments array
-              }
-            : post
-        )
-      );
+      // Refresh posts to get updated comments
+      const postsRes = await fetch("http://localhost:8080/api/getfeedposts", {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (postsRes.ok) {
+        const posts = await postsRes.json();
+        setPosts(posts);
+      }
     } catch (err) {
       alert(
         "Error creating comment: " +

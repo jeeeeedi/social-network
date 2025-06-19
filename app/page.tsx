@@ -145,6 +145,7 @@ export default function SocialNetworkPage() {
         if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
         const postData = await res.json();
         setPosts(postData);
+        
       } catch {
         setIsAuthenticated(false);
         setPosts([]);

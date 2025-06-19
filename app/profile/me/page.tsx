@@ -130,7 +130,14 @@ export default function MyProfilePage() {
         }
 
         // Fetch posts
-        const myPostsRes = await fetch("http://localhost:8080/api/getmyposts", {
+       /*  const myPostsRes = await fetch(
+              `http://localhost:8080/api/getmyposts/${currentUser.user_uuid}`, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        }); */
+        const myPostsRes = await fetch(
+              `http://localhost:8080/api/getmyposts`, {
           method: "GET",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

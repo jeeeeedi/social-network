@@ -3,20 +3,16 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
-	"strings"
-	"sync"
 	"time"
 )
 
 var (
-	comments   []dbTools.Comment
-	postID     int
-	commentID  int
-	storeMutex sync.Mutex
+	postID int
 )
 
 /* TODOs:
@@ -60,6 +56,7 @@ func GetFeedPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request)
 
 // GetMyPostsHandler handles getting my/user posts
 func GetMyPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	log.Print("GetMyPostsHandler called", r)
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -248,35 +245,5 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(comment)
-	return nil
-}
-
-// GetCommentsHandler for a specific post
-func GetCommentsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	middleware.SetCORSHeaders(w)
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return fmt.Errorf("method not allowed")
-	}
-
-	// Extract postUUID from URL path
-	// Example: /api/getcomments/abc-123
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 4 || parts[3] == "" {
-		http.Error(w, "Missing post UUID", http.StatusBadRequest)
-		return fmt.Errorf("missing post UUID")
-	}
-	postUUID := parts[3]
-
-	// Get all comments for the post
-	comments, err := db.GetCommentsForPost(r.Context(), postUUID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
-		return err
-	}
-
-	// Return the comments as JSON
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(comments)
 	return nil
 }

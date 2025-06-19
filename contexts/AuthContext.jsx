@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { checkSession, registerUser, loginUser, logoutUser } from '../lib/auth';
+import { createContext, useContext, useState, useEffect } from "react";
+import { checkSession, registerUser, loginUser, logoutUser } from "../lib/auth";
 
 export const AuthContext = createContext();
 
@@ -34,6 +34,8 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       setError(err.message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,6 +48,8 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       setError(err.message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,30 +57,35 @@ export const AuthProvider = ({ children }) => {
     setLoggingOut(true);
     // Immediately clear the user state to avoid UI confusion
     setCurrentUser(null);
-    
+
     try {
       await logoutUser();
     } catch (err) {
-      console.error('Logout API call failed:', err);
+      console.error("Logout API call failed:", err);
       // Even if the API call fails, user state is already cleared
+    } finally {
+      setLoading(false);
     }
-    
+
     // Reset loading state
     setLoggingOut(false);
+    setLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      currentUser, 
-      setCurrentUser, 
-      loading, 
-      error, 
-      register, 
-      login, 
-      logout, 
-      logoutUser,
-      loggingOut 
-    }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        setCurrentUser,
+        loading,
+        error,
+        register,
+        login,
+        logout,
+        logoutUser,
+        loggingOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
