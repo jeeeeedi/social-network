@@ -154,7 +154,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose, isMinimized
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
+            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} className="object-cover"/>
             <AvatarFallback>
               {group.name
                 .split(" ")
@@ -192,7 +192,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose, isMinimized
                 {groupMessages.map((message) => (
                   <div key={message.id} className="flex gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} />
+                      <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} className="object-cover"/>
                       <AvatarFallback className="text-xs">
                         {message.senderName
                           .split(" ")
