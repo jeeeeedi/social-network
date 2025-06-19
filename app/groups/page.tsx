@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateGroupDialog } from "@/components/create-group-dialog";
 import { GroupCard } from "@/components/group-card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Define interface for Group data structure to avoid 'any' type
 interface Group {
@@ -32,6 +33,7 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState("all");
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -157,11 +159,13 @@ export default function GroupsPage() {
   };
 
   const handleViewGroup = (groupId: string) => {
-    // Placeholder for navigation to a specific group page
-    console.log("Viewing group:", groupId);
-    // In the future, navigate to a specific group page
-    // router.push(`/groups/${groupId}`);
+    router.push(`/groups/${groupId}`);
   };
+
+  // Filter groups based on selected tab
+  const filteredGroups = selectedTab === "my"
+    ? groups.filter((group) => group.isMember)
+    : groups;
 
   if (loading || isLoadingGroups) {
     return (
@@ -195,9 +199,17 @@ export default function GroupsPage() {
         <CreateGroupDialog onCreateGroup={handleCreateGroup} />
       </div>
 
+      {/* Tabs for All / My Groups */}
+      <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab} className="w-full mb-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="my">My Groups</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {groups.length > 0 ? (
-          groups.map((group: Group) => (
+        {filteredGroups.length > 0 ? (
+          filteredGroups.map((group: Group) => (
             <GroupCard 
               key={group.group_id} 
               group={{ 
@@ -223,7 +235,9 @@ export default function GroupsPage() {
           <Card className="col-span-full">
             <CardContent className="text-center py-8">
               <CardTitle>No groups found</CardTitle>
-              <p className="text-muted-foreground mt-2">Create a new group to get started.</p>
+              <p className="text-muted-foreground mt-2">
+                {selectedTab === "my" ? "You are not a member of any groups yet." : "No groups available."}
+              </p>
             </CardContent>
           </Card>
         )}

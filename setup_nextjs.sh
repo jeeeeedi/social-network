@@ -73,8 +73,37 @@ if ! command -v sqlite3 &> /dev/null; then
     echo ""
 fi
 
-npm install next react react-dom
-npm install
+# Install all required dependencies for the project
+npm install \
+  lucide-react \
+  @radix-ui/react-tabs \
+  @radix-ui/react-dialog \
+  @radix-ui/react-checkbox \
+  @radix-ui/react-dropdown-menu \
+  @radix-ui/react-switch \
+  @radix-ui/react-popover \
+  @radix-ui/react-label \
+  @radix-ui/react-avatar \
+  @radix-ui/react-separator \
+  @radix-ui/react-radio-group \
+  @radix-ui/react-toast \
+  @radix-ui/react-slider \
+  @radix-ui/react-progress \
+  @radix-ui/react-tooltip \
+  @radix-ui/react-collapsible \
+  @radix-ui/react-accordion \
+  @radix-ui/react-menubar \
+  @radix-ui/react-navigation-menu \
+  @radix-ui/react-select \
+  @radix-ui/react-form \
+  @radix-ui/react-alert-dialog \
+  @radix-ui/react-sheet \
+  @radix-ui/react-drawer \
+  @radix-ui/react-resizable \
+  @radix-ui/react-context-menu
+
+# Install peer dependencies if needed
+npm install react react-dom
 
 # Setup frontend dependencies
 
