@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Bookmark,
   Camera,
   Heart,
   Home,
@@ -21,6 +22,8 @@ import {
   MoreHorizontal,
   Repeat2,
   Send,
+  Settings,
+  Share,
   User,
   Users,
   X,
@@ -33,6 +36,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { sanitize } from "@/utils/sanitize"
 import { checkSession } from "@/lib/auth"
 import { formatDateTime } from "@/utils/formatDate"
+import { Feed } from "@/components/feed"
 
 interface Post {
   post_id: number;
@@ -138,7 +142,7 @@ export default function SocialNetworkPage() {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
         });
-        if (!res.ok) throw new Error("Failed to fetch posts");
+        if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
         const postData = await res.json();
         setPosts(postData);
       } catch {
@@ -210,7 +214,7 @@ export default function SocialNetworkPage() {
         credentials: "include",
       });
 
-      if (!res.ok) throw new Error("Failed to create post");
+      if (!res.ok) throw new Error(`Failed to create post: ${res.status}`);
 
       // Reset the form after successful post
       setContent("");
@@ -290,6 +294,7 @@ export default function SocialNetworkPage() {
                   <AvatarImage 
                     src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
                     alt={currentUser?.nickname || "User"} 
+                    className="object-cover"
                   />
                   <AvatarFallback>
                     {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
@@ -318,6 +323,14 @@ export default function SocialNetworkPage() {
                   <Users className="h-5 w-5" />
                   Groups
                 </Button>
+                <Button variant="ghost" className="w-full justify-start gap-3">
+                  <Bookmark className="h-5 w-5" />
+                  Saved
+                </Button>
+                <Button variant="ghost" className="w-full justify-start gap-3">
+                  <Settings className="h-5 w-5" />
+                  Settings
+                </Button>
               </nav>
             </CardContent>
           </Card>
@@ -325,153 +338,7 @@ export default function SocialNetworkPage() {
 
         {/* Main Content */}
         <main className="lg:col-span-2 space-y-6">
-          {/* Create Post */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex gap-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=40&width=40"} 
-                    alt={currentUser?.nickname || "User"} 
-                  />
-                  <AvatarFallback>
-                    {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-4">
-                  <Textarea
-                    placeholder="What's on your mind?"
-                    value={content}
-                    onChange={(e) => {
-                      if (e.target.value.length <= 3000) setContent(e.target.value);
-                    }}
-                    className="min-h-[100px] resize-none border-0 p-0 text-lg placeholder:text-muted-foreground focus-visible:ring-0"
-                    maxLength={3000}
-                  />
-                  
-                  {/* Image Preview */}
-                  {imagePreview && (
-                    <div className="relative inline-block">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="max-w-40 max-h-40 object-cover rounded-lg border"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                        onClick={handleRemoveImage}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2 items-center">
-                      <Button variant="ghost" size="sm" asChild>
-                        <label className="cursor-pointer">
-                          <Camera className="h-4 w-4 mr-2" />
-                          Photo
-                          <input
-                            type="file"
-                            accept="image/*,image/gif"
-                            className="hidden"
-                            onChange={handleAddPhoto}
-                          />
-                        </label>
-                      </Button>
-                      
-                      <select
-                        value={privacy}
-                        onChange={(e) => setPrivacy(e.target.value)}
-                        className="text-sm border rounded px-2 py-1 bg-background"
-                      >
-                        <option value="public">Public</option>
-                        <option value="semiprivate">Semiprivate</option>
-                        <option value="private">Private</option>
-                      </select>
-                    </div>
-                    
-                    <Button 
-                      onClick={handlePost} 
-                      disabled={!content.trim() || submitting}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      {submitting ? 'Posting...' : 'Post'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Posts Feed */}
-          <div className="space-y-6">
-            {(!posts || posts.length === 0) ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground">No posts yet.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              posts.map((post) => (
-                <Card key={post.post_id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage 
-                            src={post.avatar && post.avatar.trim() !== '' ? `http://localhost:8080${post.avatar}` : "/placeholder.svg"} 
-                            alt={`@${post.nickname}`} 
-                          />
-                          <AvatarFallback>
-                            {post.nickname?.charAt(0)?.toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-semibold">{post.nickname}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            @{post.nickname} · {formatDateTime(post.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-sm leading-relaxed mb-4">{post.content}</p>
-                    {post.filename_new && (
-                      <div className="mb-4 rounded-lg overflow-hidden">
-                        <img
-                          src={`http://localhost:8080/uploads/${post.filename_new}`}
-                          alt="Post image"
-                          className="w-full max-w-md object-cover mx-auto"
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center gap-6">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleLike(post.post_id)}
-                          className={post.liked ? "text-red-500" : ""}
-                        >
-                          <Heart className={`h-4 w-4 mr-2 ${post.liked ? "fill-current" : ""}`} />
-                          {post.likes || 0}
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          {post.comments || 0}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+          <Feed currentUser={currentUser} />
         </main>
 
         {/* Right Sidebar */}
@@ -618,4 +485,4 @@ export default function SocialNetworkPage() {
       )}
     </div>
   )
-} 
+}

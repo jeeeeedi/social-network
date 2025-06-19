@@ -25,4 +25,6 @@ pnpm-debug.log*
 
 # Optional: VS Code settings
 .vscode/
+
+# DB
 ./socnet.db

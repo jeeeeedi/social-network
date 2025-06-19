@@ -72,7 +72,7 @@ export function GroupCard({ group, onJoinGroup, onLeaveGroup, onViewGroup, curre
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={groupName} />
+            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={groupName} className="object-cover"/>
             <AvatarFallback>
               {groupName
                 .split(" ")

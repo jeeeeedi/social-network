@@ -26,7 +26,6 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/groups/", handlers.GroupsHandler) // Handle subroutes under groups
 
 	// Routes for POSTS and COMMENTS
-	// TODO: Check if these work
 	http.HandleFunc("/api/createposts", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreatePostHandler(db, w, r)
 	})
@@ -36,14 +35,12 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/getmyposts", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetMyPostsHandler(db, w, r)
 	})
-	//http.HandleFunc("/api/comments", handlers.CreateCommentHandler)
-
-	/*http.HandleFunc("/api/follow/", handlers.FollowUserHandler)
-	http.HandleFunc("/api/unfollow/", handlers.UnfollowUserHandler)
-	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
-	http.HandleFunc("/api/following/", handlers.GetFollowingHandler)
-	http.HandleFunc("/api/follow/", handlers.FollowHandler)
-	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)*/
+	http.HandleFunc("/api/createcomment", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CreateCommentHandler(db, w, r)
+	})
+	http.HandleFunc("/api/getcomments/{postUUID}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetCommentsHandler(db, w, r)
+	})
 
 	// Routes for FOLLOWS and NOTIFICATIONS
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
@@ -52,7 +49,6 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
 	http.HandleFunc("/api/follows", handlers.FollowRequestHandler)       // Added for follow request operations
 	http.HandleFunc("/api/notifications/", handlers.NotificationHandler) // Added for notifications
-
 }
 
 func main() {
