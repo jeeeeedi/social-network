@@ -46,12 +46,15 @@ func (db *DB) GetGroupByID(id int) (*Group, error) {
 	return g, nil
 }
 
-// GetAllGroups retrieves all groups for browsing with creator names
+// GetAllGroups retrieves all groups for browsing with creator names and member counts
 func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
 	query := `SELECT g.group_id, g.title, g.description, g.creator_id, g.created_at,
-	          COALESCE(u.nickname, u.first_name) as creator_name
+	          COALESCE(u.nickname, u.first_name) as creator_name,
+	          COALESCE(COUNT(gm.member_id), 0) as member_count
 	          FROM groups g
-	          JOIN users u ON g.creator_id = u.user_id AND u.status = 'active'`
+	          JOIN users u ON g.creator_id = u.user_id AND u.status = 'active'
+	          LEFT JOIN group_members gm ON g.group_id = gm.group_id AND gm.status = 'accepted'
+	          GROUP BY g.group_id, g.title, g.description, g.creator_id, g.created_at, u.nickname, u.first_name`
 	rows, err := db.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -60,10 +63,10 @@ func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
 
 	var groups []map[string]interface{}
 	for rows.Next() {
-		var groupID, creatorID int
+		var groupID, creatorID, memberCount int
 		var title, description, createdAtStr, creatorName string
 
-		err := rows.Scan(&groupID, &title, &description, &creatorID, &createdAtStr, &creatorName)
+		err := rows.Scan(&groupID, &title, &description, &creatorID, &createdAtStr, &creatorName, &memberCount)
 		if err != nil {
 			return nil, err
 		}
@@ -81,6 +84,7 @@ func (db *DB) GetAllGroups() ([]map[string]interface{}, error) {
 			"creator_id":   creatorID,
 			"creator_name": creatorName,
 			"created_at":   createdAt,
+			"member_count": memberCount,
 		}
 		groups = append(groups, group)
 	}

@@ -16,6 +16,7 @@ interface Group {
   creator_id: number;
   creator_name: string;
   created_at: string;
+  member_count: number;
   isMember?: boolean;
   isPending?: boolean;
   // Optional fields that might not be provided by backend
@@ -196,7 +197,7 @@ export default function GroupsPage() {
                 avatar: group.avatar || "/placeholder.svg",
                 creatorId: group.creator_id.toString(),
                 creatorName: group.creator_name || "Unknown",
-                memberCount: group.memberCount || 0,
+                memberCount: group.member_count || 0,
                 isPrivate: group.isPrivate || false,
                 isMember: group.isMember || false, 
                 isPending: group.isPending || false,

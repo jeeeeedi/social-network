@@ -51,23 +51,25 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     setLoggingOut(true);
+    // Immediately clear the user state to avoid UI confusion
+    setCurrentUser(null);
+    
     try {
       await logoutUser();
     } catch (err) {
       console.error('Logout API call failed:', err);
-      // Even if the API call fails, we should clear the user state
-    } finally {
-      // Always clear the user state regardless of API success/failure
-      setCurrentUser(null);
-      setLoggingOut(false);
+      // Even if the API call fails, user state is already cleared
     }
+    
+    // Reset loading state
+    setLoggingOut(false);
   };
 
   return (
     <AuthContext.Provider value={{ 
       currentUser, 
       setCurrentUser, 
-      loading: loading || loggingOut, 
+      loading, 
       error, 
       register, 
       login, 

@@ -73,13 +73,19 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
-      // Force immediate navigation to login
-      window.location.href = '/login';
+      // Set a timeout for logout to prevent infinite hanging
+      const logoutPromise = logout();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Logout timeout')), 5000)
+      );
+      
+      await Promise.race([logoutPromise, timeoutPromise]);
     } catch (error) {
-      console.error('Logout failed:', error);
-      // Even if logout fails, redirect to login
-      window.location.href = '/login';
+      console.error('Logout failed or timed out:', error);
+      // Continue with redirect even if logout fails
+    } finally {
+      // Always redirect regardless of logout success/failure
+      window.location.replace('/login');
     }
   };
 
