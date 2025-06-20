@@ -160,7 +160,9 @@ export default function GroupsPage() {
 
   // Filter groups based on selected tab
   const filteredGroups = selectedTab === "my"
-    ? groups.filter((group) => group.isMember)
+    ? groups.filter((group) => 
+        group.creator_id === currentUser?.user_id || group.user_status === 'accepted'
+      )
     : groups;
 
   if (loading || isLoadingGroups) {

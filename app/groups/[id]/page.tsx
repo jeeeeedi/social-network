@@ -26,21 +26,7 @@ interface GroupMember {
   isOnline: boolean;
 }
 
-interface Post {
-  id: string;
-  user: {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-  };
-  content: string;
-  timestamp: Date;
-  likes: number;
-  comments: number;
-  shares: number;
-  liked: boolean;
-}
+
 
 interface GroupChatType {
   id: string;
@@ -665,8 +651,9 @@ export default function GroupDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
- {/* Group Chat Interface */}
- {activeGroupChat && (
+
+      {/* Group Chat Interface */}
+      {activeGroupChat && (
         <GroupChat
           group={activeGroupChat}
           messages={messages}
@@ -676,75 +663,6 @@ export default function GroupDetailPage() {
           onToggleMinimize={() => setIsGroupChatMinimized(!isGroupChatMinimized)}
         />
       )}
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {/* Create Post Section */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Create Post</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea placeholder={`Share something with ${mockGroup.name}...`} className="mb-4" />
-              <Button onClick={() => handleCreatePost("New post content", null)}>Post</Button>
-            </CardContent>
-          </Card>
-
-          {/* Posts List */}
-          <div className="space-y-6">
-            {posts.map(post => (
-              <Card key={post.id}>
-                <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                  <Avatar>
-                    <img src={post.user.avatar || "/placeholder.svg"} alt={post.user.name} />
-                  </Avatar>
-                  <div>
-                    <CardTitle>{post.user.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{post.timestamp.toLocaleString()}</p>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4">{post.content}</p>
-                  <div className="flex gap-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleLikePost(post.id)}
-                      className={post.liked ? "text-red-500" : ""}
-                    >
-                      <Heart className={`h-4 w-4 mr-2 ${post.liked ? "fill-current" : ""}`} />
-                      {post.likes || 0}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Members ({mockGroup.members.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {mockGroup.members.map(member => (
-                <div key={member.id} className="flex items-center gap-4">
-                  <Avatar>
-                    <img src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{member.name}</p>
-                    <p className="text-sm text-muted-foreground">@{member.username}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
     </div>
   )
 } 
