@@ -131,28 +131,39 @@ func getEventByIDGeneral(w http.ResponseWriter, db *dbTools.DB, eventID int) {
 
 // respondToEventGeneral allows a user to RSVP to an event
 func respondToEventGeneral(w http.ResponseWriter, r *http.Request, db *dbTools.DB, eventID int) {
+	log.Printf("RSVP request for event %d", eventID)
+
 	userID := getUserIDFromContextEvents(r, db)
 	if userID == 0 {
+		log.Printf("Unauthorized RSVP attempt for event %d", eventID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
+	log.Printf("User %d attempting to RSVP to event %d", userID, eventID)
+
 	event, err := db.GetEventByID(eventID)
 	if err != nil {
+		log.Printf("Error retrieving event %d: %v", eventID, err)
 		http.Error(w, "Failed to retrieve event", http.StatusInternalServerError)
 		return
 	}
 	if event == nil {
+		log.Printf("Event %d not found", eventID)
 		http.Error(w, "Event not found", http.StatusNotFound)
 		return
 	}
 
+	log.Printf("Event found: %+v", event)
+
 	isMember, err := db.IsGroupMember(event.GroupID, userID)
 	if err != nil {
+		log.Printf("Error checking membership for user %d in group %d: %v", userID, event.GroupID, err)
 		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
 		return
 	}
 	if !isMember {
+		log.Printf("User %d is not a member of group %d", userID, event.GroupID)
 		http.Error(w, "Forbidden: Only group members can RSVP", http.StatusForbidden)
 		return
 	}
@@ -161,21 +172,29 @@ func respondToEventGeneral(w http.ResponseWriter, r *http.Request, db *dbTools.D
 		Response string `json:"response"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&rsvp); err != nil {
+		log.Printf("Error decoding RSVP request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("RSVP response: %s", rsvp.Response)
+
 	if rsvp.Response != "going" && rsvp.Response != "not_going" {
+		log.Printf("Invalid RSVP response value: %s", rsvp.Response)
 		http.Error(w, "Invalid response value", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("Attempting to record RSVP: event=%d, user=%d, response=%s", eventID, userID, rsvp.Response)
+
 	err = db.RespondToEvent(eventID, userID, rsvp.Response)
 	if err != nil {
+		log.Printf("Error recording RSVP: %v", err)
 		http.Error(w, "Failed to record response", http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("Successfully recorded RSVP for user %d to event %d: %s", userID, eventID, rsvp.Response)
 	w.WriteHeader(http.StatusOK)
 }
 

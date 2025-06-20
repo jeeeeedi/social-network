@@ -6,8 +6,8 @@ import (
 
 // CreateEvent creates a new event in the database for a group
 func (db *DB) CreateEvent(e *Event) (*Event, error) {
-	query := `INSERT INTO events (creator_id, group_id, title, description, event_date_time) VALUES (?, ?, ?, ?, ?)`
-	result, err := db.db.Exec(query, e.CreatorID, e.GroupID, e.Title, e.Description, e.EventDateTime)
+	query := `INSERT INTO events (creator_id, group_id, title, description, event_date_time, status, updater_id) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	result, err := db.db.Exec(query, e.CreatorID, e.GroupID, e.Title, e.Description, e.EventDateTime, e.Status, e.CreatorID)
 	if err != nil {
 		return nil, err
 	}
@@ -21,10 +21,10 @@ func (db *DB) CreateEvent(e *Event) (*Event, error) {
 
 // GetEventByID retrieves an event by its ID
 func (db *DB) GetEventByID(id int) (*Event, error) {
-	query := `SELECT event_id, creator_id, group_id, title, description, event_date_time, created_at FROM events WHERE event_id = ?`
+	query := `SELECT event_id, creator_id, group_id, title, description, event_date_time, status, created_at FROM events WHERE event_id = ?`
 	row := db.db.QueryRow(query, id)
 	e := &Event{}
-	err := row.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.CreatedAt)
+	err := row.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.Status, &e.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -36,7 +36,7 @@ func (db *DB) GetEventByID(id int) (*Event, error) {
 
 // GetEventsByGroupID retrieves all events for a specific group
 func (db *DB) GetEventsByGroupID(groupID int) ([]*Event, error) {
-	query := `SELECT event_id, creator_id, group_id, title, description, event_date_time, created_at FROM events WHERE group_id = ?`
+	query := `SELECT event_id, creator_id, group_id, title, description, event_date_time, status, created_at FROM events WHERE group_id = ?`
 	rows, err := db.db.Query(query, groupID)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (db *DB) GetEventsByGroupID(groupID int) ([]*Event, error) {
 	events := []*Event{}
 	for rows.Next() {
 		e := &Event{}
-		err := rows.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.CreatedAt)
+		err := rows.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.Status, &e.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -56,15 +56,32 @@ func (db *DB) GetEventsByGroupID(groupID int) ([]*Event, error) {
 
 // RespondToEvent allows a user to RSVP to an event
 func (db *DB) RespondToEvent(eventID, userID int, response string) error {
-	query := `INSERT INTO event_rsvps (event_id, responder_id, response) VALUES (?, ?, ?)
-	          ON CONFLICT (event_id, responder_id) DO UPDATE SET response = ?, updated_at = CURRENT_TIMESTAMP`
-	_, err := db.db.Exec(query, eventID, userID, response, response)
-	return err
+	// First, try to update existing RSVP
+	updateQuery := `UPDATE event_rsvp SET response = ?, updated_at = CURRENT_TIMESTAMP, updater_id = ? 
+	                WHERE event_id = ? AND responder_id = ?`
+	result, err := db.db.Exec(updateQuery, response, userID, eventID, userID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	// If no rows were updated, insert a new RSVP
+	if rowsAffected == 0 {
+		insertQuery := `INSERT INTO event_rsvp (event_id, responder_id, response, updater_id) VALUES (?, ?, ?, ?)`
+		_, err = db.db.Exec(insertQuery, eventID, userID, response, userID)
+		return err
+	}
+
+	return nil
 }
 
 // GetEventRSVPs retrieves all RSVPs for an event
 func (db *DB) GetEventRSVPs(eventID int) ([]*EventRSVP, error) {
-	query := `SELECT rsvp_id, event_id, responder_id, response, created_at FROM event_rsvps WHERE event_id = ?`
+	query := `SELECT rsvp_id, event_id, responder_id, response, created_at FROM event_rsvp WHERE event_id = ?`
 	rows, err := db.db.Query(query, eventID)
 	if err != nil {
 		return nil, err
@@ -84,7 +101,7 @@ func (db *DB) GetEventRSVPs(eventID int) ([]*EventRSVP, error) {
 
 // GetUserEventResponse retrieves a user's RSVP response for a specific event
 func (db *DB) GetUserEventResponse(eventID, userID int) (string, error) {
-	query := `SELECT response FROM event_rsvps WHERE event_id = ? AND responder_id = ?`
+	query := `SELECT response FROM event_rsvp WHERE event_id = ? AND responder_id = ?`
 	var response string
 	err := db.db.QueryRow(query, eventID, userID).Scan(&response)
 	if err != nil {
@@ -98,7 +115,7 @@ func (db *DB) GetUserEventResponse(eventID, userID int) (string, error) {
 
 // GetUserEvents retrieves all events from groups that a user is a member of
 func (db *DB) GetUserEvents(userID int) ([]*Event, error) {
-	query := `SELECT DISTINCT e.event_id, e.creator_id, e.group_id, e.title, e.description, e.event_date_time, e.created_at
+	query := `SELECT DISTINCT e.event_id, e.creator_id, e.group_id, e.title, e.description, e.event_date_time, e.status, e.created_at
 	          FROM events e
 	          JOIN group_members gm ON e.group_id = gm.group_id
 	          WHERE gm.member_id = ? AND gm.status = 'accepted'
@@ -111,7 +128,7 @@ func (db *DB) GetUserEvents(userID int) ([]*Event, error) {
 	events := []*Event{}
 	for rows.Next() {
 		e := &Event{}
-		err := rows.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.CreatedAt)
+		err := rows.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.Status, &e.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
