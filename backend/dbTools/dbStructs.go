@@ -142,7 +142,8 @@ type Group struct {
 	GroupID     int        `json:"group_id"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	Status      string     `json:"status"` // active, inactive
+	Avatar      string     `json:"avatar,omitempty"` // Avatar from files table
+	Status      string     `json:"status"`           // active, inactive
 	CreatorID   int        `json:"creator_id"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   *time.Time `json:"updated_at"`

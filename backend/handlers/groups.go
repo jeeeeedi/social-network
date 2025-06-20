@@ -10,6 +10,7 @@ import (
 	"social_network/utils"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // getSubscribedGroups retrieves all groups a user is subscribed to
@@ -227,17 +228,58 @@ func createGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 		return
 	}
 
-	var group dbTools.Group
-	if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// Parse multipart form data for file upload support
+	err := r.ParseMultipartForm(10 << 20) // 10MB max
+	if err != nil {
+		http.Error(w, "Could not parse form", http.StatusBadRequest)
 		return
 	}
 
-	group.CreatorID = userID
+	// Extract form values
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	// Validate required fields
+	if title == "" || description == "" {
+		http.Error(w, "Title and description are required", http.StatusBadRequest)
+		return
+	}
+
+	// Create group struct
+	group := dbTools.Group{
+		Title:       title,
+		Description: description,
+		CreatorID:   userID,
+	}
+
+	// Create the group first to get the group ID
 	createdGroup, err := db.CreateGroup(&group)
 	if err != nil {
 		http.Error(w, "Failed to create group", http.StatusInternalServerError)
 		return
+	}
+
+	// Handle avatar upload if provided
+	file, handler, err := r.FormFile("avatar")
+	if err == nil {
+		defer file.Close()
+		fileMeta := &dbTools.File{
+			UploaderID:   userID,
+			FilenameOrig: handler.Filename,
+			ParentType:   "group",
+			ParentID:     createdGroup.GroupID,
+			CreatedAt:    time.Now(),
+		}
+		uploadErr := db.FileUpload(file, fileMeta, r, w)
+		if uploadErr != nil {
+			// Log error but don't fail group creation
+			log.Printf("Failed to upload group avatar: %v", uploadErr)
+		} else {
+			// Set avatar path for response
+			createdGroup.Avatar = "/uploads/" + fileMeta.FilenameNew
+		}
+	} else if err != http.ErrMissingFile {
+		log.Printf("Error getting avatar file: %v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

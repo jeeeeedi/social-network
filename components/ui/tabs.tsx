@@ -8,11 +8,12 @@ interface TabsProps {
   defaultValue: string;
   children: ReactNode;
   className?: string;
+  onValueChange?: (value: string) => void;
 }
 
-export function Tabs({ defaultValue, children, className }: TabsProps) {
+export function Tabs({ defaultValue, children, className, onValueChange }: TabsProps) {
   return (
-    <RadixTabs.Root defaultValue={defaultValue} className={cn("w-full", className)}>
+    <RadixTabs.Root defaultValue={defaultValue} onValueChange={onValueChange} className={cn("w-full", className)}>
       {children}
     </RadixTabs.Root>
   );
