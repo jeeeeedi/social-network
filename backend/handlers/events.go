@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
@@ -200,27 +201,39 @@ func createGroupEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gr
 
 	isMember, err := db.IsGroupMember(groupID, userID)
 	if err != nil {
+		log.Printf("Error checking membership for user %d in group %d: %v", userID, groupID, err)
 		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
 		return
 	}
 	if !isMember {
+		log.Printf("User %d is not a member of group %d", userID, groupID)
 		http.Error(w, "Forbidden: Only group members can create events", http.StatusForbidden)
 		return
 	}
 
 	var event dbTools.Event
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+		log.Printf("Error decoding request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("Decoded event: %+v", event)
+
 	event.GroupID = groupID
 	event.CreatorID = userID
+	event.Status = "upcoming" // Set default status
+
+	log.Printf("Final event before DB insert: %+v", event)
+
 	createdEvent, err := db.CreateEvent(&event)
 	if err != nil {
+		log.Printf("Error creating event in database: %v", err)
 		http.Error(w, "Failed to create event", http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("Successfully created event: %+v", createdEvent)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
