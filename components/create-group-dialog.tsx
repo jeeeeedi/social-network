@@ -20,6 +20,7 @@ interface CreateGroupDialogProps {
     name: string
     description: string
     avatar?: string
+    avatarFile?: File | null
     isPrivate: boolean
   }) => Promise<void>
 }
@@ -33,6 +34,7 @@ export function CreateGroupDialog({ onCreateGroup }: CreateGroupDialogProps) {
     avatar: "",
     isPrivate: false,
   })
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,8 +42,12 @@ export function CreateGroupDialog({ onCreateGroup }: CreateGroupDialogProps) {
 
     setIsLoading(true)
     try {
-      await onCreateGroup(formData)
+      await onCreateGroup({
+        ...formData,
+        avatarFile
+      })
       setFormData({ name: "", description: "", avatar: "", isPrivate: false })
+      setAvatarFile(null)
       setOpen(false)
     } finally {
       setIsLoading(false)
@@ -51,6 +57,7 @@ export function CreateGroupDialog({ onCreateGroup }: CreateGroupDialogProps) {
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setAvatarFile(file)
       const reader = new FileReader()
       reader.onload = (e) => {
         setFormData((prev) => ({ ...prev, avatar: e.target?.result as string }))

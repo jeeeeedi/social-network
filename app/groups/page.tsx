@@ -75,19 +75,22 @@ export default function GroupsPage() {
     }
   };
 
-  const handleCreateGroup = async (groupData: { name: string; description: string; avatar?: string; isPrivate: boolean }) => {
+  const handleCreateGroup = async (groupData: { name: string; description: string; avatar?: string; avatarFile?: File | null; isPrivate: boolean }) => {
     try {
+      const formData = new FormData();
+      formData.append('title', groupData.name);
+      formData.append('description', groupData.description);
+      if (groupData.isPrivate) {
+        formData.append('isPrivate', 'true');
+      }
+      if (groupData.avatarFile) {
+        formData.append('avatar', groupData.avatarFile);
+      }
+
       const response = await fetch('http://localhost:8080/api/groups', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: groupData.name,
-          description: groupData.description,
-          isPrivate: groupData.isPrivate
-        }),
+        body: formData, // Send FormData instead of JSON
       });
       if (!response.ok) {
         if (response.status === 401) {
@@ -193,7 +196,7 @@ export default function GroupsPage() {
       </div>
 
       {/* Tabs for All / My Groups */}
-      <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab} className="w-full mb-6">
+      <Tabs defaultValue="all" onValueChange={setSelectedTab} className="w-full mb-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="my">My Groups</TabsTrigger>
