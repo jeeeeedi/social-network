@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
 import {
   Camera,
   Heart,
@@ -22,18 +23,19 @@ import {
   Send,
   Share,
   User,
-  Users,
+  Users as UsersIcon,
   X,
+  Calendar,
 } from "lucide-react"
 import { ChatInterface } from "@/components/chat-interface"
 import { GroupChat } from "@/components/group-chat"
 import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
-import { UsersIcon } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { sanitize } from "@/utils/sanitize"
 import { checkSession } from "@/lib/auth"
 import { formatDateTime } from "@/utils/formatDate"
 import { Feed } from "@/components/feed"
+import { useRouter } from "next/navigation"
 
 interface Post {
   post_id: number;
@@ -48,7 +50,61 @@ interface Post {
   liked?: boolean;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  dateTime: Date;
+  groupName: string;
+  groupId: string;
+  creatorId: string;
+  creatorName: string;
+  attendees: {
+    going: string[];
+    notGoing: string[];
+  };
+}
+
+// Mock events data
+const mockUserEvents: Event[] = [
+  {
+    id: "e1",
+    title: "Team Meeting",
+    description: "Weekly team sync",
+    date: "2025-07-15",
+    time: "14:00",
+    dateTime: new Date("2025-07-15T14:00"),
+    groupName: "Mock Group",
+    groupId: "1",
+    creatorId: "1",
+    creatorName: "Admin",
+    attendees: {
+      going: [],
+      notGoing: []
+    }
+  },
+  {
+    id: "e2", 
+    title: "Design Workshop",
+    description: "UI/UX design session",
+    date: "2025-08-20",
+    time: "16:30",
+    dateTime: new Date("2025-08-20T16:30"),
+    groupName: "Design Team",
+    groupId: "2",
+    creatorId: "2",
+    creatorName: "Designer",
+    attendees: {
+      going: [],
+      notGoing: []
+    }
+  }
+]
+
 export default function SocialNetworkPage() {
+  const router = useRouter()
   const { currentUser, logout } = useAuth()
   const [content, setContent] = useState("")
   const [posts, setPosts] = useState<Post[]>([])
@@ -59,11 +115,12 @@ export default function SocialNetworkPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const { messages, sendMessage, isConnected } = useWebSocket()
+  const { messages, sendMessage, isConnected, onlineUsers, setOnlineUsers } = useWebSocket()
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
   const [activeGroupChat, setActiveGroupChat] = useState<any>(null)
   const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isGroupChatMinimized, setIsGroupChatMinimized] = useState(false)
+  const [userEvents, setUserEvents] = useState<Event[]>(mockUserEvents)
 
   // Mock users data - in real app, fetch from backend
   const [chatUsers] = useState<ChatUser[]>([
@@ -126,6 +183,8 @@ export default function SocialNetworkPage() {
       description: "Share your best shots!",
     },
   ])
+
+
 
   // Fetch posts and verify authentication
   useEffect(() => {
@@ -237,6 +296,33 @@ export default function SocialNetworkPage() {
     }
   }
 
+  const handleEventResponse = (eventId: string, response: "going" | "not_going") => {
+    if (!currentUser) return;
+    
+    setUserEvents(prevEvents => 
+      prevEvents.map(event => {
+        if (event.id === eventId) {
+          const updatedEvent = { ...event };
+          // Remove user from both arrays first
+          updatedEvent.attendees.going = updatedEvent.attendees.going.filter(id => id !== currentUser.user_uuid);
+          updatedEvent.attendees.notGoing = updatedEvent.attendees.notGoing.filter(id => id !== currentUser.user_uuid);
+          
+          // Add to appropriate array
+          if (response === "going") {
+            updatedEvent.attendees.going.push(currentUser.user_uuid);
+          } else {
+            updatedEvent.attendees.notGoing.push(currentUser.user_uuid);
+          }
+          
+          return updatedEvent;
+        }
+        return event;
+      })
+    );
+  }
+
+
+
   // Show login/register interface if not authenticated
   if (!currentUser || isAuthenticated === false) {
     return (
@@ -283,7 +369,7 @@ export default function SocialNetworkPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto grid grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-4">
         {/* Left Sidebar */}
-        <aside className="hidden lg:block">
+        <aside className="hidden lg:block space-y-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
@@ -317,10 +403,65 @@ export default function SocialNetworkPage() {
                   Profile
                 </Button>
                 <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/groups'}>
-                  <Users className="h-5 w-5" />
+                  <UsersIcon className="h-5 w-5" />
                   Groups
                 </Button>
               </nav>
+            </CardContent>
+          </Card>
+
+          {/* Events */}
+          <Card>
+            <CardHeader>
+              <h3 className="font-semibold flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Upcoming Events
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {userEvents.length > 0 ? (
+                userEvents
+                  .filter(event => new Date(event.dateTime) > new Date())
+                  .slice(0, 3)
+                  .map((event) => {
+                    const isGoing = currentUser && event.attendees.going.includes(currentUser.user_uuid);
+                    const isNotGoing = currentUser && event.attendees.notGoing.includes(currentUser.user_uuid);
+                    const eventDate = new Date(event.dateTime);
+                    
+                    return (
+                      <div key={event.id} className="p-3 border rounded-lg space-y-2">
+                        <div>
+                          <h4 className="font-medium text-sm">{event.title}</h4>
+                          <p className="text-xs text-muted-foreground">{event.groupName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={isGoing ? "default" : "outline"}
+                            onClick={() => handleEventResponse(event.id, "going")}
+                            className="flex-1 text-xs"
+                          >
+                            Going
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={isNotGoing ? "destructive" : "outline"}
+                            onClick={() => handleEventResponse(event.id, "not_going")}
+                            className="flex-1 text-xs"
+                          >
+                            Not Going
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No upcoming events</p>
+              )}
             </CardContent>
           </Card>
         </aside>
@@ -397,7 +538,7 @@ export default function SocialNetworkPage() {
             <CardHeader>
               <h3 className="font-semibold flex items-center gap-2">
                 <UsersIcon className="h-4 w-4" />
-                Groups
+                Group Chats
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -429,23 +570,6 @@ export default function SocialNetworkPage() {
               ))}
             </CardContent>
           </Card>
-
-          {/* Your Activity */}
-          <Card>
-            <CardHeader>
-              <h3 className="font-semibold">Your Activity</h3>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Posts this week</span>
-                <Badge variant="secondary">12</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">New followers</span>
-                <Badge variant="secondary">+5</Badge>
-              </div>
-            </CardContent>
-          </Card>
         </aside>
       </div>
 
@@ -472,6 +596,8 @@ export default function SocialNetworkPage() {
           onToggleMinimize={() => setIsGroupChatMinimized(!isGroupChatMinimized)}
         />
       )}
+
+
     </div>
   )
 }
