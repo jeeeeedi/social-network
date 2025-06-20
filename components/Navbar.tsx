@@ -240,12 +240,6 @@ export const Navbar: React.FC = () => {
       label: 'Groups',
       isActive: isActivePage('/groups'),
     },
-    {
-      href: '#',
-      icon: MessageCircle,
-      label: 'Messages',
-      isActive: false,
-    },
   ];
 
   if (!currentUser) {
