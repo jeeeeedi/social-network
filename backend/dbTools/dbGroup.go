@@ -213,9 +213,17 @@ func (db *DB) GetGroupMembers(groupID int) ([]*GroupMember, error) {
 	members := []*GroupMember{}
 	for rows.Next() {
 		m := &GroupMember{}
-		err := rows.Scan(&m.MembershipID, &m.InviterID, &m.MemberID, &m.GroupID, &m.Status, &m.CreatedAt)
+		var inviterID sql.NullInt64
+		err := rows.Scan(&m.MembershipID, &inviterID, &m.MemberID, &m.GroupID, &m.Status, &m.CreatedAt)
 		if err != nil {
 			return nil, err
+		}
+		// Handle nullable inviter_id
+		if inviterID.Valid {
+			inviterIDInt := int(inviterID.Int64)
+			m.InviterID = &inviterIDInt
+		} else {
+			m.InviterID = nil
 		}
 		members = append(members, m)
 	}
@@ -233,9 +241,17 @@ func (db *DB) GetInvitationsByUserID(userID int) ([]*GroupMember, error) {
 	invitations := []*GroupMember{}
 	for rows.Next() {
 		inv := &GroupMember{}
-		err := rows.Scan(&inv.MembershipID, &inv.InviterID, &inv.MemberID, &inv.GroupID, &inv.Status, &inv.CreatedAt)
+		var inviterID sql.NullInt64
+		err := rows.Scan(&inv.MembershipID, &inviterID, &inv.MemberID, &inv.GroupID, &inv.Status, &inv.CreatedAt)
 		if err != nil {
 			return nil, err
+		}
+		// Handle nullable inviter_id
+		if inviterID.Valid {
+			inviterIDInt := int(inviterID.Int64)
+			inv.InviterID = &inviterIDInt
+		} else {
+			inv.InviterID = nil
 		}
 		invitations = append(invitations, inv)
 	}
@@ -253,9 +269,17 @@ func (db *DB) GetRequestsByGroupID(groupID int) ([]*GroupMember, error) {
 	requests := []*GroupMember{}
 	for rows.Next() {
 		req := &GroupMember{}
-		err := rows.Scan(&req.MembershipID, &req.InviterID, &req.MemberID, &req.GroupID, &req.Status, &req.CreatedAt)
+		var inviterID sql.NullInt64
+		err := rows.Scan(&req.MembershipID, &inviterID, &req.MemberID, &req.GroupID, &req.Status, &req.CreatedAt)
 		if err != nil {
 			return nil, err
+		}
+		// Handle nullable inviter_id
+		if inviterID.Valid {
+			inviterIDInt := int(inviterID.Int64)
+			req.InviterID = &inviterIDInt
+		} else {
+			req.InviterID = nil
 		}
 		requests = append(requests, req)
 	}

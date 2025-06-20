@@ -24,6 +24,12 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/profile/privacy", handlers.PrivacyHandler)
 	http.HandleFunc("/api/groups", handlers.GroupsHandler)  // Adding route for groups
 	http.HandleFunc("/api/groups/", handlers.GroupsHandler) // Handle subroutes under groups
+	http.HandleFunc("/api/events", handlers.EventsHandler)  // Handle events endpoint
+	http.HandleFunc("/api/events/", handlers.EventsHandler) // Handle event subroutes
+
+	// User API routes
+	http.HandleFunc("/api/users/", handlers.UserByIDHandler)        // Handle /api/users/{id}
+	http.HandleFunc("/api/users/batch", handlers.BatchUsersHandler) // Handle batch user requests
 
 	// Routes for POSTS and COMMENTS
 	http.HandleFunc("/api/createposts", func(w http.ResponseWriter, r *http.Request) {

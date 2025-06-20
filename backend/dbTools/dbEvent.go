@@ -95,3 +95,27 @@ func (db *DB) GetUserEventResponse(eventID, userID int) (string, error) {
 	}
 	return response, nil
 }
+
+// GetUserEvents retrieves all events from groups that a user is a member of
+func (db *DB) GetUserEvents(userID int) ([]*Event, error) {
+	query := `SELECT DISTINCT e.event_id, e.creator_id, e.group_id, e.title, e.description, e.event_date_time, e.created_at
+	          FROM events e
+	          JOIN group_members gm ON e.group_id = gm.group_id
+	          WHERE gm.member_id = ? AND gm.status = 'accepted'
+	          ORDER BY e.event_date_time ASC`
+	rows, err := db.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	events := []*Event{}
+	for rows.Next() {
+		e := &Event{}
+		err := rows.Scan(&e.EventID, &e.CreatorID, &e.GroupID, &e.Title, &e.Description, &e.EventDateTime, &e.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, nil
+}
