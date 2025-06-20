@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
@@ -89,7 +89,7 @@ export default function GroupDetailPage() {
 
   // Fetch group data and enrich with user details
   useEffect(() => {
-    if (!groupId || authLoading) return;
+    if (!groupId || authLoading || !currentUser) return;
     
     const fetchGroupData = async () => {
       setLoading(true);
@@ -161,7 +161,7 @@ export default function GroupDetailPage() {
     };
 
     fetchGroupData();
-  }, [groupId, authLoading, router]);
+  }, [groupId, authLoading, currentUser, router]);
 
   // Handler functions (simplified)
   const handleBack = () => router.push("/groups")
@@ -312,6 +312,21 @@ export default function GroupDetailPage() {
       timestamp: new Date(),
     };
     setMessages(prev => [...prev, newMessage]);
+  }
+
+  // Authentication check
+  if (!authLoading && !currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="text-center py-8">
+            <CardTitle>Authentication Required</CardTitle>
+            <p className="text-muted-foreground mt-2">Please log in to view group details.</p>
+            <Button onClick={() => router.push('/login')} className="mt-4">Go to Login</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Loading state
@@ -548,6 +563,9 @@ export default function GroupDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite Members to {group.title}</DialogTitle>
+            <DialogDescription>
+              Search and select users to invite to this group.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
               <Input 
@@ -602,6 +620,9 @@ export default function GroupDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Event</DialogTitle>
+            <DialogDescription>
+              Create a new event for group members to participate in.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

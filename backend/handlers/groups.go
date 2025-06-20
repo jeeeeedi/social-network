@@ -168,7 +168,22 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-
+	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "events" {
+		// Handle group events
+		groupID, err := strconv.Atoi(segments[1])
+		if err != nil {
+			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			getGroupEvents(w, db, groupID)
+		case http.MethodPost:
+			createGroupEvent(w, r, db, groupID)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+		return
 	} else {
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
