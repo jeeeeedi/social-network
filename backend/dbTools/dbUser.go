@@ -1,6 +1,9 @@
 package dbTools
 
-import "social_network/utils"
+import (
+	"social_network/utils"
+	"strings"
+)
 
 func (db *DB) InsertUser(u *User) (UserID int, err error) {
 
@@ -40,4 +43,88 @@ func (db *DB) GetUserByID(id int) (*User, error) {
 		return nil, err
 	}
 	return u, nil
+}
+
+// UserAPI represents simplified user data for API responses
+type UserAPI struct {
+	UserID    int    `json:"user_id"`
+	UserUUID  string `json:"user_uuid"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Nickname  string `json:"nickname,omitempty"`
+	Avatar    string `json:"avatar,omitempty"`
+	Status    string `json:"status"`
+}
+
+// FetchUserByID fetches a single user by ID
+func (d *DB) FetchUserByID(userID int) (*UserAPI, error) {
+	query := `
+		SELECT user_id, user_uuid, first_name, last_name, 
+		       COALESCE(nickname, '') as nickname, 
+		       COALESCE(avatar, '') as avatar, 
+		       status
+		FROM users 
+		WHERE user_id = ? AND status = 'active'
+	`
+
+	var user UserAPI
+	err := d.db.QueryRow(query, userID).Scan(
+		&user.UserID, &user.UserUUID, &user.FirstName, &user.LastName,
+		&user.Nickname, &user.Avatar, &user.Status,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// FetchUsersByIDs fetches multiple users by their IDs
+func (d *DB) FetchUsersByIDs(userIDs []int) ([]UserAPI, error) {
+	if len(userIDs) == 0 {
+		return []UserAPI{}, nil
+	}
+
+	// Create placeholders for the IN clause
+	placeholders := make([]string, len(userIDs))
+	args := make([]interface{}, len(userIDs))
+	for i, id := range userIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		SELECT user_id, user_uuid, first_name, last_name, 
+		       COALESCE(nickname, '') as nickname, 
+		       COALESCE(avatar, '') as avatar, 
+		       status
+		FROM users 
+		WHERE user_id IN (` + strings.Join(placeholders, ",") + `) AND status = 'active'
+	`
+
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []UserAPI
+	for rows.Next() {
+		var user UserAPI
+		err := rows.Scan(
+			&user.UserID, &user.UserUUID, &user.FirstName, &user.LastName,
+			&user.Nickname, &user.Avatar, &user.Status,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }

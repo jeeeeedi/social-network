@@ -82,6 +82,11 @@ export function Feed({ currentUser }: { currentUser: any }) {
 
   useEffect(() => {
     const fetchPosts = async () => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       try {
         const res = await fetch("http://localhost:8080/api/getfeedposts", {
@@ -99,7 +104,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
       }
     };
     fetchPosts();
-  }, []);
+  }, [currentUser]);
 
   const handleLike = async (postUUID: string) => {
     setPosts(
@@ -268,6 +273,14 @@ export function Feed({ currentUser }: { currentUser: any }) {
       );
     }
   };
+
+  if (!currentUser) {
+    return (
+      <div className="text-center py-10">
+        <p className="text-muted-foreground">Please log in to view your feed.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

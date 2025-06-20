@@ -152,7 +152,7 @@ type Group struct {
 
 type GroupMember struct {
 	MembershipID int        `json:"membership_id"`
-	InviterID    int        `json:"inviter_id"`
+	InviterID    *int       `json:"inviter_id"` // Nullable - can be NULL for join requests
 	MemberID     int        `json:"member_id"`
 	GroupID      int        `json:"group_id"`
 	Status       string     `json:"status"` // invited, requested, accepted, declined, cancelled
