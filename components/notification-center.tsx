@@ -25,13 +25,14 @@ export interface Notification {
   }
   groupId?: string
   eventId?: string
+  followId?: string;
 }
 
 interface NotificationCenterProps {
   notifications: Notification[]
   onMarkAsRead: (id: string) => void
-  onAcceptFollowRequest: (userId: string) => void
-  onDeclineFollowRequest: (userId: string) => void
+  onAcceptFollowRequest: (userId: string, followId: string) => void
+  onDeclineFollowRequest: (userId: string, followId: string) => void
   onAcceptGroupInvitation: (groupId: string) => void
   onDeclineGroupInvitation: (groupId: string) => void
   onAcceptGroupJoinRequest: (userId: string, groupId: string) => void
@@ -69,15 +70,18 @@ export function NotificationCenter({
 
   const handleNotificationAction = (notification: Notification, action: "accept" | "decline") => {
     switch (notification.type) {
-      case "follow_request":
-        if (notification.fromUser) {
-          if (action === "accept") {
-            onAcceptFollowRequest(notification.fromUser.id)
-          } else {
-            onDeclineFollowRequest(notification.fromUser.id)
-          }
+      case 'follow_request':
+      if (notification.fromUser && notification.followId) {
+        console.log('Calling follow request handler:', { userId: notification.fromUser.id, followId: notification.followId, action });
+        if (action === 'accept') {
+          onAcceptFollowRequest(notification.fromUser.id, notification.followId);
+        } else {
+          onDeclineFollowRequest(notification.fromUser.id, notification.followId);
         }
-        break
+      } else {
+        console.error('Missing fromUser or followId for follow_request:', notification);
+      }
+      break;
       case "group_invitation":
         if (notification.groupId) {
           if (action === "accept") {

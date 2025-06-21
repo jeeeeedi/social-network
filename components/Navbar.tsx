@@ -40,44 +40,44 @@ export const Navbar: React.FC = () => {
   }, [currentUser]);
 
   const fetchNotifications = async () => {
-    setNotificationsLoading(true);
-    try {
-      const response = await fetch('http://localhost:8080/api/notifications', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const formattedNotifications = data.notifications?.map((n: any) => ({
-          id: n.id.toString(),
-          type: mapBackendTypeToFrontend(n.type),
-          title: generateNotificationTitle(n.type, n.message),
-          message: n.message,
-          timestamp: new Date(n.timestamp),
-          isRead: n.status === 'read',
-          actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
-          fromUser: n.actor_id ? {
-            id: n.actor_id.toString(),
-            name: n.sender,
-            avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
-          } : undefined,
-          groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
-        })) || [];
-        setNotifications(formattedNotifications);
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
+  setNotificationsLoading(true);
+  try {
+    const response = await fetch('http://localhost:8080/api/notifications', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const formattedNotifications = data.notifications?.map((n: any) => ({
+        id: n.id.toString(),
+        type: mapBackendTypeToFrontend(n.type),
+        title: generateNotificationTitle(n.type, n.message),
+        message: n.message,
+        timestamp: new Date(n.timestamp),
+        isRead: n.status === 'read',
+        actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
+        fromUser: n.actor_id ? {
+          id: n.actor_id.toString(),
+          name: n.sender,
+          avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
+        } : undefined,
+        groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
+        followId: n.type === 'follow_request' ? n.parent_id.toString() : undefined, // Add this
+      })) || [];
+      setNotifications(formattedNotifications);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error);
+  } finally {
+    setNotificationsLoading(false);
+  }
+};
 
   const mapBackendTypeToFrontend = (backendType: string): Notification['type'] => {
     switch (backendType) {
-      case 'friend_request':
       case 'follow_request':
         return 'follow_request';
       case 'group_invite':
@@ -103,9 +103,8 @@ export const Navbar: React.FC = () => {
     }
     
     switch (type) {
-      case 'friend_request':
       case 'follow_request':
-        return 'New Friend Request';
+        return 'New Follow Request';
       case 'group_invitation':
         return 'Group Invitation';
       case 'group_join_request':
@@ -156,14 +155,81 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  const handleAcceptFollowRequest = (userId: string) => {
-    console.log("Accepting follow request from:", userId);
-    // TODO: Implement follow request acceptance
-  };
+  const handleAcceptFollowRequest = async (userId: string, followId: string) => {
+  console.log('Attempting to accept follow request:', { userId, followId });
+  try {
+    const payload = { follow_id: parseInt(followId), action: 'accept' };
+    console.log('Sending payload to /api/follow_requests:', payload);
+    const response = await fetch('http://localhost:8080/api/follow_requests', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    let responseBody;
+    try {
+      responseBody = await response.json();
+    } catch (e) {
+      responseBody = await response.text();
+    }
+    console.log('Response status:', response.status, 'Response ok:', response.ok, 'Body:', responseBody);
+    if (response.status === 401) {
+      console.log('Session expired, redirecting to login');
+      window.location.replace('/login');
+      return;
+    }
+    if (response.status === 404) {
+      console.log('Follow request no longer pending, refreshing notifications');
+      fetchNotifications();
+      return;
+    }
+    if (response.ok && responseBody.status === 'accepted') {
+      console.log('Follow request accepted for follow_id:', followId);
+      fetchNotifications();
+    } else {
+      console.error('Failed to accept follow request, unexpected response:', responseBody, 'Status:', response.status);
+    }
+  } catch (error) {
+    console.error('Failed to accept follow request:', error);
+  }
+};
 
-  const handleDeclineFollowRequest = (userId: string) => {
-    console.log("Declining follow request from:", userId);
-    // TODO: Implement follow request decline
+ const handleDeclineFollowRequest = async (userId: string, followId: string) => {
+    console.log('Attempting to decline follow request:', { userId, followId });
+    try {
+      const payload = { follow_id: parseInt(followId), action: 'decline' };
+      console.log('Sending payload to /api/follow_requests:', payload);
+      const response = await fetch('http://localhost:8080/api/follow_requests', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      console.log('Response status:', response.status, 'Response ok:', response.ok);
+      if (response.status === 401) {
+        console.log('Session expired, redirecting to login');
+        window.location.replace('/login');
+        return;
+      }
+      if (response.status === 404) {
+        console.log('Follow request no longer pending, refreshing notifications');
+        fetchNotifications();
+        return;
+      }
+      if (response.ok) {
+        console.log('Follow request declined for follow_id:', followId);
+        fetchNotifications();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to decline follow request:', errorData.message, 'Status:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to decline follow request:', error);
+    }
   };
 
   const handleAcceptGroupInvitation = (groupId: string) => {

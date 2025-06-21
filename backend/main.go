@@ -53,8 +53,8 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/following/", handlers.GetFollowingHandler)
 	http.HandleFunc("/api/follow/", handlers.FollowHandler)
 	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
-	http.HandleFunc("/api/follows", handlers.FollowRequestHandler)       // Added for follow request operations
-	http.HandleFunc("/api/notifications/", handlers.NotificationHandler) // Added for notifications
+	http.HandleFunc("/api/follow_requests", handlers.FollowRequestHandler) // Added for follow request operations
+	http.HandleFunc("/api/notifications/", handlers.NotificationHandler)   // Added for notifications
 }
 
 func main() {
