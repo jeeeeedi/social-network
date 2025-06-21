@@ -37,15 +37,17 @@ import (
 } */
 
 type WSMessage struct {
-	ID           string    `json:"id"`
-	SenderID     string    `json:"senderId"`
-	SenderName   string    `json:"senderName"`
-	SenderAvatar string    `json:"senderAvatar"`
-	Content      string    `json:"content"`
-	Timestamp    time.Time `json:"timestamp"`
-	Type         string    `json:"type"` // "text" | "emoji"
-	ChatID       string    `json:"chatId"`
-	ChatType     string    `json:"chatType"` // "private" | "group"
+	SenderID       string    `json:"senderId"`
+	SenderName     string    `json:"senderName"`
+	SenderAvatar   string    `json:"senderAvatar"`
+	RecieverID     string    `json:"receiverId"`
+	ReceiverName   string    `json:"receiverName"`
+	ReceiverAvatar string    `json:"receiverAvatar"`
+	Content        string    `json:"content"`
+	Timestamp      time.Time `json:"timestamp"`
+	Type           string    `json:"type"` // "text" | "emoji"
+	ChatID         string    `json:"chatId"`
+	ChatType       string    `json:"chatType"` // "private" | "group"
 }
 
 func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
@@ -79,17 +81,17 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 
 		// determine receiverID vs. groupID
-		var recvID, grpID int
+		var recieverID, groupID int
 		if decodedMessage.ChatType == "private" {
 			// decodedMessage.ChatID might be "private_42" → split to get the int 42
 			id, _ := strconv.Atoi(strings.TrimPrefix(decodedMessage.ChatID, "private_"))
-			recvID = id
+			recieverID = id
 		} else {
 			id, _ := strconv.Atoi(strings.TrimPrefix(decodedMessage.ChatID, "group_"))
-			grpID = id
+			groupID = id
 		}
 
-		sender, err := strconv.Atoi(decodedMessage.SenderID)
+		senderID, err := strconv.Atoi(decodedMessage.SenderID)
 		if err != nil {
 			fmt.Println("Error converting sender ID to int:", err)
 		}
@@ -102,9 +104,9 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		// fill your DB model
 		msg := dbTools.ChatMessage{
 			ChatID:     chatID,
-			SenderID:   sender,
-			ReceiverID: recvID,
-			GroupID:    grpID,
+			SenderID:   senderID,
+			ReceiverID: recieverID,
+			GroupID:    groupID,
 			Content:    decodedMessage.Content,
 			Status:     "active",
 			UpdatedAt:  &decodedMessage.Timestamp,
