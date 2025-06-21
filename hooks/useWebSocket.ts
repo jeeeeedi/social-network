@@ -7,6 +7,9 @@ export interface Message {
   senderId: string
   senderName: string
   senderAvatar: string
+  	receiverId: string
+	receiverName: string
+	receiverAvatar: string
   content: string
   timestamp: Date
   type: "text" | "emoji"

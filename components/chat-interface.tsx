@@ -201,9 +201,13 @@ export function ChatInterface({
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       onSendMessage({
+        // most of these need to change with - have to fetch 1st - sender and receiver actual data
         senderId: "you",
         senderName: "You",
         senderAvatar: "/placeholder.svg?height=40&width=40", // Change
+        receiverId: "receiver",
+      	receiverName: "receiver",
+        receiverAvatar: "/placeholder.svg?height=40&width=40",
         content: newMessage,
         type: "text",
         chatId: `private_${user.id}`,
@@ -215,9 +219,13 @@ export function ChatInterface({
 
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
+      // likewise
       senderId: "you",
       senderName: "You",
       senderAvatar: "/placeholder.svg?height=40&width=40", // Change
+        receiverId: "receiver",
+      	receiverName: "receiver",
+        receiverAvatar: "/placeholder.svg?height=40&width=40",
       content: emoji,
       type: "emoji",
       chatId: `private_${user.id}`,
