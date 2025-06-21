@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"social_network/dbTools"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -33,6 +36,18 @@ import (
 	ChatType     string    `json:"chatType"` // "private" | "group"
 } */
 
+type WSMessage struct {
+	ID           string    `json:"id"`
+	SenderID     string    `json:"senderId"`
+	SenderName   string    `json:"senderName"`
+	SenderAvatar string    `json:"senderAvatar"`
+	Content      string    `json:"content"`
+	Timestamp    time.Time `json:"timestamp"`
+	Type         string    `json:"type"` // "text" | "emoji"
+	ChatID       string    `json:"chatId"`
+	ChatType     string    `json:"chatType"` // "private" | "group"
+}
+
 func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	// Check user validity?
 	var upgrader = websocket.Upgrader{
@@ -55,24 +70,55 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		var decodedMessage dbTools.ChatMessage
+		var decodedMessage WSMessage
 		err = json.Unmarshal(rawMessage, &decodedMessage)
 
 		if err != nil {
 			fmt.Println("Error unmarshalling message:", err)
 			continue
 		}
-		fmt.Println(string(decodedMessage.Content))
 
-		db.AddMessageToDB(&decodedMessage)
+		// determine receiverID vs. groupID
+		var recvID, grpID int
+		if decodedMessage.ChatType == "private" {
+			// decodedMessage.ChatID might be "private_42" → split to get the int 42
+			id, _ := strconv.Atoi(strings.TrimPrefix(decodedMessage.ChatID, "private_"))
+			recvID = id
+		} else {
+			id, _ := strconv.Atoi(strings.TrimPrefix(decodedMessage.ChatID, "group_"))
+			grpID = id
+		}
+
+		sender, err := strconv.Atoi(decodedMessage.SenderID)
+		if err != nil {
+			fmt.Println("Error converting sender ID to int:", err)
+		}
+
+		chatID, err := strconv.Atoi(strings.TrimPrefix(strings.TrimPrefix(decodedMessage.ChatID, "group_"), "private_"))
+		if err != nil {
+			fmt.Println("Error converting chat ID to int:", err)
+		}
+
+		// fill your DB model
+		msg := dbTools.ChatMessage{
+			ChatID:     chatID,
+			SenderID:   sender,
+			ReceiverID: recvID,
+			GroupID:    grpID,
+			Content:    decodedMessage.Content,
+			Status:     "active",
+			UpdatedAt:  &decodedMessage.Timestamp,
+		}
+		chatID, err = db.AddMessageToDB(&msg)
+		fmt.Println("Chat ID:", chatID)
 		// For testing:
 		allMessages, err := db.GetAllMessagesFromDB()
 		if err != nil {
 			return
 		}
 		for i, msg := range allMessages {
-			fmt.Println(i, "th message is:")
-			fmt.Println(msg.Content)
+			fmt.Println("message", i, "is:")
+			fmt.Println("	", msg.Content)
 		}
 	}
 }
