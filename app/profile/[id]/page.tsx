@@ -27,6 +27,7 @@ import {
   MessageCircle,
   Share,
 } from "lucide-react";
+import { Post } from "@/components/feed";
 
 interface ProfileData {
   user_uuid: string;
@@ -42,14 +43,6 @@ interface ProfileData {
   role: string;
 }
 
-interface PostData {
-  post_uuid: string;
-  content: string;
-  created_at: string;
-  filename_new: string;
-  privacy: string;
-}
-
 interface FollowerData {
   user_uuid: string;
   first_name: string;
@@ -62,12 +55,12 @@ export default function UserProfilePage() {
   const router = useRouter();
   const params = useParams();
   const { currentUser } = useAuth();
-  const userId = params.id as string;
+  const userUUID = params.id as string;
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [followers, setFollowers] = useState<FollowerData[]>([]);
   const [following, setFollowing] = useState<FollowerData[]>([]);
-  const [posts, setPosts] = useState<PostData[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -76,7 +69,7 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     const verifySessionAndFetch = async () => {
-      if (!userId) {
+      if (!userUUID) {
         setError("Invalid user ID");
         setLoading(false);
         return;
@@ -87,7 +80,7 @@ export default function UserProfilePage() {
         setIsAuthenticated(true);
 
         // Fetch profile
-        const profileData = await fetchProfile(userId);
+        const profileData = await fetchProfile(userUUID);
         console.log("Profile Response:", profileData);
         if (!profileData || !profileData.success) {
           setError(profileData?.message || "Failed to load profile");
@@ -98,7 +91,7 @@ export default function UserProfilePage() {
 
         // Fetch followers
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${userId}`,
+          `http://localhost:8080/api/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -116,7 +109,7 @@ export default function UserProfilePage() {
 
         // Fetch following
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${userId}`,
+          `http://localhost:8080/api/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -133,10 +126,10 @@ export default function UserProfilePage() {
         }
 
         // Check follow status if not own profile
-        if (currentUser && currentUser.user_uuid !== userId) {
+        if (currentUser && currentUser.user_uuid !== userUUID) {
           try {
             const followResponse = await fetch(
-              `http://localhost:8080/api/follow/status/${userId}`,
+              `http://localhost:8080/api/follow/status/${userUUID}`,
               { credentials: "include" }
             );
             const followData = await followResponse.json();
@@ -162,16 +155,15 @@ export default function UserProfilePage() {
             setFollowStatus(isFollower ? "accepted" : "");
           }
         }
-console.log("currentUser:", currentUser);
-console.log("profileData:", profileData);
+
         // Fetch posts - only if profile is public or we're following
         if (
           profileData.profile.privacy === "public" ||
-          (profileData && (isFollowing || profileData.user_uuid === userId))
+          (profileData && (isFollowing || profileData.user_uuid === userUUID))
         ) {
           try {
             const myPostsRes = await fetch(
-              `http://localhost:8080/api/getmyposts/${userId}`,
+              `http://localhost:8080/api/getmyposts/${userUUID}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -199,7 +191,7 @@ console.log("profileData:", profileData);
     };
 
     verifySessionAndFetch();
-  }, [userId, currentUser]);
+  }, [userUUID, currentUser]);
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
@@ -209,7 +201,7 @@ console.log("profileData:", profileData);
 
     try {
       const response = await fetch(
-        `http://localhost:8080/api/follow/${userId}`,
+        `http://localhost:8080/api/follow/${userUUID}`,
         {
           method: isFollowing ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -225,7 +217,7 @@ console.log("profileData:", profileData);
 
         // Refresh followers and following
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${userId}`,
+          `http://localhost:8080/api/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -238,7 +230,7 @@ console.log("profileData:", profileData);
         }
 
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${userId}`,
+          `http://localhost:8080/api/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -320,7 +312,7 @@ console.log("profileData:", profileData);
     );
   }
 
-  const isOwnProfile = currentUser && currentUser.user_uuid === userId;
+  const isOwnProfile = currentUser && currentUser.user_uuid === userUUID;
   const displayName =
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
@@ -497,7 +489,7 @@ console.log("profileData:", profileData);
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Posts ({posts.length})</CardTitle>
+                <CardTitle>Posts ({posts?.length || 0})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {!canViewDetails ? (
@@ -512,12 +504,12 @@ console.log("profileData:", profileData);
                       </p>
                     )}
                   </div>
-                ) : posts.length === 0 ? (
+                ) : !posts || posts?.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">
                     No posts yet.
                   </p>
                 ) : (
-                  posts.map((post) => (
+                  posts?.map((post) => (
                     <Card key={post.post_uuid} className="border-border/50">
                       <CardContent className="p-4">
                         <div className="flex items-center mb-2">
@@ -543,10 +535,7 @@ console.log("profileData:", profileData);
                             <Heart className="h-3 w-3" />0
                           </button>
                           <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <MessageCircle className="h-3 w-3" />0
-                          </button>
-                          <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <Share className="h-3 w-3" />0
+                            <MessageCircle className="h-3 w-3" /> {post.comments ? post.comments.length : 0}
                           </button>
                         </div>
                       </CardContent>

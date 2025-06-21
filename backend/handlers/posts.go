@@ -8,6 +8,7 @@ import (
 	"social_network/dbTools"
 	"social_network/middleware"
 	"social_network/utils"
+	"strings"
 	"time"
 )
 
@@ -63,19 +64,29 @@ func GetMyPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		return fmt.Errorf("method not allowed")
 	}
 
-	// Get the current user ID from the session
-	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+// Get the current user ID from the session
+	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return err
 	}
 
-	// Get all public posts and all posts from the current user
-	posts, err := db.GetMyPosts(userID)
+	// Extract user UUID from URL path: /api/getmyposts/{user_uuid}
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	var targetUserUUID string
+	if len(pathParts) >= 3 {
+		targetUserUUID = pathParts[2]
+	}
+
+	// Get all posts from the user
+	posts, err := db.GetMyPosts(currentUserID, targetUserUUID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
+		log.Print("GetMyPostsHandler: Error retrieving posts:", err)
 		return err
 	}
+
+	log.Print("GetMyPosts: ", targetUserUUID, posts)
 
 	// Return the posts as JSON
 	w.Header().Set("Content-Type", "application/json")

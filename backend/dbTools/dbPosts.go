@@ -62,7 +62,6 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
     `, userID)
 	// COALESCE(f.file_id, 0): If f.file_id != NULL, use its value. If f.file_id = NULL (no file w/post), use 0 instead.
 	if err != nil {
-		log.Print("GetFeedPosts: Error querying db:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -89,7 +88,6 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 			&filenameNew,
 		)
 		if err != nil {
-			log.Print("GetFeedPosts: Error scanning post row:", err)
 			return nil, err
 		}
 		if groupID.Valid {
@@ -113,10 +111,8 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 
 		comments, err := d.GetCommentsForPost(context.Background(), postResponse.PostUUID)
 		if err != nil {
-			log.Print("GetFeedPosts: Error getting comments for post:", err)
 			return nil, err
 		}
-		log.Print("GetFeedPosts: Retrieved comments for post:", postResponse.PostUUID, comments)
 
 		postResponse.Comments = comments
 		postsResponse = append(postsResponse, postResponse)
@@ -125,21 +121,52 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 }
 
 // GetMyPosts retrieves all posts by the user
-func (d *DB) GetMyPosts(userID int) ([]PostResponse, error) {
-	rows, err := d.GetDB().Query(`
-        SELECT 
-            p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-            u.nickname, u.avatar, 
-            COALESCE(f.file_id, 0) as file_id, 
-            f.filename_new
-        FROM posts p
-        JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
-        LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
-        WHERE p.poster_id = ?
-          AND p.status = 'active'
-        ORDER BY p.created_at DESC
-    `, userID)
-	// COALESCE(f.file_id, 0): If f.file_id != NULL, use its value. If f.file_id = NULL (no file w/post), use 0 instead.
+func (d *DB) GetMyPosts(currentUserID int, targetUserUUID string) ([]PostResponse, error) {
+	log.Print("GetMyPosts called")
+	// Convert UUID to user_id
+	var targetUserID int
+	err := d.GetDB().QueryRow(`SELECT user_id FROM users WHERE user_uuid = ? AND status = 'active'`, targetUserUUID).Scan(&targetUserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // User not found, return empty slice
+		}
+		return nil, err
+	}
+
+	// Determine which posts to show based on user
+	var rows *sql.Rows
+	if currentUserID == targetUserID {
+		// Show all posts for self
+		rows, err = d.GetDB().Query(`
+            SELECT 
+                p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
+                u.nickname, u.avatar, 
+                COALESCE(f.file_id, 0) as file_id, 
+                f.filename_new
+            FROM posts p
+            JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
+            LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
+            WHERE p.poster_id = ?
+              AND p.status = 'active'
+            ORDER BY p.created_at DESC
+        `, targetUserID)
+	} else {
+		// Show only public posts for others
+		rows, err = d.GetDB().Query(`
+            SELECT 
+                p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
+                u.nickname, u.avatar, 
+                COALESCE(f.file_id, 0) as file_id, 
+                f.filename_new
+            FROM posts p
+            JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
+            LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
+            WHERE p.poster_id = ?
+              AND p.status = 'active'
+              AND p.privacy = 'public'
+            ORDER BY p.created_at DESC
+        `, targetUserID)
+	}
 	if err != nil {
 		return nil, err
 	}

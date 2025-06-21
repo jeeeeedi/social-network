@@ -128,22 +128,19 @@ export default function MyProfilePage() {
           console.warn("Following fetch error:", followingData.message);
           setFollowing([]);
         }
-
+console.log("profile/me Current User:", currentUser);
         // Fetch posts
-       /*  const myPostsRes = await fetch(
-              `http://localhost:8080/api/getmyposts/${currentUser.user_uuid}`, {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        }); */
         const myPostsRes = await fetch(
-              `http://localhost:8080/api/getmyposts`, {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
+          `http://localhost:8080/api/getmyposts/${currentUser.user_uuid}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
         if (!myPostsRes.ok) throw new Error("Failed to getmyposts");
         const myPostsData = await myPostsRes.json();
+        console.log("My Posts Response:", myPostsData);
         setPosts(myPostsData);
       } catch (err) {
         setIsAuthenticated(false);

@@ -83,7 +83,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
         setLoading(false);
         return;
       }
-      
+
       setLoading(true);
       try {
         const res = await fetch("http://localhost:8080/api/getfeedposts", {
@@ -235,7 +235,9 @@ export function Feed({ currentUser }: { currentUser: any }) {
   if (!currentUser) {
     return (
       <div className="text-center py-10">
-        <p className="text-muted-foreground">Please log in to view your feed.</p>
+        <p className="text-muted-foreground">
+          Please log in to view your feed.
+        </p>
       </div>
     );
   }
@@ -365,22 +367,14 @@ export function Feed({ currentUser }: { currentUser: any }) {
                     </Avatar>
                     <div>
                       <h4 className="font-semibold">{post.nickname}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        @{post.nickname} · {formatDateTime(post.created_at)}
-                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        Posted on {formatDateTime(post.created_at)}
+                      </span>
                     </div>
                   </div>
-                  {/* <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Save post</DropdownMenuItem>
-                      <DropdownMenuItem>Report</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu> */}
+                  <Badge variant="outline" className="text-xs">
+                    {post.privacy}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
