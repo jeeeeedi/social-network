@@ -358,3 +358,35 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
 	}
 	return comments, nil
 }
+
+// InsertSelectedFollowers inserts selected follower user_ids for a post (for semiprivate/private posts)
+func (d *DB) InsertSelectedFollowers(postID int, selectedFollowersIDs []int) error {
+	if len(selectedFollowersIDs) == 0 {
+		return nil
+	}
+	query := `INSERT INTO post_private_viewers (post_id, user_id) VALUES (?, ?)`
+	tx, err := d.GetDB().Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for _, userID := range selectedFollowersIDs {
+		_, err = stmt.Exec(postID, userID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit()
+}

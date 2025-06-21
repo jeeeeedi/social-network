@@ -96,82 +96,100 @@ func GetMyPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 
 // CreatePostHandler handles creating new posts
 func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	middleware.SetCORSHeaders(w)
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return fmt.Errorf("method not allowed")
-	}
-	err := r.ParseMultipartForm(10 << 20) // 10MB max
-	if err != nil {
-		http.Error(w, "Could not parse form", http.StatusBadRequest)
-		return err
-	}
+    middleware.SetCORSHeaders(w)
+    if r.Method != "POST" {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return fmt.Errorf("method not allowed")
+    }
+    err := r.ParseMultipartForm(10 << 20) // 10MB max
+    if err != nil {
+        http.Error(w, "Could not parse form", http.StatusBadRequest)
+        return err
+    }
 
-	timeNow := time.Now()
-	content := r.FormValue("content")
-	privacy := r.FormValue("privacy")
+    timeNow := time.Now()
+    content := r.FormValue("content")
+    privacy := r.FormValue("privacy")
 
-	// Validate content
-	if len(content) == 0 {
-		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
-		return err
-	}
-	if len(content) > 3000 {
-		http.Error(w, "Content too long", http.StatusBadRequest)
-		return err
-	}
-	content = utils.Sanitize(content)
+    // Read selectedFollowers field (for private and almost private)
+    selectedFollowersStr := r.FormValue("selectedFollowers")
+    var selectedFollowersIDs []int
+    if (privacy == "semiprivate" || privacy == "private") && selectedFollowersStr != "" {
+        if err := json.Unmarshal([]byte(selectedFollowersStr), &selectedFollowersIDs); err != nil {
+            http.Error(w, "Invalid selectedFollowers format", http.StatusBadRequest)
+            return err
+        }
+    }
 
-	// Validate privacy
-	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
-	if !validPrivacy[privacy] {
-		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
-		return err
-	}
+    // Validate content
+    if len(content) == 0 {
+        http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+        return err
+    }
+    if len(content) > 3000 {
+        http.Error(w, "Content too long", http.StatusBadRequest)
+        return err
+    }
+    content = utils.Sanitize(content)
 
-	// Get current user ID from session
-	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return err
-	}
+    // Validate privacy
+    validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
+    if !validPrivacy[privacy] {
+        http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
+        return err
+    }
 
-	post := dbTools.Post{
-		PosterID:  currentUserID,
-		GroupID:   nil, // Regular posts (not group)
-		Content:   content,
-		Privacy:   privacy,
-		CreatedAt: timeNow,
-	}
-	postID, err = db.InsertPostToDB(&post)
-	if err != nil {
-		http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
-		return err
-	}
+    // Get current user ID from session
+    currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+    if err != nil {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return err
+    }
 
-	file, handler, err := r.FormFile("file")
-	if err == nil {
-		defer file.Close()
-		fileMeta := &dbTools.File{
-			UploaderID:   currentUserID,
-			FilenameOrig: handler.Filename,
-			ParentType:   "post",
-			ParentID:     postID,
-			CreatedAt:    timeNow,
-		}
-		uploadErr := db.FileUpload(file, fileMeta, r, w)
-		if uploadErr != nil {
-			http.Error(w, "Failed to upload file", http.StatusInternalServerError)
-			return uploadErr
-		}
-	} else if err != http.ErrMissingFile {
-		http.Error(w, "Failed to get file from form", http.StatusBadRequest)
-		return err
-	}
+    post := dbTools.Post{
+        PosterID:  currentUserID,
+        GroupID:   nil, // Regular posts (not group)
+        Content:   content,
+        Privacy:   privacy,
+        CreatedAt: timeNow,
+    }
+    postID, err = db.InsertPostToDB(&post)
+    if err != nil {
+        http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
+        return err
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(post)
-	return nil
+    // Store selected followers for semiprivate (almost private) and private posts
+    if (privacy == "semiprivate" || privacy == "private") && len(selectedFollowersIDs) > 0 {
+        if err := db.InsertSelectedFollowers(postID, selectedFollowersIDs); err != nil {
+            http.Error(w, "Failed to save selected followers", http.StatusInternalServerError)
+            return err
+        }
+    }
+
+    file, handler, err := r.FormFile("file")
+    if err == nil {
+        defer file.Close()
+        fileMeta := &dbTools.File{
+            UploaderID:   currentUserID,
+            FilenameOrig: handler.Filename,
+            ParentType:   "post",
+            ParentID:     postID,
+            CreatedAt:    timeNow,
+        }
+        uploadErr := db.FileUpload(file, fileMeta, r, w)
+        if uploadErr != nil {
+            http.Error(w, "Failed to upload file", http.StatusInternalServerError)
+            return uploadErr
+        }
+    } else if err != http.ErrMissingFile {
+        http.Error(w, "Failed to get file from form", http.StatusBadRequest)
+		return err
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(post)
+    return nil
 }
 
 // CreateCommentHandler handles creating new comments

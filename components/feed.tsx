@@ -76,9 +76,11 @@ export function Feed({ currentUser }: { currentUser: any }) {
   const [commentImagePreview, setCommentImagePreview] = useState<
     Record<string, string | null>
   >({});
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [selectedFollowers, setSelectedFollowers] = useState<number[]>([]);
 
   useEffect(() => {
-    const fetchPosts = async () => {
+    const fetchData = async () => {
       if (!currentUser) {
         setLoading(false);
         return;
@@ -86,6 +88,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
 
       setLoading(true);
       try {
+        // Fetch posts
         const res = await fetch("http://localhost:8080/api/getfeedposts", {
           method: "GET",
           credentials: "include",
@@ -99,8 +102,33 @@ export function Feed({ currentUser }: { currentUser: any }) {
       } finally {
         setLoading(false);
       }
+
+      // Fetch followers
+      try {
+        // Use currentUser.uuid or currentUser.id as appropriate
+        const followersResponse = await fetch(
+          `http://localhost:8080/api/followers/${currentUser.user_uuid}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        const followersData = await followersResponse.json();
+        console.log("Followers Response:", followersData);
+        if (followersData.success) {
+          setFollowers(followersData.followers || []);
+        } else {
+          console.warn("Followers fetch error:", followersData.message);
+          setFollowers([]);
+        }
+      } catch (err) {
+        console.warn("Followers fetch error:", err);
+        setFollowers([]);
+      }
     };
-    fetchPosts();
+
+    fetchData();
   }, [currentUser]);
 
   const handleLike = async (postUUID: string) => {
@@ -142,6 +170,15 @@ export function Feed({ currentUser }: { currentUser: any }) {
     const formData = new FormData();
     formData.append("content", sanitizedContent);
     formData.append("privacy", privacy);
+    // For semiprivate: send all follower IDs; for private: send only selected
+    if (privacy === "semiprivate") {
+      formData.append(
+        "selectedFollowers",
+        JSON.stringify(followers.map((f: any) => f.user_id))
+      );
+    } else if (privacy === "private") {
+      formData.append("selectedFollowers", JSON.stringify(selectedFollowers));
+    }
     if (image) formData.append("file", image);
 
     try {
@@ -158,6 +195,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
       setImage(null);
       setImagePreview(null);
       setPrivacy("public");
+      setSelectedFollowers([]);
 
       // Refresh posts
       const postsRes = await fetch("http://localhost:8080/api/getfeedposts", {
@@ -250,7 +288,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
       </div>
     );
   }
-  console.log("Posts fetched:", posts);
+  // console.log("Posts fetched:", posts);
   return (
     <div className="space-y-6">
       {/* Create Post */}
@@ -317,13 +355,39 @@ export function Feed({ currentUser }: { currentUser: any }) {
                   </Button>
                   <select
                     value={privacy}
-                    onChange={(e) => setPrivacy(e.target.value)}
+                    onChange={(e) => {
+                      setPrivacy(e.target.value);
+                      // Reset selected followers if privacy changes
+                      if (e.target.value !== "private") setSelectedFollowers([]);
+                    }}
                     className="text-sm border rounded px-2 py-1 bg-background"
                   >
                     <option value="public">Public</option>
-                    <option value="semiprivate">Semiprivate</option>
-                    <option value="private">Private</option>
+                    <option value="semiprivate">Almost Private (All Followers)</option>
+                    <option value="private">Private (Selected Followers)</option>
                   </select>
+                  {/* Show follower selection only for private */}
+                  {privacy === "private" && (
+                    <div className="ml-2">
+                      <label className="block text-xs mb-1">Select followers:</label>
+                      <select
+                        multiple
+                        value={selectedFollowers.map(String)}
+                        onChange={(e) => {
+                          const options = Array.from(e.target.selectedOptions);
+                          setSelectedFollowers(options.map((o) => Number(o.value)));
+                        }}
+                        className="text-xs border rounded px-1 py-1 bg-background min-w-[120px]"
+                        style={{ maxHeight: 80 }}
+                      >
+                        {followers.map((f: any) => (
+                          <option key={f.user_id} value={f.user_id}>
+                            {f.nickname || f.first_name || f.user_id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <Button
                   onClick={handlePost}
