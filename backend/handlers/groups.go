@@ -10,6 +10,7 @@ import (
 	"social_network/utils"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // getSubscribedGroups retrieves all groups a user is subscribed to
@@ -168,52 +169,21 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "events" {
+		// Handle group events
 		groupID, err := strconv.Atoi(segments[1])
 		if err != nil {
 			http.Error(w, "Invalid group ID", http.StatusBadRequest)
 			return
 		}
 		switch r.Method {
+		case http.MethodGet:
+			getGroupEvents(w, db, groupID)
 		case http.MethodPost:
 			createGroupEvent(w, r, db, groupID)
-		case http.MethodGet:
-			getGroupEvents(w, r, db, groupID)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	} else if len(segments) == 2 && segments[0] == "events" && segments[1] != "" {
-		eventID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid event ID", http.StatusBadRequest)
-			return
-		}
-		if r.Method == http.MethodGet {
-			getEventByID(w, r, db, eventID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "events" && segments[2] == "rsvp" {
-		eventID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid event ID", http.StatusBadRequest)
-			return
-		}
-		if r.Method == http.MethodPost {
-			respondToEvent(w, r, db, eventID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "events" && segments[2] == "rsvps" {
-		eventID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid event ID", http.StatusBadRequest)
-			return
-		}
-		if r.Method == http.MethodGet {
-			getEventRSVPs(w, r, db, eventID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
+		return
 	} else {
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
@@ -227,17 +197,58 @@ func createGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 		return
 	}
 
-	var group dbTools.Group
-	if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// Parse multipart form data for file upload support
+	err := r.ParseMultipartForm(10 << 20) // 10MB max
+	if err != nil {
+		http.Error(w, "Could not parse form", http.StatusBadRequest)
 		return
 	}
 
-	group.CreatorID = userID
+	// Extract form values
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	// Validate required fields
+	if title == "" || description == "" {
+		http.Error(w, "Title and description are required", http.StatusBadRequest)
+		return
+	}
+
+	// Create group struct
+	group := dbTools.Group{
+		Title:       title,
+		Description: description,
+		CreatorID:   userID,
+	}
+
+	// Create the group first to get the group ID
 	createdGroup, err := db.CreateGroup(&group)
 	if err != nil {
 		http.Error(w, "Failed to create group", http.StatusInternalServerError)
 		return
+	}
+
+	// Handle avatar upload if provided
+	file, handler, err := r.FormFile("avatar")
+	if err == nil {
+		defer file.Close()
+		fileMeta := &dbTools.File{
+			UploaderID:   userID,
+			FilenameOrig: handler.Filename,
+			ParentType:   "group",
+			ParentID:     createdGroup.GroupID,
+			CreatedAt:    time.Now(),
+		}
+		uploadErr := db.FileUpload(file, fileMeta, r, w)
+		if uploadErr != nil {
+			// Log error but don't fail group creation
+			log.Printf("Failed to upload group avatar: %v", uploadErr)
+		} else {
+			// Set avatar path for response
+			createdGroup.Avatar = "/uploads/" + fileMeta.FilenameNew
+		}
+	} else if err != http.ErrMissingFile {
+		log.Printf("Error getting avatar file: %v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -523,130 +534,6 @@ func getJoinRequests(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gro
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(requests)
-}
-
-func createGroupEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
-	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r, db)
-	if userID == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	isMember, err := db.IsGroupMember(groupID, userID)
-	if err != nil {
-		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
-		return
-	}
-	if !isMember {
-		http.Error(w, "Forbidden: Only group members can create events", http.StatusForbidden)
-		return
-	}
-
-	var event dbTools.Event
-	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	event.GroupID = groupID
-	event.CreatorID = userID
-	createdEvent, err := db.CreateEvent(&event)
-	if err != nil {
-		http.Error(w, "Failed to create event", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdEvent)
-}
-
-func getGroupEvents(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
-	events, err := db.GetEventsByGroupID(groupID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve events", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(events)
-}
-
-func getEventByID(w http.ResponseWriter, r *http.Request, db *dbTools.DB, eventID int) {
-	event, err := db.GetEventByID(eventID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve event", http.StatusInternalServerError)
-		return
-	}
-	if event == nil {
-		http.Error(w, "Event not found", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(event)
-}
-
-func respondToEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, eventID int) {
-	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r, db)
-	if userID == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	event, err := db.GetEventByID(eventID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve event", http.StatusInternalServerError)
-		return
-	}
-	if event == nil {
-		http.Error(w, "Event not found", http.StatusNotFound)
-		return
-	}
-
-	isMember, err := db.IsGroupMember(event.GroupID, userID)
-	if err != nil {
-		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
-		return
-	}
-	if !isMember {
-		http.Error(w, "Forbidden: Only group members can RSVP", http.StatusForbidden)
-		return
-	}
-
-	var rsvp struct {
-		Response string `json:"response"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&rsvp); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if rsvp.Response != "going" && rsvp.Response != "not_going" {
-		http.Error(w, "Invalid response value", http.StatusBadRequest)
-		return
-	}
-
-	err = db.RespondToEvent(eventID, userID, rsvp.Response)
-	if err != nil {
-		http.Error(w, "Failed to record response", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func getEventRSVPs(w http.ResponseWriter, r *http.Request, db *dbTools.DB, eventID int) {
-	rsvps, err := db.GetEventRSVPs(eventID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve RSVPs", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(rsvps)
 }
 
 // getUserIDFromContext retrieves the user ID from the session cookie using the utils package

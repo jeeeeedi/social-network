@@ -75,7 +75,7 @@ func NotificationHandler(w http.ResponseWriter, r *http.Request) {
 				// Map backend action_type to frontend type
 				switch n.ActionType {
 				case "follow_request":
-					notification["type"] = "friend_request"
+					notification["type"] = "follow_request"
 				case "follow_accepted":
 					notification["type"] = "follow"
 				case "group_invitation":
