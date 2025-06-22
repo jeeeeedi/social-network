@@ -77,7 +77,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
     Record<string, string | null>
   >({});
   const [followers, setFollowers] = useState<any[]>([]);
-  const [selectedFollowers, setSelectedFollowers] = useState<number[]>([]);
+  const [selectedFollowers, setSelectedFollowers] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,13 +174,14 @@ export function Feed({ currentUser }: { currentUser: any }) {
     if (privacy === "semiprivate") {
       formData.append(
         "selectedFollowers",
-        JSON.stringify(followers.map((f: any) => f.user_id))
+        JSON.stringify(followers.map((f: any) => f.user_uuid))
       );
     } else if (privacy === "private") {
       formData.append("selectedFollowers", JSON.stringify(selectedFollowers));
     }
     if (image) formData.append("file", image);
-
+    console.log("formData:", formData, "| followers:", followers, "| selectedFollowers:", selectedFollowers);
+    
     try {
       const res = await fetch("http://localhost:8080/api/createposts", {
         method: "POST",
@@ -375,14 +376,14 @@ export function Feed({ currentUser }: { currentUser: any }) {
                         value={selectedFollowers.map(String)}
                         onChange={(e) => {
                           const options = Array.from(e.target.selectedOptions);
-                          setSelectedFollowers(options.map((o) => Number(o.value)));
+                          setSelectedFollowers(options.map((o) => String(o.value)));
                         }}
                         className="text-xs border rounded px-1 py-1 bg-background min-w-[120px]"
                         style={{ maxHeight: 80 }}
                       >
                         {followers.map((f: any) => (
-                          <option key={f.user_id} value={f.user_id}>
-                            {f.nickname || f.first_name || f.user_id}
+                          <option key={f.user_uuid} value={f.user_uuid}>
+                            {f.nickname || f.first_name || f.user_uuid}
                           </option>
                         ))}
                       </select>
