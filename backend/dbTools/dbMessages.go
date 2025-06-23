@@ -80,10 +80,10 @@ func (database *DB) GetAllMessagesFromDB() ([]ChatMessage, error) {
 	return out, nil
 }
 
-func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID, maxAmount int) ([]ChatMessage, error) {
+func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID int) ([]ChatMessage, error) {
 	var (
 		qry  string
-		args []interface{}
+		args []any
 	)
 
 	baseCond := `(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)`
@@ -97,9 +97,8 @@ func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID, maxAmoun
               FROM chat_messages
              WHERE (%s) AND %s
              ORDER BY chat_id DESC
-             LIMIT ?
         `, baseCond, statusCond)
-		args = []interface{}{user1ID, user2ID, user2ID, user1ID, maxAmount}
+		args = []any{user1ID, user2ID, user2ID, user1ID}
 	} else {
 		// next pages: only those older than beforeID
 		qry = fmt.Sprintf(`
@@ -108,16 +107,14 @@ func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID, maxAmoun
              WHERE ((%s AND chat_id < ?) OR (%s AND chat_id < ?))
                AND %s
              ORDER BY chat_id DESC
-             LIMIT ?
         `, baseCond, baseCond, statusCond)
-		args = []interface{}{
+		args = []any{
 			user1ID, user2ID, beforeID,
 			user2ID, user1ID, beforeID,
-			maxAmount,
 		}
 	}
 
-	rows, err := database.conn.Query(qry, args...)
+	rows, err := database.Query(qry, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +125,9 @@ func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID, maxAmoun
 		var m ChatMessage
 		// adjust Scan targets to match your Message struct
 		if err := rows.Scan(
-			&m.ID,
+			&m.ChatID,
 			&m.SenderID,
-			&m.RecipientID,
+			&m.ReceiverID,
 			&m.Content,
 			&m.CreatedAt,
 		); err != nil {

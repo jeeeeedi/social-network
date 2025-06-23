@@ -30,6 +30,9 @@ func setHandlers(db *dbTools.DB) {
 	// User API routes
 	http.HandleFunc("/api/users/", handlers.UserByIDHandler)        // Handle /api/users/{id}
 	http.HandleFunc("/api/users/batch", handlers.BatchUsersHandler) // Handle batch user requests
+	http.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		handlers.WebSocketsHandler(db, w, r)
+	})
 
 	// Routes for POSTS and COMMENTS
 	http.HandleFunc("/api/createposts", func(w http.ResponseWriter, r *http.Request) {
