@@ -37,13 +37,13 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 	specificationParts := strings.SplitN(chatSpecifications, "_", 2)
 	if len(specificationParts) != 2 {
-		http.Error(w, "invalid chat spec", http.StatusBadRequest)
+		http.Error(w, "invalid chat specification:", http.StatusBadRequest)
 		return
 	}
 	chatType, otherIDStr := specificationParts[0], specificationParts[1]
 	otherID, err := strconv.Atoi(otherIDStr)
 	if err != nil {
-		http.Error(w, "invalid ID", http.StatusBadRequest)
+		http.Error(w, "invalid ID:", http.StatusBadRequest)
 		return
 	}
 
