@@ -560,6 +560,12 @@ export function Feed({ currentUser }: { currentUser: any }) {
                           required
                         />
                       </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        {commentContent[post.post_uuid].length}/1000
+                      </div>
+                      {error && (
+                        <div className="text-red-500 text-sm mt-1">{error}</div>
+                      )}
                       <div className="flex items-center justify-between gap-2 mb-4">
                         <Button variant="ghost" size="sm" asChild>
                           <label className="cursor-pointer">
