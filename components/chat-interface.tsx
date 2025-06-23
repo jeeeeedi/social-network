@@ -182,6 +182,7 @@ export function ChatInterface({
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const chatMessages = messages.filter(
     (msg) => msg.chatId === `private_${user.id}` || (msg.senderId === "you" && msg.chatId === `private_${user.id}`),
   )
@@ -190,8 +191,13 @@ export function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
+  const setFocus = () => {
+    inputRef.current?.focus()
+  }
+
   useEffect(() => {
     scrollToBottom()
+    setFocus()
   }, [chatMessages])
 
   const handleSendMessage = () => {
@@ -199,7 +205,7 @@ export function ChatInterface({
       onSendMessage({
         senderId: "you",
         senderName: "You",
-        senderAvatar: "/placeholder.svg?height=40&width=40",
+        senderAvatar: "/placeholder.svg?height=40&width=40", // Change
         content: newMessage,
         type: "text",
         chatId: `private_${user.id}`,
@@ -213,7 +219,7 @@ export function ChatInterface({
     onSendMessage({
       senderId: "you",
       senderName: "You",
-      senderAvatar: "/placeholder.svg?height=40&width=40",
+      senderAvatar: "/placeholder.svg?height=40&width=40", // Change
       content: emoji,
       type: "emoji",
       chatId: `private_${user.id}`,
@@ -340,6 +346,7 @@ export function ChatInterface({
                 </PopoverContent>
               </Popover>
               <Input
+                ref={inputRef}
                 placeholder="Type a message..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
