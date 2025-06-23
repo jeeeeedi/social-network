@@ -79,7 +79,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		// determine receiverID vs. groupID
 		var recieverID, groupID int
 		if decodedMessage.ChatType == "private" {
-			// decodedMessage.ChatID might be "private_42" → split to get the int 42
+			// decodedMessage.ChatID might be "private_42" split to get the int 42
 			id, _ := strconv.Atoi(strings.TrimPrefix(decodedMessage.ChatID, "private_"))
 			recieverID = id
 		} else {
@@ -92,14 +92,14 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Error converting sender ID to int:", err)
 		}
 
-		chatID, err := strconv.Atoi(strings.TrimPrefix(strings.TrimPrefix(decodedMessage.ChatID, "group_"), "private_"))
-		if err != nil {
-			fmt.Println("Error converting chat ID to int:", err)
-		}
+		/* 		chatID, err := strconv.Atoi(strings.TrimPrefix(strings.TrimPrefix(decodedMessage.ChatID, "group_"), "private_"))
+		   		if err != nil {
+		   			fmt.Println("Error converting chat ID to int:", err)
+		   		} */
 
 		// fill your DB model
 		msg := dbTools.ChatMessage{
-			ChatID:     chatID,
+			/* ChatID:     chatID, */
 			SenderID:   senderID,
 			ReceiverID: recieverID,
 			GroupID:    groupID,
@@ -107,7 +107,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			Status:     "active",
 			UpdatedAt:  &decodedMessage.Timestamp,
 		}
-		chatID, err = db.AddMessageToDB(&msg)
+		chatID, err := db.AddMessageToDB(&msg)
 		if err != nil {
 			fmt.Println("Error adding message to DB:", err)
 		}

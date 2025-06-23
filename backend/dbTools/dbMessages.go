@@ -80,7 +80,7 @@ func (database *DB) GetAllMessagesFromDB() ([]ChatMessage, error) {
 	return out, nil
 }
 
-func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID int) ([]ChatMessage, error) {
+func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID int) ([]ChatMessage, error) {
 	var (
 		qry  string
 		args []any
@@ -90,29 +90,14 @@ func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID int) ([]C
 	// always only active messages
 	statusCond := `status = 'active'`
 
-	if beforeID < 0 {
-		// first page
-		qry = fmt.Sprintf(`
+	// first page
+	qry = fmt.Sprintf(`
             SELECT chat_id, sender_id, receiver_id, content, created_at
               FROM chat_messages
              WHERE (%s) AND %s
              ORDER BY chat_id DESC
         `, baseCond, statusCond)
-		args = []any{user1ID, user2ID, user2ID, user1ID}
-	} else {
-		// next pages: only those older than beforeID
-		qry = fmt.Sprintf(`
-            SELECT chat_id, sender_id, receiver_id, content, created_at
-              FROM chat_messages
-             WHERE ((%s AND chat_id < ?) OR (%s AND chat_id < ?))
-               AND %s
-             ORDER BY chat_id DESC
-        `, baseCond, baseCond, statusCond)
-		args = []any{
-			user1ID, user2ID, beforeID,
-			user2ID, user1ID, beforeID,
-		}
-	}
+	args = []any{user1ID, user2ID, user2ID, user1ID}
 
 	rows, err := database.Query(qry, args...)
 	if err != nil {
@@ -142,4 +127,9 @@ func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID int) ([]C
 	}
 
 	return msgs, nil
+}
+
+func (database *DB) GetMessagesForGroup(groupID int) ([]ChatMessage, error) {
+	// Placeholder
+	return nil, nil
 }
