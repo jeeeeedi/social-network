@@ -80,14 +80,14 @@ export default function UserProfilePage() {
         setIsAuthenticated(true);
 
         // Fetch profile
-        const profileData = await fetchProfile(userUUID);
-        console.log("Profile Response:", profileData);
-        if (!profileData || !profileData.success) {
-          setError(profileData?.message || "Failed to load profile");
+        const profile = await fetchProfile(userUUID);
+        if (!profile || !profile.success) {
+          setError(profile?.message || "Failed to load profile");
           setLoading(false);
           return;
         }
-        setProfile(profileData.profile);
+        // console.log("Profile Response:", profile);
+        setProfile(profile.profile);
 
         // Fetch followers
         const followersResponse = await fetch(
@@ -99,11 +99,11 @@ export default function UserProfilePage() {
           }
         );
         const followersData = await followersResponse.json();
-        console.log("Followers Response:", followersData);
+        //console.log("Followers Response:", followersData);
         if (followersData.success) {
           setFollowers(followersData.followers || []);
         } else {
-          console.warn("Followers fetch error:", followersData.message);
+          //console.warn("Followers fetch error:", followersData.message);
           setFollowers([]);
         }
 
@@ -117,11 +117,11 @@ export default function UserProfilePage() {
           }
         );
         const followingData = await followingResponse.json();
-        console.log("Following Response:", followingData);
+        //console.log("Following Response:", followingData);
         if (followingData.success) {
           setFollowing(followingData.following || []);
         } else {
-          console.warn("Following fetch error:", followingData.message);
+          //console.warn("Following fetch error:", followingData.message);
           setFollowing([]);
         }
 
@@ -137,7 +137,7 @@ export default function UserProfilePage() {
               setIsFollowing(followData.isFollowing);
               setFollowStatus(followData.status || "");
             } else {
-              console.warn("Follow status error:", followData.message);
+              //console.warn("Follow status error:", followData.message);
               // Fallback: Check if current user is in followers list
               const isFollower = followersData.followers?.some(
                 (f: any) => f.user_uuid === currentUser.user_uuid
@@ -146,7 +146,7 @@ export default function UserProfilePage() {
               setFollowStatus(isFollower ? "accepted" : "");
             }
           } catch (err) {
-            console.warn("Follow status fetch error:", err);
+            //console.warn("Follow status fetch error:", err);
             // Fallback
             const isFollower = followersData.followers?.some(
               (f: any) => f.user_uuid === currentUser.user_uuid
@@ -156,14 +156,14 @@ export default function UserProfilePage() {
           }
         }
 
-        // Fetch posts - only if profile is public or we're following
+        // Fetch posts - only if profile is public or we're following or post is public (even if profile is private)
         if (
-          profileData.profile.privacy === "public" ||
-          (profileData && (isFollowing || profileData.user_uuid === userUUID))
+          profile.profile.privacy === "public" ||
+          (profile && (isFollowing || profile.profile.user_uuid === userUUID))
         ) {
           try {
             const myPostsRes = await fetch(
-              `http://localhost:8080/api/getmyposts/${userUUID}`,
+              `http://localhost:8080/api/getprofileposts/${userUUID}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -171,11 +171,11 @@ export default function UserProfilePage() {
               }
             );
             if (myPostsRes.ok) {
-              const myPostsData = await myPostsRes.json();
-              setPosts(myPostsData);
+              const posts = await myPostsRes.json();
+              setPosts(posts);
             }
           } catch (err) {
-            console.warn("Posts fetch error:", err);
+            // console.warn("Posts fetch error:", err);
             setPosts([]);
           }
         }
@@ -189,7 +189,6 @@ export default function UserProfilePage() {
         setLoading(false);
       }
     };
-
     verifySessionAndFetch();
   }, [userUUID, currentUser]);
 
@@ -245,7 +244,7 @@ export default function UserProfilePage() {
         setError(followData.message || "Failed to update follow status");
       }
     } catch (err) {
-      console.error("Follow Toggle Error:", err);
+      //console.error("Follow Toggle Error:", err);
       setError("Error updating follow status");
     }
   };
@@ -535,7 +534,8 @@ export default function UserProfilePage() {
                             <Heart className="h-3 w-3" />0
                           </button>
                           <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <MessageCircle className="h-3 w-3" /> {post.comments ? post.comments.length : 0}
+                            <MessageCircle className="h-3 w-3" />{" "}
+                            {post.comments ? post.comments.length : 0}
                           </button>
                         </div>
                       </CardContent>

@@ -3,13 +3,12 @@ package dbTools
 import (
 	"context"
 	"database/sql"
-	"log"
 	"social_network/utils"
 )
 
 // InsertPostToDB inserts a new post into the database and sets the PostID on success.
 func (d *DB) InsertPostToDB(p *Post) (int, error) {
-	log.Print("InsertPostToDB called with post:", p)
+	// log.Print("InsertPostToDB called with post:", p)
 	// Generate UUID for the post if not already set
 	if p.PostUUID == "" {
 		uuid, err := utils.GenerateUUID()
@@ -44,9 +43,12 @@ func (d *DB) InsertPostToDB(p *Post) (int, error) {
 	return p.PostID, nil
 }
 
-// GetFeedPosts retrieves all public posts and all posts from the specified user
-// TODO: Add logic for semi-private posts
+// GetFeedPosts retrieves all public posts,
+// semi-private posts if user is a follower,
+// private posts if user is selectedFollower,
+// and all the user's own posts.
 func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
+	// log.Print("GetFeedPosts called for userID:", userID)
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
@@ -56,10 +58,21 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
         FROM posts p
         JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
         LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
-        WHERE (p.privacy = 'public' OR p.poster_id = ?)
-          AND p.status = 'active'
+        WHERE p.status = 'active'
+          AND (
+            p.poster_id = ? -- always include user's own posts
+            OR p.privacy = 'public'
+            OR (
+                (p.privacy = 'semi-private' OR p.privacy = 'private')
+                AND EXISTS (
+                    SELECT 1 FROM post_private_viewers 
+                    WHERE post_id = p.post_id 
+                      AND user_id = ?
+                )
+            )
+          )
         ORDER BY p.created_at DESC
-    `, userID)
+    `, userID, userID)
 	// COALESCE(f.file_id, 0): If f.file_id != NULL, use its value. If f.file_id = NULL (no file w/post), use 0 instead.
 	if err != nil {
 		return nil, err
@@ -120,12 +133,15 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	return postsResponse, nil
 }
 
-// GetMyPosts retrieves all posts by the user
-func (d *DB) GetMyPosts(currentUserID int, targetUserUUID string) ([]PostResponse, error) {
-	log.Print("GetMyPosts called")
-	// Convert UUID to user_id
+// GetProfilePosts retrieves all the targetUser's viewable posts
+func (d *DB) GetProfilePosts(currentUserID int, targetUserUUID string) ([]PostResponse, error) {
+	// log.Print("GetProfilePosts called")
+	// Convert targetUserUUID to targetUserID and get targetUserPrivacy
 	var targetUserID int
-	err := d.GetDB().QueryRow(`SELECT user_id FROM users WHERE user_uuid = ? AND status = 'active'`, targetUserUUID).Scan(&targetUserID)
+	var targetUserPrivacy string
+	err := d.GetDB().QueryRow(
+		`SELECT user_id, privacy FROM users WHERE user_uuid = ? AND status = 'active'`, targetUserUUID,
+	).Scan(&targetUserID, &targetUserPrivacy)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // User not found, return empty slice
@@ -150,8 +166,24 @@ func (d *DB) GetMyPosts(currentUserID int, targetUserUUID string) ([]PostRespons
               AND p.status = 'active'
             ORDER BY p.created_at DESC
         `, targetUserID)
+		/* } else if targetUserPrivacy == "private" {
+				// Only show public posts if profile is private and not the owner
+				rows, err = d.GetDB().Query(`
+		            SELECT
+		                p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at,
+		                u.nickname, u.avatar,
+		                COALESCE(f.file_id, 0) as file_id,
+		                f.filename_new
+		            FROM posts p
+		            JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
+		            LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
+		            WHERE p.poster_id = ?
+		              AND p.status = 'active'
+		              AND p.privacy = 'public'
+		            ORDER BY p.created_at DESC
+		        `, targetUserID) */
 	} else {
-		// Show only public posts for others
+		// Show public posts and posts where currentUserID is in post_private_viewers
 		rows, err = d.GetDB().Query(`
             SELECT 
                 p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
@@ -163,11 +195,19 @@ func (d *DB) GetMyPosts(currentUserID int, targetUserUUID string) ([]PostRespons
             LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
             WHERE p.poster_id = ?
               AND p.status = 'active'
-              AND p.privacy = 'public'
+              AND (
+                p.privacy = 'public'
+                OR EXISTS (
+                    SELECT 1 FROM post_private_viewers v
+                    WHERE v.post_id = p.post_id
+                      AND v.user_id = ?
+                )
+              )
             ORDER BY p.created_at DESC
-        `, targetUserID)
+        `, targetUserID, currentUserID)
 	}
 	if err != nil {
+		// log.Print("GetProfilePosts: Error querying posts:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -194,7 +234,7 @@ func (d *DB) GetMyPosts(currentUserID int, targetUserUUID string) ([]PostRespons
 			&filenameNew,
 		)
 		if err != nil {
-			log.Print("GetMyPosts: Error scanning post row:", err)
+			// log.Print("GetProfilePosts: Error scanning post row:", err)
 			return nil, err
 		}
 		if groupID.Valid {
@@ -218,10 +258,10 @@ func (d *DB) GetMyPosts(currentUserID int, targetUserUUID string) ([]PostRespons
 
 		comments, err := d.GetCommentsForPost(context.Background(), postResponse.PostUUID)
 		if err != nil {
-			log.Print("GetMyPosts: Error getting comments for post:", err)
+			// log.Print("GetProfilePosts: Error getting comments for post:", err)
 			return nil, err
 		}
-		log.Print("GetMyPosts: Retrieved comments for post:", postResponse.PostUUID, comments)
+		// log.Print("GetProfilePosts: Retrieved comments for post:", postResponse.PostUUID, comments)
 
 		postResponse.Comments = comments
 		postsResponse = append(postsResponse, postResponse)
@@ -361,7 +401,7 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
 
 // InsertSelectedFollowers inserts selected follower user_ids for a post (for semi-private/private posts)
 func (d *DB) InsertSelectedFollowers(postID int, selectedFollowersUUIDs []string) error {
-	log.Print("InsertSelectedFollowers called with postID:", postID, "and selectedFollowersUUIDs:", selectedFollowersUUIDs)
+	// log.Print("InsertSelectedFollowers called with postID:", postID, "and selectedFollowersUUIDs:", selectedFollowersUUIDs)
 	if len(selectedFollowersUUIDs) == 0 {
 		return nil
 	}
@@ -382,7 +422,13 @@ func (d *DB) InsertSelectedFollowers(postID int, selectedFollowersUUIDs []string
 	}
 	defer stmt.Close()
 
-	for _, userID := range selectedFollowersUUIDs {
+	for _, userUUID := range selectedFollowersUUIDs {
+		var userID int
+		err = d.GetDB().QueryRow("SELECT user_id FROM users WHERE user_uuid = ? AND status = 'active'", userUUID).Scan(&userID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 		_, err = stmt.Exec(postID, userID)
 		if err != nil {
 			tx.Rollback()

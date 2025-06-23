@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
@@ -17,18 +16,13 @@ var (
 )
 
 /* TODOs:
-- Implement a proper database connection and use it instead of in-memory storage
-- Check frontend and backend integration for creating posts and comments
-- Implement error handling for file uploads
+- Probably make an error handler func that gracefully routes to an error page
 - Validate active session before doing anything
--
-
 */
-
-//TODO: Probably make an error handler func that gracefully routes to an error page
 
 // GetFeedPostsHandler handles getting user feed/posts
 func GetFeedPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	// log.Print("GetFeedPostsHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -46,8 +40,11 @@ func GetFeedPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request)
 	posts, err := db.GetFeedPosts(userID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
+		// log.Print("GetFeedPostsHandler: Error retrieving posts:", err)
 		return err
 	}
+
+	// log.Print("GetFeedPosts: ", userID, posts)
 
 	// Return the posts as JSON
 	w.Header().Set("Content-Type", "application/json")
@@ -55,9 +52,9 @@ func GetFeedPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
-// GetMyPostsHandler handles getting my/user posts
-func GetMyPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
-	log.Print("GetMyPostsHandler called")
+// GetProfilePostsHandler handles getting my/user posts
+func GetProfilePostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) error {
+	// log.Print("GetProfilePostsHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -71,22 +68,22 @@ func GetMyPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	// Extract user UUID from URL path: /api/getmyposts/{user_uuid}
+	// Extract user UUID from URL path: /api/getprofileposts/{user_uuid}
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	var targetUserUUID string
 	if len(pathParts) >= 3 {
 		targetUserUUID = pathParts[2]
 	}
 
-	// Get all posts from the user
-	posts, err := db.GetMyPosts(currentUserID, targetUserUUID)
+	// Get all the targetUser's viewable posts
+	posts, err := db.GetProfilePosts(currentUserID, targetUserUUID)
 	if err != nil {
 		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
-		log.Print("GetMyPostsHandler: Error retrieving posts:", err)
+		// log.Print("GetProfilePostsHandler: Error retrieving posts:", err)
 		return err
 	}
 
-	log.Print("GetMyPosts: ", targetUserUUID, posts)
+	// log.Print("GetProfilePosts: ", targetUserUUID, posts)
 
 	// Return the posts as JSON
 	w.Header().Set("Content-Type", "application/json")
@@ -107,18 +104,18 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 	//logs
-	for key, values := range r.MultipartForm.Value {
+	/* for key, values := range r.MultipartForm.Value {
 		log.Printf("Form value: %s = %v", key, values)
 	}
 	for key, files := range r.MultipartForm.File {
 		log.Printf("Form file: %s = %v", key, files)
-	}
+	} */
 
 	timeNow := time.Now()
 	content := r.FormValue("content")
 	privacy := r.FormValue("privacy")
 
-	// Read selectedFollowers field (for private and almost private)
+	// Read selectedFollowers field (for private and semi-private)
 	selectedFollowersStr := r.FormValue("selectedFollowers")
 	var selectedFollowersUUIDs []string
 	if (privacy == "semi-private" || privacy == "private") && selectedFollowersStr != "" {
@@ -133,7 +130,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
 		return err
 	}
-	if len(content) > 3000 {
+	if len(content) > 1100 {
 		http.Error(w, "Content too long", http.StatusBadRequest)
 		return err
 	}
@@ -163,15 +160,15 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 	postID, err = db.InsertPostToDB(&post)
 	if err != nil {
 		http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
-		log.Print("CreatePostHandler: Error inserting post:", err)
+		// log.Print("CreatePostHandler: Error inserting post:", err)
 		return err
 	}
 
-	// Store selected followers for semi-private (almost private) and private posts
+	// Store selected followers for semi-private and private posts
 	if (privacy == "semi-private" || privacy == "private") && len(selectedFollowersUUIDs) > 0 {
 		if err := db.InsertSelectedFollowers(postID, selectedFollowersUUIDs); err != nil {
 			http.Error(w, "Failed to save selected followers", http.StatusInternalServerError)
-			log.Print("CreatePostHandler: Error inserting selected followers:", err)
+			// log.Print("CreatePostHandler: Error inserting selected followers:", err)
 			return err
 		}
 	}
@@ -196,7 +193,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	log.Print("CreatePostHandler with postID, content, privacy, selectedFollowersUUIDs: ", postID, content, privacy, selectedFollowersUUIDs)
+	// log.Print("CreatePostHandler with postID, content, privacy, selectedFollowersUUIDs: ", postID, content, privacy, selectedFollowersUUIDs)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
 	return nil
@@ -228,7 +225,7 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
 		return err
 	}
-	if len(content) > 3000 {
+	if len(content) > 1100 {
 		http.Error(w, "Content too long", http.StatusBadRequest)
 		return err
 	}

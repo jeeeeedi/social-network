@@ -80,7 +80,7 @@ export default function MyProfilePage() {
 
         // Fetch profile
         const profileData = await fetchProfile("me");
-        console.log("Profile Response:", profileData);
+        // console.log("Profile Response:", profileData);
         if (!profileData || !profileData.success) {
           setError(profileData?.message || "Failed to load profile");
           setLoading(false);
@@ -99,15 +99,15 @@ export default function MyProfilePage() {
           }
         );
         const followersData = await followersResponse.json();
-        console.log("Followers Response:", followersData);
+        /* console.log("Followers Response:", followersData);
         console.log(
           "First follower avatar:",
           followersData.followers?.[0]?.avatar
-        );
+        ); */
         if (followersData.success) {
           setFollowers(followersData.followers || []);
         } else {
-          console.warn("Followers fetch error:", followersData.message);
+          // console.warn("Followers fetch error:", followersData.message);
           setFollowers([]);
         }
 
@@ -121,26 +121,25 @@ export default function MyProfilePage() {
           }
         );
         const followingData = await followingResponse.json();
-        console.log("Following Response:", followingData);
+        // console.log("Following Response:", followingData);
         if (followingData.success) {
           setFollowing(followingData.following || []);
         } else {
-          console.warn("Following fetch error:", followingData.message);
+          // console.warn("Following fetch error:", followingData.message);
           setFollowing([]);
         }
-console.log("profile/me Current User:", currentUser);
+
         // Fetch posts
         const myPostsRes = await fetch(
-          `http://localhost:8080/api/getmyposts/${currentUser.user_uuid}`,
+          `http://localhost:8080/api/getprofileposts/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
           }
         );
-        if (!myPostsRes.ok) throw new Error("Failed to getmyposts");
+        if (!myPostsRes.ok) throw new Error("Failed to getprofileposts");
         const myPostsData = await myPostsRes.json();
-        console.log("My Posts Response:", myPostsData);
         setPosts(myPostsData);
       } catch (err) {
         setIsAuthenticated(false);
@@ -182,7 +181,7 @@ console.log("profile/me Current User:", currentUser);
         setError(data.message || "Failed to update privacy");
       }
     } catch (err) {
-      console.error("Privacy Update Error:", err);
+      // console.error("Privacy Update Error:", err);
       setError("Error updating privacy");
     }
   };
@@ -241,8 +240,6 @@ console.log("profile/me Current User:", currentUser);
   const displayName =
     profile.nickname || `${profile.first_name} ${profile.last_name}`;
   const fullName = `${profile.first_name} ${profile.last_name}`;
-
-  console.log("MyProfile posts:", posts);
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-4xl">
