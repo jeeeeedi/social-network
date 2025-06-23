@@ -184,7 +184,7 @@ export function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const chatMessages = messages.filter(
-    (msg) => msg.chatId === `private_${user.id}` || (msg.senderId === "you" && msg.chatId === `private_${user.id}`),
+    (msg) => msg.chatId === `private_${user.id}` || (msg.senderId === "You" && msg.chatId === `private_${user.id}`),
   )
 
   const scrollToBottom = () => {
@@ -203,7 +203,7 @@ export function ChatInterface({
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       onSendMessage({
-        senderId: "you",
+        senderId: "You",
         senderName: "You",
         senderAvatar: "/placeholder.svg?height=40&width=40", // Change
         content: newMessage,
@@ -217,7 +217,7 @@ export function ChatInterface({
 
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
-      senderId: "you",
+      senderId: "You",
       senderName: "You",
       senderAvatar: "/placeholder.svg?height=40&width=40", // Change
       content: emoji,
@@ -277,9 +277,9 @@ export function ChatInterface({
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex gap-2 ${message.senderId === "you" ? "justify-end" : "justify-start"}`}
+                    className={`flex gap-2 ${message.senderId === "You" ? "justify-end" : "justify-start"}`}
                   >
-                    {message.senderId !== "you" && (
+                    {message.senderId !== "You" && (
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} />
                         <AvatarFallback className="text-xs">
@@ -292,7 +292,7 @@ export function ChatInterface({
                     )}
                     <div
                       className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${
-                        message.senderId === "you" ? "bg-primary text-primary-foreground" : "bg-muted"
+                        message.senderId === "You" ? "bg-primary text-primary-foreground" : "bg-muted"
                       }`}
                     >
                       {message.type === "emoji" ? (
@@ -302,7 +302,7 @@ export function ChatInterface({
                       )}
                       <p
                         className={`text-xs mt-1 ${
-                          message.senderId === "you" ? "text-primary-foreground/70" : "text-muted-foreground"
+                          message.senderId === "You" ? "text-primary-foreground/70" : "text-muted-foreground"
                         }`}
                       >
                         {message.timestamp.toLocaleTimeString([], {

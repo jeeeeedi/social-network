@@ -78,6 +78,8 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	clients[conn] = userID
 	clientsMutex.Unlock()
 
+	// Check what groups the client is part of, and enable real time messages.
+
 	for {
 		_, rawMsg, err := conn.ReadMessage()
 		if err != nil {
