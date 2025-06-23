@@ -26,6 +26,7 @@ export interface ChatUser {
 }
 
 export function useWebSocket() {
+  const serverUrl = "ws://localhost:8080/api/ws"
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])
@@ -34,7 +35,7 @@ export function useWebSocket() {
   useEffect(() => {
     // In a real app, this would connect to your WebSocket server
     // For demo purposes, we'll simulate the connection
-    const connectWebSocket = () => {
+    /* const connectWebSocket = () => {
       try {
         // Simulated WebSocket connection
         setIsConnected(true)
@@ -73,26 +74,63 @@ export function useWebSocket() {
       }
     }
 
-    connectWebSocket()
+    connectWebSocket() */
 
-    return () => {
-      if (ws.current) {
-        ws.current.close()
+    // 1) Create the WebSocket
+    ws.current = new WebSocket(serverUrl)
+
+    // 2) When connection opens
+    ws.current.onopen = () => {
+      console.log("WS connected")
+      setIsConnected(true)
+      // Optionally, you can notify server who you are:
+      // ws.current!.send(JSON.stringify({ type: "hello", userId: "…" }))
+    }
+
+    // 3) When a message comes in
+    ws.current.onmessage = (event) => {
+      try {
+        const incoming: Message = JSON.parse(event.data)
+        setMessages(prev => [...prev, incoming])
+      } catch (err) {
+        console.error("Failed to parse WS message", err)
       }
     }
-  }, [])
 
-  const sendMessage = (message: Omit<Message, "id" | "timestamp">) => {
+    // 4) Handle errors
+    ws.current.onerror = (err) => {
+      console.error("WS error", err)
+      // you might setIsConnected(false) or show UI feedback
+    }
+
+    // 5) Handle close
+    ws.current.onclose = () => {
+      console.log("WS closed")
+      setIsConnected(false)
+      // optionally: try to reconnect after a delay
+    }
+
+    // 6) Cleanup on unmount
+    return () => {
+      ws.current?.close()
+    }
+  }, [serverUrl])
+
+  // 7) Sending a message
+  const sendMessage = (msg: Omit<Message, "id" | "timestamp">) => {
     const newMessage: Message = {
-      ...message,
+      ...msg,
       id: Date.now().toString(),
       timestamp: new Date(),
     }
-
-    setMessages((prev) => [...prev, newMessage])
-
-    // In a real app, send to WebSocket server
-    // ws.current?.send(JSON.stringify(newMessage))
+    // 7a) Add to local state
+    setMessages(prev => [...prev, newMessage])
+    // 7b) Send to server
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(newMessage))
+    } else {
+      console.warn("WS not open; cannot send")
+    }
   }
 
   return {

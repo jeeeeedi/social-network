@@ -83,7 +83,7 @@ export default function GroupDetailPage() {
   const [eventDate, setEventDate] = useState("")
   const [eventTime, setEventTime] = useState("")
   const [activeGroupChat, setActiveGroupChat] = useState<GroupChatType | null>(null)
-  const [isGroupChatMinimized, setIsGroupChatMinimized] = useState(false)
+
   const [messages, setMessages] = useState<Message[]>([])
   const [availableUsers, setAvailableUsers] = useState<UserInfo[]>([])
 
@@ -301,8 +301,7 @@ export default function GroupDetailPage() {
       description: group.description,
     };
     
-    setActiveGroupChat(groupChat);
-    setIsGroupChatMinimized(false);
+         setActiveGroupChat(groupChat);
   }
 
   const sendMessage = (message: Omit<Message, "id" | "timestamp">) => {
@@ -682,8 +681,6 @@ export default function GroupDetailPage() {
           messages={messages}
           onSendMessage={sendMessage}
           onClose={() => setActiveGroupChat(null)}
-          isMinimized={isGroupChatMinimized}
-          onToggleMinimize={() => setIsGroupChatMinimized(!isGroupChatMinimized)}
         />
       )}
     </div>

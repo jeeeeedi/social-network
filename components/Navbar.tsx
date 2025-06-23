@@ -25,56 +25,96 @@ import {
 } from 'lucide-react';
 import { NotificationCenter, Notification } from '@/components/notification-center';
 
+interface User {
+  id: string;
+  user_uuid: string;
+  first_name: string;
+  last_name: string;
+  nickname: string;
+  avatar?: string;
+}
+
 export const Navbar: React.FC = () => {
   const { currentUser, logout, loggingOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
-  // Fetch notifications on component mount and when user changes
   useEffect(() => {
     if (currentUser) {
       fetchNotifications();
+      fetchUsers();
     }
   }, [currentUser]);
 
   const fetchNotifications = async () => {
-  setNotificationsLoading(true);
-  try {
-    const response = await fetch('http://localhost:8080/api/notifications', {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    if (response.ok) {
-      const data = await response.json();
-      const formattedNotifications = data.notifications?.map((n: any) => ({
-        id: n.id.toString(),
-        type: mapBackendTypeToFrontend(n.type),
-        title: generateNotificationTitle(n.type, n.message),
-        message: n.message,
-        timestamp: new Date(n.timestamp),
-        isRead: n.status === 'read',
-        actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
-        fromUser: n.actor_id ? {
-          id: n.actor_id.toString(),
-          name: n.sender,
-          avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
-        } : undefined,
-        groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
-        followId: n.type === 'follow_request' ? n.parent_id.toString() : undefined, // Add this
-      })) || [];
-      setNotifications(formattedNotifications);
+    setNotificationsLoading(true);
+    try {
+      const response = await fetch('http://localhost:8080/api/notifications', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const formattedNotifications = data.notifications?.map((n: any) => ({
+          id: n.id.toString(),
+          type: mapBackendTypeToFrontend(n.type),
+          title: generateNotificationTitle(n.type, n.message),
+          message: n.message,
+          timestamp: new Date(n.timestamp),
+          isRead: n.status === 'read',
+          actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
+          fromUser: n.actor_id ? {
+            id: n.actor_id.toString(),
+            name: n.sender,
+            avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
+          } : undefined,
+          groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
+          followId: n.type === 'follow_request' ? n.parent_id.toString() : undefined,
+        })) || [];
+        setNotifications(formattedNotifications);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
     }
-  } catch (error) {
-    console.error('Failed to fetch notifications:', error);
-  } finally {
-    setNotificationsLoading(false);
-  }
-};
+  };
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const response = await fetch('http://localhost:8080/api/users', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const formattedUsers = data.users?.map((u: any) => ({
+          id: u.user_id.toString(),
+          user_uuid: u.user_uuid,
+          first_name: u.first_name,
+          last_name: u.last_name,
+          nickname: u.nickname,
+          avatar: u.avatar ? `http://localhost:8080${u.avatar}` : undefined,
+        })) || [];
+        setUsers(formattedUsers);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
   const mapBackendTypeToFrontend = (backendType: string): Notification['type'] => {
     switch (backendType) {
@@ -94,7 +134,6 @@ export const Navbar: React.FC = () => {
   };
 
   const generateNotificationTitle = (type: string, message: string): string => {
-    // For join request responses, determine title from message content
     if (message.includes('has been accepted')) {
       return 'Join Request Accepted';
     }
@@ -120,7 +159,6 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // Set a timeout for logout to prevent infinite hanging
       const logoutPromise = logout();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Logout timeout')), 5000)
@@ -129,9 +167,7 @@ export const Navbar: React.FC = () => {
       await Promise.race([logoutPromise, timeoutPromise]);
     } catch (error) {
       console.error('Logout failed or timed out:', error);
-      // Continue with redirect even if logout fails
     } finally {
-      // Always redirect regardless of logout success/failure
       window.location.replace('/login');
     }
   };
@@ -156,47 +192,47 @@ export const Navbar: React.FC = () => {
   };
 
   const handleAcceptFollowRequest = async (userId: string, followId: string) => {
-  console.log('Attempting to accept follow request:', { userId, followId });
-  try {
-    const payload = { follow_id: parseInt(followId), action: 'accept' };
-    console.log('Sending payload to /api/follow_requests:', payload);
-    const response = await fetch('http://localhost:8080/api/follow_requests', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    let responseBody;
+    console.log('Attempting to accept follow request:', { userId, followId });
     try {
-      responseBody = await response.json();
-    } catch (e) {
-      responseBody = await response.text();
+      const payload = { follow_id: parseInt(followId), action: 'accept' };
+      console.log('Sending payload to /api/follow_requests:', payload);
+      const response = await fetch('http://localhost:8080/api/follow_requests', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      let responseBody;
+      try {
+        responseBody = await response.json();
+      } catch (e) {
+        responseBody = await response.text();
+      }
+      console.log('Response status:', response.status, 'Response ok:', response.ok, 'Body:', responseBody);
+      if (response.status === 401) {
+        console.log('Session expired, redirecting to login');
+        window.location.replace('/login');
+        return;
+      }
+      if (response.status === 404) {
+        console.log('Follow request no longer pending, refreshing notifications');
+        fetchNotifications();
+        return;
+      }
+      if (response.ok && responseBody.status === 'accepted') {
+        console.log('Follow request accepted for follow_id:', followId);
+        fetchNotifications();
+      } else {
+        console.error('Failed to accept follow request, unexpected response:', responseBody, 'Status:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to accept follow request:', error);
     }
-    console.log('Response status:', response.status, 'Response ok:', response.ok, 'Body:', responseBody);
-    if (response.status === 401) {
-      console.log('Session expired, redirecting to login');
-      window.location.replace('/login');
-      return;
-    }
-    if (response.status === 404) {
-      console.log('Follow request no longer pending, refreshing notifications');
-      fetchNotifications();
-      return;
-    }
-    if (response.ok && responseBody.status === 'accepted') {
-      console.log('Follow request accepted for follow_id:', followId);
-      fetchNotifications();
-    } else {
-      console.error('Failed to accept follow request, unexpected response:', responseBody, 'Status:', response.status);
-    }
-  } catch (error) {
-    console.error('Failed to accept follow request:', error);
-  }
-};
+  };
 
- const handleDeclineFollowRequest = async (userId: string, followId: string) => {
+  const handleDeclineFollowRequest = async (userId: string, followId: string) => {
     console.log('Attempting to decline follow request:', { userId, followId });
     try {
       const payload = { follow_id: parseInt(followId), action: 'decline' };
@@ -253,7 +289,6 @@ export const Navbar: React.FC = () => {
         body: JSON.stringify({ status: 'accepted' }),
       });
       if (response.ok) {
-        // Refresh notifications to remove the processed request
         fetchNotifications();
       }
     } catch (error) {
@@ -272,7 +307,6 @@ export const Navbar: React.FC = () => {
         body: JSON.stringify({ status: 'declined' }),
       });
       if (response.ok) {
-        // Refresh notifications to remove the processed request
         fetchNotifications();
       }
     } catch (error) {
@@ -285,12 +319,13 @@ export const Navbar: React.FC = () => {
   };
 
   interface NavItem {
-    href: string;
+    href?: string;
     icon: React.ComponentType<{ className?: string }>;
     label: string;
-    isActive: boolean;
+    isActive?: boolean;
     badge?: number;
     onClick?: () => void;
+    component?: React.ReactNode;
   }
 
   const navItems: NavItem[] = [
@@ -306,6 +341,50 @@ export const Navbar: React.FC = () => {
       label: 'Groups',
       isActive: isActivePage('/groups'),
     },
+    {
+      icon: User, // Changed from Users to User for clarity
+      label: 'Users',
+      component: (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Users
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56 max-h-80 overflow-y-auto" align="end">
+            {usersLoading ? (
+              <DropdownMenuItem disabled>Loading users...</DropdownMenuItem>
+            ) : users.length === 0 ? (
+              <DropdownMenuItem disabled>No users found</DropdownMenuItem>
+            ) : (
+              users.map((user) => (
+                <DropdownMenuItem key={user.id} asChild>
+                  <Link href={`/profile/${user.user_uuid}`} className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage
+                        src={user.avatar}
+                        alt={user.nickname}
+                        className="object-cover"
+                      />
+                      <AvatarFallback>
+                        {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{user.first_name} {user.last_name}</span>
+                    <span className="text-sm text-muted-foreground">@{user.nickname}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
   ];
 
   if (!currentUser) {
@@ -315,37 +394,17 @@ export const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
-        {/* Logo/Brand */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
             <h1 className="text-2xl font-bold text-primary">SocialHub</h1>
           </Link>
         </div>
-
-        {/* Navigation Items */}
         <div className="hidden md:flex items-center space-x-1">
           {navItems.map((item) => (
-            item.onClick ? (
-              <Button
-                key={item.label}
-                variant={item.isActive ? "default" : "ghost"}
-                size="sm"
-                className="relative"
-                onClick={item.onClick}
-              >
-                <item.icon className="h-4 w-4 mr-2" />
-                {item.label}
-                {item.badge !== undefined && item.badge > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs"
-                  >
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </Badge>
-                )}
-              </Button>
+            item.component ? (
+              <div key={item.label}>{item.component}</div>
             ) : (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href!}>
                 <Button
                   variant={item.isActive ? "default" : "ghost"}
                   size="sm"
@@ -366,8 +425,6 @@ export const Navbar: React.FC = () => {
             )
           ))}
         </div>
-
-        {/* User Menu */}
         <div className="flex items-center space-x-4">
           <NotificationCenter
             notifications={notifications}
@@ -424,27 +481,29 @@ export const Navbar: React.FC = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        {/* Mobile Navigation */}
         <div className="md:hidden flex items-center space-x-1">
-          {navItems.slice(0, 2).map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant={item.isActive ? "default" : "ghost"}
-                size="icon"
-                className="relative"
-              >
-                <item.icon className="h-4 w-4" />
-                {item.badge !== undefined && item.badge > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 text-xs"
-                  >
-                    {item.badge > 9 ? '9+' : item.badge}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
+          {navItems.slice(0, 3).map((item) => (
+            item.component ? (
+              <div key={item.label}>{item.component}</div>
+            ) : (
+              <Link key={item.href} href={item.href!}>
+                <Button
+                  variant={item.isActive ? "default" : "ghost"}
+                  size="icon"
+                  className="relative"
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 text-xs"
+                    >
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            )
           ))}
           <NotificationCenter
             notifications={notifications}
@@ -460,4 +519,4 @@ export const Navbar: React.FC = () => {
       </div>
     </nav>
   );
-}; 
+};
