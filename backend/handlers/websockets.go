@@ -37,17 +37,13 @@ import (
 } */
 
 type WSMessage struct {
-	SenderID       string    `json:"senderId"`
-	SenderName     string    `json:"senderName"`
-	SenderAvatar   string    `json:"senderAvatar"`
-	RecieverID     string    `json:"receiverId"`
-	ReceiverName   string    `json:"receiverName"`
-	ReceiverAvatar string    `json:"receiverAvatar"`
-	Content        string    `json:"content"`
-	Timestamp      time.Time `json:"timestamp"`
-	Type           string    `json:"type"` // "text" | "emoji"
-	ChatID         string    `json:"chatId"`
-	ChatType       string    `json:"chatType"` // "private" | "group"
+	ChatID     string    `json:"chatId"`
+	SenderID   string    `json:"senderId"`
+	RecieverID string    `json:"receiverId"`
+	Content    string    `json:"content"`
+	Timestamp  time.Time `json:"timestamp"`
+	Type       string    `json:"type"`     // "text" | "emoji"
+	ChatType   string    `json:"chatType"` // "private" | "group"
 }
 
 func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
@@ -112,6 +108,9 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			UpdatedAt:  &decodedMessage.Timestamp,
 		}
 		chatID, err = db.AddMessageToDB(&msg)
+		if err != nil {
+			fmt.Println("Error adding message to DB:", err)
+		}
 		fmt.Println("Chat ID:", chatID)
 		// For testing:
 		allMessages, err := db.GetAllMessagesFromDB()
