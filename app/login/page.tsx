@@ -12,27 +12,37 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, error: authError } = useAuth();
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setLoginError(null); // Reset error on input change
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+    
     const validationErrors = validateLogin(formData);
     
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
+      setLoginError(null);
       try {
         await login(formData);
-        router.push('/');
+        // Use window.location.href for immediate redirect to avoid Next.js router delays
+        window.location.href = '/';
       } catch (err) {
         console.error('Login failed:', err);
-      } finally {
+        setLoginError((err as Error).message || 'Login failed. Please check your credentials and try again.');
         setIsSubmitting(false);
       }
     } else {
@@ -47,9 +57,9 @@ export default function LoginPage() {
           <CardTitle className="text-2xl text-center">Login</CardTitle>
         </CardHeader>
         <CardContent>
-          {authError && (
+          {loginError && (
             <Alert className="mb-4">
-              <AlertDescription>{authError}</AlertDescription>
+              <AlertDescription>{loginError}</AlertDescription>
             </Alert>
           )}
           
@@ -92,7 +102,14 @@ export default function LoginPage() {
               className="w-full"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Logging in...' : 'Login'}
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  Logging in...
+                </div>
+              ) : (
+                'Login'
+              )}
             </Button>
             
             <Button

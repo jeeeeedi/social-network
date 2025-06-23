@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Users, Lock, Globe, Calendar, MessageSquare } from "lucide-react"
+import { Users, Lock, Globe, Calendar, MessageSquare, Crown, Settings } from "lucide-react"
 
 export interface Group {
   id: string
@@ -66,13 +66,20 @@ export function GroupCard({ group, onJoinGroup, onLeaveGroup, onViewGroup, curre
   const upcomingEvents = (group.events || []).filter((event) => event.dateTime > new Date()).length
   const groupName = group.name || "Unknown Group"
   const memberCount = group.memberCount || 0
+  const isCreator = group.creatorId === currentUserId
+  const isMember = group.isMember || isCreator
+  const isPending = group.isPending && !isCreator
 
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={groupName} />
+            <AvatarImage 
+              src={group.avatar ? (group.avatar.startsWith('/uploads/') ? `http://localhost:8080${group.avatar}` : `http://localhost:8080/uploads/${group.avatar}`) : "/placeholder.svg"} 
+              alt={groupName} 
+              className="object-cover"
+            />
             <AvatarFallback>
               {groupName
                 .split(" ")
@@ -87,6 +94,9 @@ export function GroupCard({ group, onJoinGroup, onLeaveGroup, onViewGroup, curre
                 <Lock className="h-4 w-4 text-muted-foreground" />
               ) : (
                 <Globe className="h-4 w-4 text-muted-foreground" />
+              )}
+              {isCreator && (
+                <Crown className="h-4 w-4 text-yellow-500" />
               )}
             </div>
             <p className="text-sm text-muted-foreground">Created by {group.creatorName}</p>
@@ -115,24 +125,38 @@ export function GroupCard({ group, onJoinGroup, onLeaveGroup, onViewGroup, curre
             View
           </Button>
 
-          {group.creatorId !== currentUserId && (
+          {!isCreator && (
             <Button
               size="sm"
               onClick={handleJoinLeave}
               disabled={isLoading}
-              variant={group.isMember ? "outline" : "default"}
+              variant={isMember ? "outline" : "default"}
               className="flex-1"
             >
-              {isLoading ? "Loading..." : group.isMember ? "Leave" : group.isPending ? "Pending" : "Join"}
+              {isLoading ? "Loading..." : isMember ? "Leave" : isPending ? "Pending" : "Join"}
             </Button>
           )}
         </div>
 
-        {group.isMember && (
-          <Badge variant="secondary" className="w-fit">
-            Member
-          </Badge>
-        )}
+        {/* Status Badges */}
+        <div className="flex gap-2 flex-wrap">
+          {isCreator && (
+            <Badge variant="default" className="w-fit bg-yellow-500 hover:bg-yellow-600">
+              <Crown className="h-3 w-3 mr-1" />
+              Owner
+            </Badge>
+          )}
+          {isMember && !isCreator && (
+            <Badge variant="secondary" className="w-fit">
+              Member
+            </Badge>
+          )}
+          {isPending && !isCreator && (
+            <Badge variant="outline" className="w-fit text-orange-600 border-orange-600">
+              Request Pending
+            </Badge>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

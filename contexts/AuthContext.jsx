@@ -9,6 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -49,17 +50,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    setLoggingOut(true);
+    // Immediately clear the user state to avoid UI confusion
+    setCurrentUser(null);
+    
     try {
       await logoutUser();
-      setCurrentUser(null);
     } catch (err) {
-      setCurrentUser(null);
-      throw err;
+      console.error('Logout API call failed:', err);
+      // Even if the API call fails, user state is already cleared
     }
+    
+    // Reset loading state
+    setLoggingOut(false);
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser, loading, error, register, login, logout, logoutUser }}>
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      setCurrentUser, 
+      loading, 
+      error, 
+      register, 
+      login, 
+      logout, 
+      logoutUser,
+      loggingOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );
