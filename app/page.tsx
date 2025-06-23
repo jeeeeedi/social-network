@@ -64,8 +64,6 @@ export default function SocialNetworkPage() {
   const { messages, sendMessage, isConnected, onlineUsers, setOnlineUsers } = useWebSocket()
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
   const [activeGroupChat, setActiveGroupChat] = useState<any>(null)
-  const [isChatMinimized, setIsChatMinimized] = useState(false)
-  const [isGroupChatMinimized, setIsGroupChatMinimized] = useState(false)
   const [userEvents, setUserEvents] = useState<EventWithDetails[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [userRSVPs, setUserRSVPs] = useState<Record<number, string>>({}) // eventId -> "going" | "not_going"
@@ -178,12 +176,10 @@ export default function SocialNetworkPage() {
 
   const handleUserClick = (user: ChatUser) => {
     setActiveChat(user)
-    setIsChatMinimized(false)
   }
 
   const handleGroupClick = (group: any) => {
     setActiveGroupChat(group)
-    setIsGroupChatMinimized(false)
   }
 
   const handleLike = async (postId: number) => {
@@ -532,8 +528,6 @@ export default function SocialNetworkPage() {
           messages={messages}
           onSendMessage={sendMessage}
           onClose={() => setActiveChat(null)}
-          isMinimized={isChatMinimized}
-          onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)}
         />
       )}
 
@@ -544,8 +538,6 @@ export default function SocialNetworkPage() {
           messages={messages}
           onSendMessage={sendMessage}
           onClose={() => setActiveGroupChat(null)}
-          isMinimized={isGroupChatMinimized}
-          onToggleMinimize={() => setIsGroupChatMinimized(!isGroupChatMinimized)}
         />
       )}
 

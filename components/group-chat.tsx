@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { X, Send, Smile, Minimize2, Maximize2, Users, Settings } from "lucide-react"
+import { X, Send, Smile, Users } from "lucide-react"
 import type { Message, ChatUser } from "@/hooks/useWebSocket"
 
 interface GroupChatProps {
@@ -24,8 +24,6 @@ interface GroupChatProps {
   messages: Message[]
   onSendMessage: (message: Omit<Message, "id" | "timestamp">) => void
   onClose: () => void
-  isMinimized: boolean
-  onToggleMinimize: () => void
 }
 
 const EMOJIS = [
@@ -91,7 +89,7 @@ const EMOJIS = [
   "💔",
 ]
 
-export function GroupChat({ group, messages, onSendMessage, onClose, isMinimized, onToggleMinimize }: GroupChatProps) {
+export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChatProps) {
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -171,22 +169,14 @@ export function GroupChat({ group, messages, onSendMessage, onClose, isMinimized
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6">
-            <Settings className="h-3 w-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onToggleMinimize}>
-            {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-          </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
             <X className="h-3 w-3" />
           </Button>
         </div>
       </CardHeader>
 
-      {!isMinimized && (
-        <>
-          {/* Messages Area */}
-          <CardContent className="flex-1 p-0">
+      {/* Messages Area */}
+      <CardContent className="flex-1 p-0">
             <ScrollArea className="h-full px-4">
               <div className="space-y-4 py-4">
                 {groupMessages.map((message) => (
@@ -264,8 +254,6 @@ export function GroupChat({ group, messages, onSendMessage, onClose, isMinimized
               </Button>
             </div>
           </div>
-        </>
-      )}
-    </Card>
+        </Card>
   )
 }
