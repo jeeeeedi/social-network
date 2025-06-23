@@ -170,8 +170,8 @@ export function Feed({ currentUser }: { currentUser: any }) {
     const formData = new FormData();
     formData.append("content", sanitizedContent);
     formData.append("privacy", privacy);
-    // For semiprivate: send all follower IDs; for private: send only selected
-    if (privacy === "semiprivate") {
+    // For semi-private: send all follower IDs; for private: send only selected
+    if (privacy === "semi-private") {
       formData.append(
         "selectedFollowers",
         JSON.stringify(followers.map((f: any) => f.user_uuid))
@@ -364,7 +364,7 @@ export function Feed({ currentUser }: { currentUser: any }) {
                     className="text-sm border rounded px-2 py-1 bg-background"
                   >
                     <option value="public">Public</option>
-                    <option value="semiprivate">Almost Private (All Followers)</option>
+                    <option value="semi-private">Almost Private (All Followers)</option>
                     <option value="private">Private (Selected Followers)</option>
                   </select>
                   {/* Show follower selection only for private */}

@@ -9,7 +9,7 @@ import (
 
 // InsertPostToDB inserts a new post into the database and sets the PostID on success.
 func (d *DB) InsertPostToDB(p *Post) (int, error) {
-
+	log.Print("InsertPostToDB called with post:", p)
 	// Generate UUID for the post if not already set
 	if p.PostUUID == "" {
 		uuid, err := utils.GenerateUUID()
@@ -45,7 +45,7 @@ func (d *DB) InsertPostToDB(p *Post) (int, error) {
 }
 
 // GetFeedPosts retrieves all public posts and all posts from the specified user
-// TODO: Add logic for semiprivate posts
+// TODO: Add logic for semi-private posts
 func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
@@ -359,7 +359,7 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
 	return comments, nil
 }
 
-// InsertSelectedFollowers inserts selected follower user_ids for a post (for semiprivate/private posts)
+// InsertSelectedFollowers inserts selected follower user_ids for a post (for semi-private/private posts)
 func (d *DB) InsertSelectedFollowers(postID int, selectedFollowersUUIDs []string) error {
 	log.Print("InsertSelectedFollowers called with postID:", postID, "and selectedFollowersUUIDs:", selectedFollowersUUIDs)
 	if len(selectedFollowersUUIDs) == 0 {

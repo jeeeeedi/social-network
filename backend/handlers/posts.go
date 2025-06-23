@@ -121,7 +121,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 	// Read selectedFollowers field (for private and almost private)
 	selectedFollowersStr := r.FormValue("selectedFollowers")
 	var selectedFollowersUUIDs []string
-	if (privacy == "semiprivate" || privacy == "private") && selectedFollowersStr != "" {
+	if (privacy == "semi-private" || privacy == "private") && selectedFollowersStr != "" {
 		if err := json.Unmarshal([]byte(selectedFollowersStr), &selectedFollowersUUIDs); err != nil {
 			http.Error(w, "Invalid selectedFollowers format", http.StatusBadRequest)
 			return err
@@ -140,7 +140,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 	content = utils.Sanitize(content)
 
 	// Validate privacy
-	validPrivacy := map[string]bool{"public": true, "semiprivate": true, "private": true}
+	validPrivacy := map[string]bool{"public": true, "semi-private": true, "private": true}
 	if !validPrivacy[privacy] {
 		http.Error(w, "Invalid privacy setting", http.StatusBadRequest)
 		return err
@@ -163,13 +163,15 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 	postID, err = db.InsertPostToDB(&post)
 	if err != nil {
 		http.Error(w, "Failed InsertPostToDB", http.StatusInternalServerError)
+		log.Print("CreatePostHandler: Error inserting post:", err)
 		return err
 	}
 
-	// Store selected followers for semiprivate (almost private) and private posts
-	if (privacy == "semiprivate" || privacy == "private") && len(selectedFollowersUUIDs) > 0 {
+	// Store selected followers for semi-private (almost private) and private posts
+	if (privacy == "semi-private" || privacy == "private") && len(selectedFollowersUUIDs) > 0 {
 		if err := db.InsertSelectedFollowers(postID, selectedFollowersUUIDs); err != nil {
 			http.Error(w, "Failed to save selected followers", http.StatusInternalServerError)
+			log.Print("CreatePostHandler: Error inserting selected followers:", err)
 			return err
 		}
 	}
