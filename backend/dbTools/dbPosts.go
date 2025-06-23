@@ -297,25 +297,16 @@ func (d *DB) GetPostByUUID(ctx context.Context, postUUID string) (*Post, error) 
 
 // InsertCommentToDB inserts a new comment into the database and sets the CommentID on success.
 func (d *DB) InsertCommentToDB(c *Comment) (int, error) {
-
-	// Generate UUID for the comment if not already set
-	/* 	if c.CommentUUID == "" {
-		uuid, err := utils.GenerateUUID()
-		if err != nil {
-			return -1, err
-		}
-		c.CommentUUID = uuid
-	} */
-
 	query := `
         INSERT INTO comments 
-            (commenter_id, post_id, content, post_privacy, created_at)
-        VALUES (?, ?, ?, ?, ?)
+            (commenter_id, post_id, group_id, content, post_privacy, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
     `
 	result, err := d.Exec(
 		query,
 		c.CommenterID,
 		c.PostID,
+		c.GroupID, // This can be nil for regular posts
 		c.Content,
 		c.PostPrivacy,
 		c.CreatedAt,
@@ -436,4 +427,100 @@ func (d *DB) InsertSelectedFollowers(postID int, selectedFollowersUUIDs []string
 		}
 	}
 	return tx.Commit()
+}
+
+func (d *DB) GetGroupPosts(userID int, groupID int) ([]PostResponse, error) {
+	//log.Print("GetGroupPosts called for userID:", userID, "and groupID:", groupID)
+
+	// Check if user is an accepted member of the group
+	var isMember bool
+	err := d.GetDB().QueryRow(`
+        SELECT EXISTS(
+            SELECT 1 FROM group_members
+            WHERE group_id = ? AND member_id = ? AND status = 'accepted'
+        )
+    `, groupID, userID).Scan(&isMember)
+	if err != nil {
+		//log.Print("GetGroupPosts: Error checking group membership:", err)
+		return nil, err
+	}
+	if !isMember {
+		//log.Print("GetGroupPosts: User is not a member of the group")
+		return nil, sql.ErrNoRows
+	}
+
+	rows, err := d.GetDB().Query(`
+        SELECT 
+            p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
+            u.nickname, u.avatar,
+            COALESCE(f.file_id, 0) as file_id, 
+            f.filename_new
+        FROM posts p
+        JOIN users u ON p.poster_id = u.user_id AND u.status = 'active'
+        LEFT JOIN files f ON f.parent_type = 'post' AND f.parent_id = p.post_id AND f.status = 'active'
+        WHERE p.status = 'active'
+          AND p.group_id = ?
+		  AND p.privacy = 'semi-private'
+        ORDER BY p.created_at DESC
+    `, groupID)
+	if err != nil {
+		//log.Print("GetGroupPosts: Error querying posts:", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var postsResponse []PostResponse
+	for rows.Next() {
+		var postResponse PostResponse
+		var groupID sql.NullInt64
+		var fileID sql.NullInt64
+		var filenameNew sql.NullString
+
+		err := rows.Scan(
+			&postResponse.PostID,
+			&postResponse.PostUUID,
+			&postResponse.PosterID,
+			&groupID,
+			&postResponse.Content,
+			&postResponse.Privacy,
+			&postResponse.PostStatus,
+			&postResponse.PostCreatedAt,
+			&postResponse.Nickname,
+			&postResponse.Avatar,
+			&fileID,
+			&filenameNew,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if groupID.Valid {
+			gid := int(groupID.Int64)
+			postResponse.GroupID = &gid
+		} else {
+			postResponse.GroupID = nil
+		}
+		if fileID.Valid {
+			fid := int(fileID.Int64)
+			postResponse.FileID = &fid
+		} else {
+			postResponse.FileID = nil
+		}
+		if filenameNew.Valid {
+			fn := filenameNew.String
+			postResponse.FilenameNew = &fn
+		} else {
+			postResponse.FilenameNew = nil
+		}
+
+		comments, err := d.GetCommentsForPost(context.Background(), postResponse.PostUUID)
+		if err != nil {
+			return nil, err
+		}
+
+		postResponse.Comments = comments
+		postsResponse = append(postsResponse, postResponse)
+	}
+
+	//log.Print("GetGroupPosts: Retrieved posts:", postsResponse)
+	return postsResponse, nil
 }

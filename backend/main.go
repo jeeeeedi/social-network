@@ -47,6 +47,9 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/createcomment", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateCommentHandler(db, w, r)
 	})
+	http.HandleFunc("/api/getgroupposts/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetGroupPostsHandler(db, w, r)
+	})
 
 	// Routes for FOLLOWS and NOTIFICATIONS
 	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)

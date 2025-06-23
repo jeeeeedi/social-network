@@ -515,9 +515,11 @@ export default function UserProfilePage() {
                           <span className="text-xs text-muted-foreground">
                             Posted on {formatDateTime(post.created_at)}
                           </span>
+                          {!post.group_id && (
                           <Badge variant="outline" className="ml-auto text-xs">
                             {post.privacy}
                           </Badge>
+                          )}
                         </div>
                         <p className="text-sm mb-3">{post.content}</p>
                         {post.filename_new && (

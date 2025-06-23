@@ -240,6 +240,7 @@ export default function MyProfilePage() {
   const displayName =
     profile.nickname || `${profile.first_name} ${profile.last_name}`;
   const fullName = `${profile.first_name} ${profile.last_name}`;
+  // console.log("Posts:", posts);
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-4xl">
@@ -332,9 +333,11 @@ export default function MyProfilePage() {
                     <span className="text-xs text-muted-foreground">
                       Posted on {formatDateTime(post.created_at)}
                     </span>
+                    {!post.group_id && (
                     <Badge variant="outline" className="ml-auto text-xs">
                       {post.privacy}
                     </Badge>
+                    )}
                   </div>
                   <p className="text-sm mb-3">{post.content}</p>
                   {post.filename_new && (
