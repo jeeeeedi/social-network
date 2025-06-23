@@ -1,13 +1,15 @@
 package dbTools
 
+import "fmt"
+
 // AddMessageToDB inserts a new message and returns its new chat_id.
-func (d *DB) AddMessageToDB(msg *ChatMessage) (int, error) {
+func (database *DB) AddMessageToDB(msg *ChatMessage) (int, error) {
 	const insertSQL = `
 		INSERT INTO chat_messages
 		  (sender_id, receiver_id, group_id, content, status, updated_at, updater_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
-	res, err := d.Exec(
+	res, err := database.Exec(
 		insertSQL,
 		msg.SenderID,
 		msg.ReceiverID,
@@ -30,7 +32,7 @@ func (d *DB) AddMessageToDB(msg *ChatMessage) (int, error) {
 	return msg.ChatID, nil
 }
 
-func (d *DB) GetAllMessagesFromDB() ([]ChatMessage, error) {
+func (database *DB) GetAllMessagesFromDB() ([]ChatMessage, error) {
 	const selectSQL = `
 		SELECT
 		  chat_id, sender_id, receiver_id, group_id,
@@ -39,7 +41,7 @@ func (d *DB) GetAllMessagesFromDB() ([]ChatMessage, error) {
 		ORDER BY created_at ASC
 	`
 
-	rows, err := d.Query(selectSQL)
+	rows, err := database.Query(selectSQL)
 	if err != nil {
 		return nil, err
 	}
@@ -76,4 +78,71 @@ func (d *DB) GetAllMessagesFromDB() ([]ChatMessage, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID, beforeID, maxAmount int) ([]ChatMessage, error) {
+	var (
+		qry  string
+		args []interface{}
+	)
+
+	baseCond := `(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)`
+	// always only active messages
+	statusCond := `status = 'active'`
+
+	if beforeID < 0 {
+		// first page
+		qry = fmt.Sprintf(`
+            SELECT chat_id, sender_id, receiver_id, content, created_at
+              FROM chat_messages
+             WHERE (%s) AND %s
+             ORDER BY chat_id DESC
+             LIMIT ?
+        `, baseCond, statusCond)
+		args = []interface{}{user1ID, user2ID, user2ID, user1ID, maxAmount}
+	} else {
+		// next pages: only those older than beforeID
+		qry = fmt.Sprintf(`
+            SELECT chat_id, sender_id, receiver_id, content, created_at
+              FROM chat_messages
+             WHERE ((%s AND chat_id < ?) OR (%s AND chat_id < ?))
+               AND %s
+             ORDER BY chat_id DESC
+             LIMIT ?
+        `, baseCond, baseCond, statusCond)
+		args = []interface{}{
+			user1ID, user2ID, beforeID,
+			user2ID, user1ID, beforeID,
+			maxAmount,
+		}
+	}
+
+	rows, err := database.conn.Query(qry, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []ChatMessage
+	for rows.Next() {
+		var m ChatMessage
+		// adjust Scan targets to match your Message struct
+		if err := rows.Scan(
+			&m.ID,
+			&m.SenderID,
+			&m.RecipientID,
+			&m.Content,
+			&m.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, m)
+	}
+
+	// reverse to oldest-first
+	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
+	}
+
+	return msgs, nil
 }
