@@ -6,6 +6,8 @@
  * - Helper functions for display formatting
  */
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
 export interface UserInfo {
   user_id: number;
   user_uuid: string;
@@ -58,7 +60,7 @@ export async function getUserById(userId: number): Promise<UserInfo | null> {
   }
 
   try {
-    const response = await fetch(`http://localhost:8080/api/users/${userId}`, {
+    const response = await fetch(`${API_URL}/users/${userId}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -99,7 +101,7 @@ export async function getUsersByIds(userIds: number[]): Promise<Map<number, User
   // Fetch uncached users
   if (uncachedIds.length > 0) {
     try {
-      const response = await fetch(`http://localhost:8080/api/users/batch`, {
+      const response = await fetch(`${API_URL}/users/batch`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -148,7 +150,7 @@ export async function getGroupById(groupId: number): Promise<GroupInfo | null> {
   }
 
   try {
-    const response = await fetch(`http://localhost:8080/api/groups/${groupId}`, {
+    const response = await fetch(`${API_URL}/groups/${groupId}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -192,7 +194,7 @@ export function getUserAvatarUrl(user: UserInfo): string {
   if (user.avatar) {
     return user.avatar.startsWith('http') 
       ? user.avatar 
-      : `http://localhost:8080${user.avatar}`;
+      : `${API_URL}${user.avatar}`;
   }
   return "/placeholder.svg";
 }
@@ -204,7 +206,7 @@ export function getGroupAvatarUrl(group: GroupInfo): string {
   if (group.avatar) {
     return group.avatar.startsWith('http') 
       ? group.avatar 
-      : `http://localhost:8080${group.avatar}`;
+      : `${API_URL}${group.avatar}`;
   }
   return "/placeholder.svg";
 }
@@ -226,7 +228,7 @@ export function getGroupAvatarFallback(group: GroupInfo): string {
  */
 export async function getUserEvents(): Promise<EventInfo[]> {
   try {
-    const response = await fetch(`http://localhost:8080/api/events`, {
+    const response = await fetch(`${API_URL}/events`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -276,7 +278,7 @@ export async function enrichEvents(events: EventInfo[]): Promise<EventWithDetail
  */
 export async function respondToEvent(eventId: number, response: "going" | "not_going"): Promise<boolean> {
   try {
-    const apiResponse = await fetch(`http://localhost:8080/api/events/${eventId}/rsvp`, {
+    const apiResponse = await fetch(`${API_URL}/events/${eventId}/rsvp`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -299,7 +301,7 @@ export async function respondToEvent(eventId: number, response: "going" | "not_g
  */
 export async function getUserEventRSVP(eventId: number): Promise<string | null> {
   try {
-    const response = await fetch(`http://localhost:8080/api/events/${eventId}/rsvps`, {
+    const response = await fetch(`${API_URL}/events/${eventId}/rsvps`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -319,4 +321,4 @@ export async function getUserEventRSVP(eventId: number): Promise<string | null> 
     console.error('Error fetching RSVP status:', error);
     return null;
   }
-} 
+}

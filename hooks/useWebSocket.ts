@@ -26,7 +26,7 @@ export interface ChatUser {
 }
 
 export function useWebSocket() {
-  const serverUrl = "ws://localhost:8080/api/ws"
+  const serverUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/api/ws"
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])

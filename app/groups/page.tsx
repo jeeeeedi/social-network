@@ -1,5 +1,7 @@
 "use client"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,7 +50,7 @@ export default function GroupsPage() {
     setIsLoadingGroups(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8080/api/groups', {
+      const response = await fetch(`${API_URL}/groups`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -87,7 +89,7 @@ export default function GroupsPage() {
         formData.append('avatar', groupData.avatarFile);
       }
 
-      const response = await fetch('http://localhost:8080/api/groups', {
+      const response = await fetch(`${API_URL}/groups`, {
         method: 'POST',
         credentials: 'include',
         body: formData, // Send FormData instead of JSON
@@ -110,7 +112,7 @@ export default function GroupsPage() {
 
   const handleJoinGroup = async (groupId: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/request-join`, {
+      const response = await fetch(`${API_URL}/groups/${groupId}/request-join`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -136,7 +138,7 @@ export default function GroupsPage() {
     // Note: This is a placeholder as the backend might not have a direct leave endpoint yet
     try {
       // Assuming there's a way to leave or update membership status to declined
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${currentUser.user_id}`, {
+      const response = await fetch(`${API_URL}/groups/${groupId}/membership/${currentUser.user_id}`, {
         method: 'POST',
         credentials: 'include',
         headers: {

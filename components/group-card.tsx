@@ -1,5 +1,7 @@
 "use client"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -76,7 +78,7 @@ export function GroupCard({ group, onJoinGroup, onLeaveGroup, onViewGroup, curre
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
             <AvatarImage 
-              src={group.avatar ? (group.avatar.startsWith('/uploads/') ? `http://localhost:8080${group.avatar}` : `http://localhost:8080/uploads/${group.avatar}`) : "/placeholder.svg"} 
+              src={group.avatar ? (group.avatar.startsWith('/uploads/') ? `${API_URL}${group.avatar}` : `${API_URL}/uploads/${group.avatar}`) : "/placeholder.svg"} 
               alt={groupName} 
               className="object-cover"
             />

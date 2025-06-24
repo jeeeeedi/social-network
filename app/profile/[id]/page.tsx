@@ -1,5 +1,7 @@
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -91,7 +93,7 @@ export default function UserProfilePage() {
 
         // Fetch followers
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${userUUID}`,
+          `${API_URL}/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -109,7 +111,7 @@ export default function UserProfilePage() {
 
         // Fetch following
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${userUUID}`,
+          `${API_URL}/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -129,7 +131,7 @@ export default function UserProfilePage() {
         if (currentUser && currentUser.user_uuid !== userUUID) {
           try {
             const followResponse = await fetch(
-              `http://localhost:8080/api/follow/status/${userUUID}`,
+              `${API_URL}/follow/status/${userUUID}`,
               { credentials: "include" }
             );
             const followData = await followResponse.json();
@@ -163,7 +165,7 @@ export default function UserProfilePage() {
         ) {
           try {
             const myPostsRes = await fetch(
-              `http://localhost:8080/api/getprofileposts/${userUUID}`,
+              `${API_URL}/getprofileposts/${userUUID}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -200,7 +202,7 @@ export default function UserProfilePage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8080/api/follow/${userUUID}`,
+        `${API_URL}/follow/${userUUID}`,
         {
           method: isFollowing ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -216,7 +218,7 @@ export default function UserProfilePage() {
 
         // Refresh followers and following
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${userUUID}`,
+          `${API_URL}/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -229,7 +231,7 @@ export default function UserProfilePage() {
         }
 
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${userUUID}`,
+          `${API_URL}/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -368,7 +370,7 @@ export default function UserProfilePage() {
                   <AvatarImage
                     src={
                       profile.avatar && profile.avatar.trim() !== ""
-                        ? `http://localhost:8080${profile.avatar}`
+                        ? `${API_URL}${profile.avatar}`
                         : undefined
                     }
                     alt={`${displayName}'s avatar`}
@@ -525,7 +527,7 @@ export default function UserProfilePage() {
                         {post.filename_new && (
                           <div className="mb-3">
                             <img
-                              src={`http://localhost:8080/uploads/${post.filename_new}`}
+                              src={`${API_URL}/uploads/${post.filename_new}`}
                               alt="Post attachment"
                               className="max-w-xs max-h-48 rounded border object-cover"
                             />
@@ -570,7 +572,7 @@ export default function UserProfilePage() {
                           <AvatarImage
                             src={
                               follower.avatar && follower.avatar.trim() !== ""
-                                ? `http://localhost:8080${follower.avatar}`
+                                ? `${API_URL}${follower.avatar}`
                                 : undefined
                             }
                             alt={follower.nickname}
@@ -627,7 +629,7 @@ export default function UserProfilePage() {
                           <AvatarImage
                             src={
                               follow.avatar && follow.avatar.trim() !== ""
-                                ? `http://localhost:8080${follow.avatar}`
+                                ? `${API_URL}${follow.avatar}`
                                 : undefined
                             }
                             alt={follow.nickname}
