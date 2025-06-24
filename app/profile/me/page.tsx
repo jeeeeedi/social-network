@@ -350,17 +350,10 @@ export default function MyProfilePage() {
                     </div>
                   )}
                   <div className="flex gap-4 text-muted-foreground">
-                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                      <Heart className="h-3 w-3" />0
-                    </button>
-                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                    <span className="flex items-center gap-1 text-xs hover:text-foreground">
                       <MessageCircle className="h-3 w-3" />
                       {post.comments?.length || 0}
-                    </button>
-                    {/* <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                      <Share className="h-3 w-3" />
-                      0
-                    </button> */}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
