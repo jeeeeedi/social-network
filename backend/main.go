@@ -45,14 +45,14 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/getfeedposts", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetFeedPostsHandler(db, w, r)
 	})
-	http.HandleFunc("/api/getmyposts", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetMyPostsHandler(db, w, r)
+	http.HandleFunc("/api/getprofileposts/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetProfilePostsHandler(db, w, r)
 	})
 	http.HandleFunc("/api/createcomment", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateCommentHandler(db, w, r)
 	})
-	http.HandleFunc("/api/getcomments/{postUUID}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetCommentsHandler(db, w, r)
+	http.HandleFunc("/api/getgroupposts/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetGroupPostsHandler(db, w, r)
 	})
 
 	// Routes for FOLLOWS and NOTIFICATIONS

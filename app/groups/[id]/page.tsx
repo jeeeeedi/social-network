@@ -19,6 +19,7 @@ import { GroupChat } from "@/components/group-chat"
 import { useAuth } from "@/contexts/AuthContext"
 import type { Message, ChatUser } from "@/hooks/useWebSocket"
 import { getUserById, getUsersByIds, getGroupById, formatUserName, getUserAvatarUrl, getGroupAvatarUrl, getGroupAvatarFallback, type UserInfo, type GroupInfo } from "@/utils/user-group-api"
+import { Feed } from "@/components/feed"
 
 // Backend data structures (clean, no redundant fields)
 interface GroupMember {
@@ -472,13 +473,11 @@ export default function GroupDetailPage() {
         {/* Main Content */}
         <main className="lg:col-span-2 space-y-6">
           {isMember ? (
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-muted-foreground text-center">
-                  Post functionality will be implemented by colleague
-                </p>
-              </CardContent>
-            </Card>
+            <Feed
+              currentUser={currentUser}
+              groupId={groupId}
+              groupMembers={members.filter(m => m.status === "accepted" && m.user)}
+            />
           ) : (
             <Card>
               <CardContent className="text-center py-8">
@@ -685,4 +684,4 @@ export default function GroupDetailPage() {
       )}
     </div>
   )
-} 
+}

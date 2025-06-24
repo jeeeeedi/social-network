@@ -27,4 +27,4 @@ pnpm-debug.log*
 .vscode/
 
 # DB
-./socnet.db
+./backend/db/socnet.db
