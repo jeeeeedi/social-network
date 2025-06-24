@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ type messageResponse struct {
 	ID              int       `json:"id"`
 	RequesterID     int       `json:"requesterId"`
 	SenderID        int       `json:"senderId"`
+	OtherUserUUID   string    `json:"otherUserUuid"`
 	OtherUserName   string    `json:"otherUserName"`
 	OtherUserAvatar string    `json:"otherUserAvatar"`
 	ReceiverID      int       `json:"receiverId,omitempty"`
@@ -33,8 +33,6 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Looking for messages based on:", r.URL.Path)
-
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 3 {
 		http.Error(w, "invalid path", http.StatusBadRequest)
@@ -47,22 +45,20 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid chat specification:", http.StatusBadRequest)
 		return
 	}
-	chatType, otherIDStr := specificationParts[0], specificationParts[1]
-	otherID, err := strconv.Atoi(otherIDStr)
+	chatType, otherUUID := specificationParts[0], specificationParts[1]
+	otherUserPointer, err := db.FetchUserByUUID(otherUUID)
 	if err != nil {
-		http.Error(w, "invalid ID:", http.StatusBadRequest)
+		http.Error(w, "invalid ID/UUID:", http.StatusBadRequest)
 		return
 	}
 
-	var otherUser = &dbTools.User{}
+	var otherUser = otherUserPointer
+	var otherID = otherUser.UserID
 
 	var rawMsgs []dbTools.ChatMessage
 	switch chatType {
 	case "private":
 		rawMsgs, err = db.GetMessagesBetweenUsers(userID, otherID)
-		if err == nil {
-			otherUser, err = db.GetUserByID(otherID)
-		}
 	case "group":
 		rawMsgs, err = db.GetMessagesForGroup(otherID)
 	default:
@@ -70,27 +66,26 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		fmt.Println("DB error:", err)
 		http.Error(w, "could not load messages", http.StatusInternalServerError)
 		return
 	}
 
 	resp := make([]messageResponse, len(rawMsgs))
-	for i, m := range rawMsgs {
+	for i, msg := range rawMsgs {
 		resp[i] = messageResponse{
-			ID:              m.ChatID,
+			ID:              msg.ChatID,
 			RequesterID:     userID,
-			SenderID:        m.SenderID,
+			SenderID:        msg.SenderID,
 			OtherUserName:   otherUser.Nickname,
 			OtherUserAvatar: otherUser.Avatar,
-			Content:         m.Content,
-			Timestamp:       m.CreatedAt,
+			Content:         msg.Content,
+			Timestamp:       msg.CreatedAt,
 		}
 		if chatType == "private" {
-			resp[i].ReceiverID = m.ReceiverID
+			resp[i].ReceiverID = msg.ReceiverID
 			resp[i].ChatType = "private"
 		} else {
-			resp[i].GroupID = m.GroupID
+			resp[i].GroupID = msg.GroupID
 			resp[i].ChatType = "group"
 		}
 	}

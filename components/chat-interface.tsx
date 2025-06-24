@@ -14,7 +14,13 @@ import { X, Send, Smile } from "lucide-react"
 import type { Message, ChatUser } from "@/hooks/useWebSocket"
 
 interface ChatInterfaceProps {
-  user: ChatUser
+  user: {
+    user_uuid: string;
+    id: string;
+    first_name: string;
+    last_name: string;
+    avatar: string;
+  }
   messages: Message[]
   onSendMessage: (message: Omit<Message, "id" | "timestamp">) => void
   onClose: () => void
@@ -34,7 +40,7 @@ export function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const chatSpec = `private_${user.id}`
+  const chatSpec = `private_${user.user_uuid}`
   const chatMessages = [
     ...history,
     ...liveMessages.filter(
@@ -52,7 +58,6 @@ export function ChatInterface({
 
   const fetchMessages = async () => {
     try {
-      console.log("About to send request to", `http://localhost:8080/api/messages/${chatSpec}`)
       const res = await fetch(`http://localhost:8080/api/messages/${chatSpec}`, {
         credentials: "include",
       })
@@ -95,7 +100,7 @@ export function ChatInterface({
 
   useEffect(() => {
     fetchMessages()
-  }, [user.id])
+  }, [user.user_uuid])
 
   useEffect(() => {
     scrollToBottom()
@@ -106,11 +111,11 @@ export function ChatInterface({
     if (newMessage.trim()) {
       onSendMessage({
         senderId: "You",
-        otherUserName: user.name,
+        otherUserName: user.first_name,
         otherUserAvatar: user.avatar,
         content: newMessage,
         messageType: "text",
-        chatId: `private_${user.id}`,
+        chatId: `private_${user.user_uuid}`,
         chatType: "private",
       })
       setNewMessage("")
@@ -120,11 +125,11 @@ export function ChatInterface({
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
       senderId: "You",
-      otherUserName: user.name,
+      otherUserName: user.first_name,
       otherUserAvatar: user.avatar,
       content: emoji,
       messageType: "emoji",
-      chatId: `private_${user.id}`,
+      chatId: `private_${user.user_uuid}`,
       chatType: "private",
     })
     setShowEmojiPicker(false)

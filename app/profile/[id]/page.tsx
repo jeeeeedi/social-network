@@ -45,6 +45,7 @@ interface ProfileData {
 
 interface FollowerData {
   user_uuid: string;
+  id: string;
   first_name: string;
   last_name: string;
   nickname: string;
@@ -516,9 +517,9 @@ export default function UserProfilePage() {
                             Posted on {formatDateTime(post.created_at)}
                           </span>
                           {!post.group_id && (
-                          <Badge variant="outline" className="ml-auto text-xs">
-                            {post.privacy}
-                          </Badge>
+                            <Badge variant="outline" className="ml-auto text-xs">
+                              {post.privacy}
+                            </Badge>
                           )}
                         </div>
                         <p className="text-sm mb-3">{post.content}</p>

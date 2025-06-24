@@ -29,7 +29,7 @@ interface RawMessage {
 }
 
 export interface ChatUser {
-  user_id: string
+  user_uuid: string
   first_name: string
   last_name: string
 

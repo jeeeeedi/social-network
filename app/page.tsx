@@ -490,7 +490,7 @@ console.log('users:', users)
             <CardContent className="space-y-3">
               {chatUsers.map((user) => (
                 <div
-                  key={user.user_id}
+                  key={user.user_uuid}
                   // className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
                   //   }`}
                   onClick={() => handleUserClick(user)}
