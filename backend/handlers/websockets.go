@@ -37,16 +37,24 @@ import (
 	MessageType  string    `json:"type"` // "text" | "emoji"
 	ChatID       string    `json:"chatId"`
 	ChatType     string    `json:"chatType"` // "private" | "group"
+
+	        senderId: "You",
+        otherUserName: user.name,
+        otherUserAvatar: user.avatar,
+        content: newMessage,
+        messageType: "text",
+        chatId: `private_${user.id}`,
+        chatType: "private",
 } */
 
 type WSMessage struct {
-	ChatID     string    `json:"chatId"` // Should come up with new name ?
-	SenderID   string    `json:"senderId"`
-	ReceiverID string    `json:"receiverId"`
-	Content    string    `json:"content"`
-	Timestamp  time.Time `json:"timestamp"`
-	Type       string    `json:"type"`     // "text" | "emoji"
-	ChatType   string    `json:"chatType"` // "private" | "group"
+	ChatID      string    `json:"chatId"`
+	SenderID    string    `json:"senderId"`
+	ReceiverID  string    `json:"receiverId"`
+	Content     string    `json:"content"`
+	Timestamp   time.Time `json:"timestamp"`
+	MessageType string    `json:"messageType"` // "text" | "emoji"
+	ChatType    string    `json:"chatType"`    // "private" | "group"
 }
 
 type StandardizedMessage struct {
@@ -190,8 +198,8 @@ func cleanUp(conn *websocket.Conn) {
 }
 
 func formatToWebsocketStandard(msg WSMessage, recipients []string) ([]byte, error) {
-	if msg.Type != "text" && msg.Type != "emoji" {
-		return nil, fmt.Errorf("invalid type %q", msg.Type)
+	if msg.MessageType != "text" && msg.MessageType != "emoji" {
+		return nil, fmt.Errorf("invalid type %q", msg.MessageType)
 	}
 	std := StandardizedMessage{
 		WSMessage:  msg,

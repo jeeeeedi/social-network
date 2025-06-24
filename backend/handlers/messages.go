@@ -13,13 +13,17 @@ import (
 )
 
 type messageResponse struct {
-	RequesterID int       `json:"requesterId"`
-	ChatID      int       `json:"chatId"`
-	SenderID    int       `json:"senderId"`
-	ReceiverID  int       `json:"receiverId,omitempty"`
-	GroupID     int       `json:"groupId,omitempty"`
-	Content     string    `json:"content"`
-	Timestamp   time.Time `json:"timestamp"`
+	ID              int       `json:"id"`
+	RequesterID     int       `json:"requesterId"`
+	SenderID        int       `json:"senderId"`
+	OtherUserName   string    `json:"otherUserName"`
+	OtherUserAvatar string    `json:"otherUserAvatar"`
+	ReceiverID      int       `json:"receiverId,omitempty"`
+	GroupID         int       `json:"groupId,omitempty"`
+	Content         string    `json:"content"`
+	Timestamp       time.Time `json:"timestamp"`
+	MessageType     string    `json:"messageType"`
+	ChatType        string    `json:"chatType"`
 }
 
 func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
@@ -50,10 +54,15 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var otherUser = &dbTools.User{}
+
 	var rawMsgs []dbTools.ChatMessage
 	switch chatType {
 	case "private":
 		rawMsgs, err = db.GetMessagesBetweenUsers(userID, otherID)
+		if err == nil {
+			otherUser, err = db.GetUserByID(otherID)
+		}
 	case "group":
 		rawMsgs, err = db.GetMessagesForGroup(otherID)
 	default:
@@ -69,16 +78,20 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	resp := make([]messageResponse, len(rawMsgs))
 	for i, m := range rawMsgs {
 		resp[i] = messageResponse{
-			RequesterID: userID,
-			ChatID:      m.ChatID,
-			SenderID:    m.SenderID,
-			Content:     m.Content,
-			Timestamp:   m.CreatedAt,
+			ID:              m.ChatID,
+			RequesterID:     userID,
+			SenderID:        m.SenderID,
+			OtherUserName:   otherUser.Nickname,
+			OtherUserAvatar: otherUser.Avatar,
+			Content:         m.Content,
+			Timestamp:       m.CreatedAt,
 		}
 		if chatType == "private" {
 			resp[i].ReceiverID = m.ReceiverID
+			resp[i].ChatType = "private"
 		} else {
 			resp[i].GroupID = m.GroupID
+			resp[i].ChatType = "group"
 		}
 	}
 

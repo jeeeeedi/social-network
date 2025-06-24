@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Users, 
-  UserPlus, 
+import {
+  Users,
+  UserPlus,
   UserMinus,
   Clock,
-  Lock, 
+  Lock,
   Unlock,
   ArrowLeft,
   Calendar,
@@ -164,8 +164,8 @@ export default function UserProfilePage() {
         }
 
         // Fetch posts - only if profile is public or we're following
-        if (profileData.profile.privacy === "public" || 
-            (currentUser && (isFollowing || currentUser.user_uuid === userId))) {
+        if (profileData.profile.privacy === "public" ||
+          (currentUser && (isFollowing || currentUser.user_uuid === userId))) {
           try {
             const myPostsRes = await fetch("http://localhost:8080/api/getmyposts", {
               method: "GET",
@@ -216,7 +216,7 @@ export default function UserProfilePage() {
           followData.status === "pending" || followData.status === "accepted"
         );
         setFollowStatus(followData.status || "");
-        
+
         // Refresh followers and following
         const followersResponse = await fetch(
           `http://localhost:8080/api/followers/${userId}`,
@@ -230,7 +230,7 @@ export default function UserProfilePage() {
         if (followersData.success) {
           setFollowers(followersData.followers || []);
         }
-        
+
         const followingResponse = await fetch(
           `http://localhost:8080/api/following/${userId}`,
           {
@@ -320,9 +320,9 @@ export default function UserProfilePage() {
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
       : profile.nickname || "Unknown User";
-  
-  const canViewDetails = profile.privacy === "public" || isOwnProfile || 
-                        (isFollowing && followStatus === "accepted");
+
+  const canViewDetails = profile.privacy === "public" || isOwnProfile ||
+    (isFollowing && followStatus === "accepted");
 
   const getFollowButtonText = () => {
     if (isFollowing) {
@@ -373,7 +373,7 @@ export default function UserProfilePage() {
                   </AvatarFallback>
                 </Avatar>
               </div>
-              
+
               <div className="flex-1 space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold">{displayName}</h2>
@@ -469,7 +469,9 @@ export default function UserProfilePage() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Posts ({posts.length})</CardTitle>
+                <CardTitle>
+                  Posts ({posts?.length ?? 0})
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {!canViewDetails ? (
@@ -482,8 +484,10 @@ export default function UserProfilePage() {
                       </p>
                     )}
                   </div>
-                ) : posts.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No posts yet.</p>
+                ) : (posts?.length ?? 0) === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    {displayName} hasn&apos;t posted anything yet :(
+                  </p>
                 ) : (
                   posts.map((post) => (
                     <Card key={post.post_uuid} className="border-border/50">

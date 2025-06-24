@@ -38,9 +38,7 @@ export function ChatInterface({
   const chatMessages = [
     ...history,
     ...liveMessages.filter(
-      (m) =>
-        m.chatId === chatSpec &&
-        !history.some((h) => h.id === m.id)
+      msg => msg.chatId === chatSpec && !history.some(hist => hist.id === msg.id)
     ),
   ]
 
@@ -60,30 +58,32 @@ export function ChatInterface({
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       type Raw = {
+        id: number
         requesterId: number
-        chatId: number
         senderId: number
+        otherUserName: string
+        otherUserAvatar: string | null
         receiverId?: number
         groupId?: number
         content: string
         timestamp: string
+        messageType: "text" | "emoji"
+        chatType: "private" | "group"
       }
       const raw: Raw[] = await res.json()
 
-      const mapped: Message[] = raw.map((m) => {
-        const isYou = m.senderId === m.requesterId
+      const mapped: Message[] = raw.map((msg) => {
+        const isYou = msg.senderId === msg.requesterId
         return {
-          id: `${m.senderId}_${m.timestamp}`,      // simple unique key
-          senderId: isYou ? "You" : String(m.senderId),
-          senderName: isYou ? "You" : /* lookup name by m.senderId */ String(m.senderId),
-          senderAvatar: isYou
-            ? "/placeholder.svg?height=40&width=40"
-            : /* lookup avatar by m.senderId */ "/placeholder.svg",
-          content: m.content,
-          type: "text",                            // unless you encode emojis server-side
+          id: String(msg.id),
+          senderId: isYou ? "You" : String(msg.senderId),
+          otherUserName: msg.otherUserName,
+          otherUserAvatar: msg.otherUserAvatar,
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          messageType: msg.messageType,
+          chatType: msg.chatType,
           chatId: chatSpec,
-          chatType: "private",
-          timestamp: new Date(m.timestamp),
         }
       })
 
@@ -106,10 +106,10 @@ export function ChatInterface({
     if (newMessage.trim()) {
       onSendMessage({
         senderId: "You",
-        senderName: "You",
-        senderAvatar: "/placeholder.svg?height=40&width=40", // Change
+        otherUserName: user.name,
+        otherUserAvatar: user.avatar,
         content: newMessage,
-        type: "text",
+        messageType: "text",
         chatId: `private_${user.id}`,
         chatType: "private",
       })
@@ -120,10 +120,10 @@ export function ChatInterface({
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
       senderId: "You",
-      senderName: "You",
-      senderAvatar: "/placeholder.svg?height=40&width=40", // Change
+      otherUserName: user.name,
+      otherUserAvatar: user.avatar,
       content: emoji,
-      type: "emoji",
+      messageType: "emoji",
       chatId: `private_${user.id}`,
       chatType: "private",
     })
@@ -183,9 +183,9 @@ export function ChatInterface({
               >
                 {message.senderId !== "You" && (
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} />
+                    <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} />
                     <AvatarFallback className="text-xs">
-                      {message.senderName
+                      {message.otherUserName
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
@@ -196,7 +196,7 @@ export function ChatInterface({
                   className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${message.senderId === "You" ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}
                 >
-                  {message.type === "emoji" ? (
+                  {message.messageType === "emoji" ? (
                     <span className="text-2xl">{message.content}</span>
                   ) : (
                     <p>{message.content}</p>

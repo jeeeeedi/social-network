@@ -4,25 +4,27 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 export interface Message {
   id: string | null
-  senderId: string  | null
-  senderName: string
-  senderAvatar: string | null
+  chatId: string
+  senderId: string | null
+  otherUserName: string
+  otherUserAvatar: string | null
   content: string
   timestamp: Date
-  type: "text" | "emoji"
-  chatId: string
+  messageType: "text" | "emoji"
   chatType: "private" | "group"
 }
 
 interface RawMessage {
-  id: string
-  senderId: string
-  senderName: string
-  senderAvatar: string
+  id: number
+  requesterId: number
+  senderId: number
+  otherUserName: string
+  otherUserAvatar: string | null
+  receiverId?: number
+  groupId?: number
   content: string
   timestamp: string
-  type: "text" | "emoji"
-  chatId: string
+  messageType: "text" | "emoji"
   chatType: "private" | "group"
 }
 
@@ -59,15 +61,24 @@ export function useWebSocket() {
     ws.current.onmessage = (ev: MessageEvent) => {
       try {
         const raw = JSON.parse(ev.data) as RawMessage
+        let chatId: string
+        if (raw.chatType === "private") {
+          const otherId = raw.senderId === raw.requesterId
+            ? raw.receiverId!
+            : raw.senderId
+          chatId = `private_${otherId}`
+        } else {
+          chatId = `group_${raw.groupId!}`
+        }
         const msg: Message = {
-          id: raw.id?raw.id:null,
-          senderId: raw.senderId,
-          senderName: raw.senderName?raw.senderName:"You",
-          senderAvatar: raw.senderAvatar?raw.senderAvatar:null,
+          id: String(raw.id),
+          senderId: String(raw.senderId),
+          otherUserName: raw.otherUserName || "You",
+          otherUserAvatar: raw.otherUserAvatar || null,
           content: raw.content,
           timestamp: new Date(raw.timestamp),
-          type: raw.type,
-          chatId: raw.chatId,
+          messageType: raw.messageType,
+          chatId: `private_${raw.requesterId === raw.senderId ? raw.receiverId : raw.senderId}`,
           chatType: raw.chatType,
         }
         console.log(msg)
