@@ -14,23 +14,6 @@ import (
 )
 
 // getSubscribedGroups retrieves all groups a user is subscribed to
-func getSubscribedGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
-	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r, db)
-	if userID == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	groups, err := db.GetGroupsByUserID(userID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve groups", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(groups)
-}
 
 // GroupsHandler handles requests related to groups
 func GroupsHandler(w http.ResponseWriter, r *http.Request) {
@@ -64,16 +47,6 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	if len(segments) == 2 && segments[0] == "groups" && segments[1] == "my-groups" {
 		if r.Method == http.MethodGet {
 			getMyGroups(w, r, db)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-		return
-	}
-
-	// Handle subscribed groups endpoint
-	if len(segments) == 2 && segments[0] == "groups" && segments[1] == "subscribed" {
-		if r.Method == http.MethodGet {
-			getSubscribedGroups(w, r, db)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -324,13 +297,13 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 		return
 	}
 
-	isCreator, err := db.IsGroupCreator(groupID, userID)
+	isMember, err := db.IsGroupMember(groupID, userID)
 	if err != nil {
 		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
 		return
 	}
-	if !isCreator {
-		http.Error(w, "Forbidden: Only group creator can invite", http.StatusForbidden)
+	if !isMember {
+		http.Error(w, "Forbidden: Only group members can invite", http.StatusForbidden)
 		return
 	}
 
@@ -346,6 +319,29 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 	if err != nil {
 		http.Error(w, "Failed to send invitation", http.StatusInternalServerError)
 		return
+	}
+
+	// Get group details for notification
+	group, err := db.GetGroupByID(groupID)
+	if err != nil {
+		log.Printf("Failed to get group details for notification: %v", err)
+	} else {
+		// Get inviter name for notification
+		var inviterName string
+		query := `SELECT COALESCE(nickname, first_name) as name FROM users WHERE user_id = ?`
+		err = db.QueryRow(query, userID).Scan(&inviterName)
+		if err != nil {
+			log.Printf("Failed to get inviter name: %v", err)
+			inviterName = "Someone"
+		}
+
+		// Create notification for the invitee
+		notificationContent := fmt.Sprintf("%s invited you to join the group '%s'", inviterName, group.Title)
+		err = db.CreateNotification(invite.InviteeID, userID, "group_invitation", "group", groupID, notificationContent)
+		if err != nil {
+			log.Printf("Failed to create notification for group invitation: %v", err)
+			// Don't fail the request if notification creation fails
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

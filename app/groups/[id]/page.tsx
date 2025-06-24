@@ -167,6 +167,37 @@ export default function GroupDetailPage() {
 
   // Handler functions (simplified)
   const handleBack = () => router.push("/groups")
+
+  const handleOpenInviteModal = async () => {
+    setIsInviteModalOpen(true);
+    
+    // Simple fetch on modal open - reuse existing API
+    try {
+      console.log('🔍 Fetching users for invitation...');
+      const response = await fetch('http://localhost:8080/api/users', {
+        credentials: 'include',
+      });
+      console.log('📡 Users API response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📦 Users API response data:', data);
+        const allUsers = data.users || [];
+        console.log('👥 All users count:', allUsers.length);
+        
+        // Filter out current members using existing data
+        const memberIds = new Set(members.map(m => m.member_id));
+        console.log('🏷️ Current member IDs:', Array.from(memberIds));
+        const filtered = allUsers.filter((user: UserInfo) => !memberIds.has(user.user_id));
+        console.log('✅ Available users after filtering:', filtered.length, filtered);
+        setAvailableUsers(filtered);
+      } else {
+        console.error('❌ Users API failed with status:', response.status);
+      }
+    } catch (err) {
+      console.error('💥 Failed to fetch users:', err);
+    }
+  };
   
   const handleInviteUsers = async () => {
     if (selectedUsers.length === 0) return;
@@ -410,12 +441,10 @@ export default function GroupDetailPage() {
 
               {isMember && (
                 <nav className="space-y-2">
-                  {isCreator && (
-                    <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsInviteModalOpen(true)}>
-                      <UserPlus className="h-4 w-4" />
-                      Invite Members
-                    </Button>
-                  )}
+                  <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleOpenInviteModal}>
+                    <UserPlus className="h-4 w-4" />
+                    Invite Members
+                  </Button>
                   <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsEventModalOpen(true)}>
                     <Calendar className="h-4 w-4" />
                     Create Event
@@ -579,34 +608,43 @@ export default function GroupDetailPage() {
                 onChange={(e) => setInviteSearch(e.target.value)} 
               />
             <div className="max-h-60 overflow-y-auto space-y-2">
-              {availableUsers
-                .filter(user => 
-                  formatUserName(user).toLowerCase().includes(inviteSearch.toLowerCase()) ||
-                  user.nickname?.toLowerCase().includes(inviteSearch.toLowerCase())
-                )
-                .map((user) => (
-                <div key={user.user_id} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={getUserAvatarUrl(user)} alt={formatUserName(user)} />
-                      <AvatarFallback>
-                        {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-sm">{formatUserName(user)}</p>
-                      <p className="text-xs text-muted-foreground">@{user.nickname || user.first_name}</p>
+              {availableUsers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">No users available to invite</p>
+                  <p className="text-xs mt-1">
+                    {members.length > 1 ? 'All users are already members' : 'Loading users...'}
+                  </p>
+                </div>
+              ) : (
+                availableUsers
+                  .filter(user => 
+                    formatUserName(user).toLowerCase().includes(inviteSearch.toLowerCase()) ||
+                    user.nickname?.toLowerCase().includes(inviteSearch.toLowerCase())
+                  )
+                  .map((user) => (
+                  <div key={user.user_id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={getUserAvatarUrl(user)} alt={formatUserName(user)} />
+                        <AvatarFallback>
+                          {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{formatUserName(user)}</p>
+                        <p className="text-xs text-muted-foreground">@{user.nickname || user.first_name}</p>
+                      </div>
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={selectedUsers.includes(user.user_id.toString()) ? "default" : "outline"}
-                    onClick={() => toggleUserSelection(user.user_id.toString())}
-                  >
-                    {selectedUsers.includes(user.user_id.toString()) ? "Selected" : "Select"}
-                  </Button>
-                  </div>
-                ))}
+                    <Button
+                      size="sm"
+                      variant={selectedUsers.includes(user.user_id.toString()) ? "default" : "outline"}
+                      onClick={() => toggleUserSelection(user.user_id.toString())}
+                    >
+                      {selectedUsers.includes(user.user_id.toString()) ? "Selected" : "Select"}
+                    </Button>
+                    </div>
+                  ))
+                )}
             </div>
           </div>
           <DialogFooter>

@@ -79,7 +79,7 @@ func NotificationHandler(w http.ResponseWriter, r *http.Request) {
 				case "follow_accepted":
 					notification["type"] = "follow"
 				case "group_invitation":
-					notification["type"] = "group_invite"
+					notification["type"] = "group_invitation"
 				case "group_event":
 					notification["type"] = "event"
 				}
