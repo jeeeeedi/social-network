@@ -15,40 +15,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-/* export interface Message {
-	id: string
-	senderId: string
-	senderName: string
-	senderAvatar: string
-	content: string
-	timestamp: Date
-	type: "text" | "emoji"
-	chatId: string
-	chatType: "private" | "group"
-  } */
-
-/* type message struct {
-	ID           string    `json:"id"`
-	SenderID     string    `json:"senderId"`
-	SenderName   string    `json:"senderName"`
-	SenderAvatar string    `json:"senderAvatar"`
-	Content      string    `json:"content"`
-	Timestamp    time.Time `json:"timestamp"`
-	MessageType  string    `json:"type"` // "text" | "emoji"
-	ChatID       string    `json:"chatId"`
-	ChatType     string    `json:"chatType"` // "private" | "group"
-
-	        senderId: "You",
-        otherUserName: user.name,
-        otherUserAvatar: user.avatar,
-        content: newMessage,
-        messageType: "text",
-        chatId: `private_${user.id}`,
-        chatType: "private",
-} */
-
 type WSMessage struct {
-	ChatID      string    `json:"chatId"`
+	ChatID      string    `json:"id"`
+	RequesterID int       `json:"requesterId"`
 	SenderID    string    `json:"senderId"`
 	ReceiverID  int       `json:"receiverId"`
 	Content     string    `json:"content"`
@@ -59,12 +28,12 @@ type WSMessage struct {
 
 type StandardizedMessage struct {
 	WSMessage
-	Recipients []string `json:"recipients"`
+	Recipients []int `json:"recipients"`
 }
 
 var (
 	clientsMutex sync.RWMutex
-	clients      = make(map[*websocket.Conn]string) // Connection -> UserID
+	clients      = make(map[*websocket.Conn]int) // Connection -> UserID
 	groupsMutex  sync.RWMutex
 	allGroups    = make(map[string]map[*websocket.Conn]bool) // Each GroupID has a map of all connections. If a key is true, that means that that connection/client is part of the group
 )
@@ -78,10 +47,11 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	}
 	defer cleanUp(conn)
 
-	// On new connection, register it. You’ll need to assign the right userID here—
-	// for simplicity I’m reading a "user" query param.
-	// CHECK LATER, probably should fetch UserID by session
-	userID := r.URL.Query().Get("user")
+	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
+	if err != nil {
+		log.Printf("Could not get user ID from session cookie: %v\n", err)
+		return
+	}
 	clientsMutex.Lock()
 	clients[conn] = userID
 	clientsMutex.Unlock()
@@ -141,22 +111,24 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			Status:     "active",
 			UpdatedAt:  &incomingMsg.Timestamp,
 		}
-		if _, err := db.AddMessageToDB(&chatMsg); err != nil {
+		chatID, err := db.AddMessageToDB(&chatMsg)
+		if err != nil {
 			log.Println("Error inserting message into DB:", err)
 			continue
 		}
+		chatMsg.ChatID = chatID
 
 		var recipientConnections []*websocket.Conn
-		var recipientNames []string
+		var recipientIDs []int
 
 		if incomingMsg.ChatType == "private" {
 			// Send to self and intended recipient
 			clientsMutex.RLock()
 			for clientConn, clientID := range clients {
-				if clientID == strconv.Itoa( /* receiverID */ 1) || clientConn == conn {
+				if clientID == receiverID || clientConn == conn {
 					recipientConnections = append(recipientConnections, clientConn)
 					// Placeholder, name = id
-					recipientNames = append(recipientNames, clientID)
+					recipientIDs = append(recipientIDs, clientID)
 				}
 			}
 			clientsMutex.RUnlock()
@@ -166,12 +138,12 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			for groupMemberConn := range allGroups[incomingMsg.ChatID] {
 				recipientConnections = append(recipientConnections, groupMemberConn)
 				// Placeholder, name = id
-				recipientNames = append(recipientNames, clients[groupMemberConn])
+				recipientIDs = append(recipientIDs, clients[groupMemberConn])
 			}
 			groupsMutex.RUnlock()
 		}
 
-		outgoing, err := formatToWebsocketStandard(incomingMsg, recipientNames)
+		outgoing, err := formatToWebsocketStandard(incomingMsg, recipientIDs)
 		if err != nil {
 			log.Println("Error formatting message to standard:", err)
 			continue
@@ -207,7 +179,7 @@ func cleanUp(conn *websocket.Conn) {
 	conn.Close()
 }
 
-func formatToWebsocketStandard(msg WSMessage, recipients []string) ([]byte, error) {
+func formatToWebsocketStandard(msg WSMessage, recipients []int) ([]byte, error) {
 	if msg.MessageType != "text" && msg.MessageType != "emoji" {
 		return nil, fmt.Errorf("invalid type %q", msg.MessageType)
 	}

@@ -76,10 +76,12 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			ID:              msg.ChatID,
 			RequesterID:     userID,
 			SenderID:        msg.SenderID,
+			OtherUserUUID:   otherUser.UserUUID,
 			OtherUserName:   otherUser.Nickname,
 			OtherUserAvatar: otherUser.Avatar,
 			Content:         msg.Content,
 			Timestamp:       msg.CreatedAt,
+			MessageType:     "text", // Placeholder, change later
 		}
 		if chatType == "private" {
 			resp[i].ReceiverID = msg.ReceiverID

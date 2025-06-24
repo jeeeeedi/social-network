@@ -15,17 +15,19 @@ export interface Message {
 }
 
 interface RawMessage {
-  id: number
-  requesterId: number
-  senderId: number
-  otherUserName: string
-  otherUserAvatar: string | null
-  receiverId?: number
-  groupId?: number
-  content: string
-  timestamp: string
-  messageType: "text" | "emoji"
-  chatType: "private" | "group"
+  id: number;
+  chatId: string;
+  senderId: number;
+  requesterId: number;
+  receiverId?: number;
+  groupId?: number;
+  otherUserName: string;
+  otherUserAvatar: string | null;
+  content: string;
+  timestamp: string;
+  messageType: "text" | "emoji";
+  chatType: "private" | "group";
+  recipients: number[];
 }
 
 export interface ChatUser {
@@ -66,11 +68,11 @@ export function useWebSocket() {
       console.log("Got message!!")
       try {
         const raw = JSON.parse(ev.data) as RawMessage
+        console.log("This is the message:")
+        console.log(raw)
         let chatId: string
         if (raw.chatType === "private") {
-          const otherId = raw.senderId === raw.requesterId
-            ? raw.receiverId!
-            : raw.senderId
+          const otherId = raw.senderId === raw.requesterId ? raw.receiverId! : raw.senderId
           chatId = `private_${otherId}`
         } else {
           chatId = `group_${raw.groupId!}`
@@ -83,10 +85,9 @@ export function useWebSocket() {
           content: raw.content,
           timestamp: new Date(raw.timestamp),
           messageType: raw.messageType,
-          chatId: `private_${raw.requesterId === raw.senderId ? raw.receiverId : raw.senderId}`,
+          chatId,
           chatType: raw.chatType,
         }
-        console.log("This is the message:", msg)
         setMessages(prev => [...prev, msg])
       } catch (err) {
         console.error("Failed to parse WS message:", err, ev.data)
@@ -114,7 +115,7 @@ export function useWebSocket() {
     connect()
     return () => {
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-          console.log('closing websocket');
+        console.log('closing websocket');
         ws.current.close();
       }
     }
