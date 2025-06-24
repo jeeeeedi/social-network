@@ -13,12 +13,13 @@ import (
 )
 
 type messageResponse struct {
-	ChatID     int       `json:"chatId"`
-	SenderID   int       `json:"senderId"`
-	ReceiverID int       `json:"receiverId,omitempty"`
-	GroupID    int       `json:"groupId,omitempty"`
-	Content    string    `json:"content"`
-	Timestamp  time.Time `json:"timestamp"`
+	RequesterID int       `json:"requesterId"`
+	ChatID      int       `json:"chatId"`
+	SenderID    int       `json:"senderId"`
+	ReceiverID  int       `json:"receiverId,omitempty"`
+	GroupID     int       `json:"groupId,omitempty"`
+	Content     string    `json:"content"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
@@ -27,6 +28,8 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	fmt.Println("Looking for messages based on:", r.URL.Path)
 
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 3 {
@@ -66,10 +69,11 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	resp := make([]messageResponse, len(rawMsgs))
 	for i, m := range rawMsgs {
 		resp[i] = messageResponse{
-			ChatID:    m.ChatID,
-			SenderID:  m.SenderID,
-			Content:   m.Content,
-			Timestamp: m.CreatedAt,
+			RequesterID: userID,
+			ChatID:      m.ChatID,
+			SenderID:    m.SenderID,
+			Content:     m.Content,
+			Timestamp:   m.CreatedAt,
 		}
 		if chatType == "private" {
 			resp[i].ReceiverID = m.ReceiverID
