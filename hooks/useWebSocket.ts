@@ -15,6 +15,10 @@ export interface Message {
 }
 
 export interface ChatUser {
+  user_id: string
+  first_name: string
+  last_name: string
+
   id: string
   name: string
   username: string

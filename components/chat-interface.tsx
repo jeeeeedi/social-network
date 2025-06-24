@@ -240,26 +240,28 @@ export function ChatInterface({
       {/* Chat Header */}
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
+          {/* <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
             <AvatarFallback>
-              {user.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
+              {user.first_name
+              .concat(' '+user.last_name)
+                // .split(" ")
+                // .map((n) => n[0])
+                // .join("")
+                }
             </AvatarFallback>
-          </Avatar>
+          </Avatar> */}
           <div>
-            <h4 className="text-sm font-semibold">{user.name}</h4>
+            <h4 className="text-sm font-semibold"><pre>{user.first_name} {user.last_name}</pre></h4>
             <p className="text-xs text-muted-foreground">
-              {user.isOnline ? (
+              {/* {user.isOnline ? (
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                   Online
                 </span>
               ) : (
                 `Last seen ${user.lastSeen ? user.lastSeen.toLocaleTimeString() : "recently"}`
-              )}
+              )} */}
             </p>
           </div>
         </div>
