@@ -20,7 +20,7 @@ interface RawMessage {
   senderName: string
   senderAvatar: string
   content: string
-  timestamp: string       // <-- raw JSON is a string
+  timestamp: string
   type: "text" | "emoji"
   chatId: string
   chatType: "private" | "group"
@@ -89,7 +89,7 @@ export function useWebSocket() {
       ws.current = null
 
       setTimeout(() => {
-        // exponential backoff up to, say, 30s
+        // exponential backoff up to 30s
         retryRef.current = Math.min(retryRef.current * 2, 30000)
         connect()
       }, retryRef.current)
@@ -110,7 +110,6 @@ export function useWebSocket() {
         id: Date.now().toString(),
         timestamp: new Date(),
       }
-      /* setMessages((prev) => [...prev, outgoing]) */
 
       if (ws.current?.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify(outgoing))
