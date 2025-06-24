@@ -50,6 +50,7 @@ export function NotificationCenter({
   onDeclineGroupJoinRequest,
 }: NotificationCenterProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [notificationResponses, setNotificationResponses] = useState<Record<string, "accept" | "decline" | null>>({})
   const unreadCount = notifications.filter((n) => !n.isRead).length
 
   const getNotificationIcon = (type: Notification["type"]) => {
@@ -69,6 +70,12 @@ export function NotificationCenter({
   }
 
   const handleNotificationAction = (notification: Notification, action: "accept" | "decline") => {
+    // Store the user's response for UI state
+    setNotificationResponses(prev => ({
+      ...prev,
+      [notification.id]: action
+    }));
+
     switch (notification.type) {
       case 'follow_request':
       if (notification.fromUser && notification.followId) {
@@ -133,7 +140,11 @@ export function NotificationCenter({
                   {notifications.map((notification, index) => (
                     <div key={notification.id}>
                       <div
-                        className={`p-4 hover:bg-muted/50 cursor-pointer ${!notification.isRead ? "bg-muted/30" : ""}`}
+                        className={`p-4 hover:bg-muted/50 cursor-pointer ${
+                          !notification.isRead ? "bg-muted/30" : ""
+                        } ${
+                          notificationResponses[notification.id] ? "bg-gray-100" : ""
+                        }`}
                         onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
                       >
                         <div className="flex items-start gap-3">
@@ -166,6 +177,9 @@ export function NotificationCenter({
                               <div className="flex gap-2 mt-3">
                                 <Button
                                   size="sm"
+                                  variant={notificationResponses[notification.id] === "accept" ? "default" : "outline"}
+                                  disabled={!!notificationResponses[notification.id]}
+                                  className={notificationResponses[notification.id] === "accept" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     handleNotificationAction(notification, "accept")
@@ -176,7 +190,8 @@ export function NotificationCenter({
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant={notificationResponses[notification.id] === "decline" ? "destructive" : "outline"}
+                                  disabled={!!notificationResponses[notification.id]}
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     handleNotificationAction(notification, "decline")

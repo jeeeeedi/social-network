@@ -84,6 +84,7 @@ export default function GroupDetailPage() {
   const [eventDate, setEventDate] = useState("")
   const [eventTime, setEventTime] = useState("")
   const [activeGroupChat, setActiveGroupChat] = useState<GroupChatType | null>(null)
+  const [eventRsvps, setEventRsvps] = useState<Record<number, "going" | "not_going" | null>>({})
 
   const [messages, setMessages] = useState<Message[]>([])
   const [availableUsers, setAvailableUsers] = useState<UserInfo[]>([])
@@ -272,6 +273,12 @@ export default function GroupDetailPage() {
       if (!apiResponse.ok) {
         throw new Error(`Failed to update RSVP: ${apiResponse.status}`);
       }
+      
+      // Update local state to reflect the user's choice
+      setEventRsvps(prev => ({
+        ...prev,
+        [eventId]: response
+      }));
       
       alert(`RSVP updated: ${response === 'going' ? 'Going' : 'Not Going'}`);
       
@@ -523,7 +530,7 @@ export default function GroupDetailPage() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant={eventRsvps[event.event_id] === "going" ? "default" : "outline"}
                             onClick={() => handleEventResponse(event.event_id, "going")}
                             className="flex-1 text-xs"
                           >
@@ -531,7 +538,7 @@ export default function GroupDetailPage() {
                           </Button>
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant={eventRsvps[event.event_id] === "not_going" ? "destructive" : "outline"}
                             onClick={() => handleEventResponse(event.event_id, "not_going")}
                             className="flex-1 text-xs"
                           >
