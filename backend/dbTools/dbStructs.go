@@ -116,18 +116,6 @@ type PostCategory struct {
 	UpdaterID    int        `json:"updater_id"`
 }
 
-type Interaction struct {
-	InteractionID   int        `json:"interaction_id"`
-	UserID          int        `json:"user_id"`
-	InteractionType string     `json:"interaction_type"` // like, dislike, cancelled
-	ParentType      string     `json:"parent_type"`      // post, comment
-	ParentID        int        `json:"parent_id"`
-	Status          string     `json:"status"` // active, inactive
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       *time.Time `json:"updated_at"`
-	UpdaterID       int        `json:"updater_id"`
-}
-
 type Follow struct {
 	FollowID  int        `json:"follow_id"`
 	Followed  int        `json:"followed_id"`
