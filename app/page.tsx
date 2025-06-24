@@ -170,7 +170,7 @@ const mergeArrays = [...followersData.followers, ...followingData.following];
 
 const usersMap = new Map();
 for (const user of mergeArrays) {
-  usersMap.set(user.user_id, user); // user_id must be unique
+  usersMap.set(user.user_uuid, user); // user_id must be unique
 }
 
 const users = Array.from(usersMap.values());
@@ -489,7 +489,7 @@ console.log('users:', users)
             <CardContent className="space-y-3">
               {chatUsers.map((user) => (
                 <div
-                  key={user.user_id}
+                  key={user.user_uuid}
                   // className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
                   //   }`}
                   onClick={() => handleUserClick(user)}
