@@ -29,6 +29,10 @@ interface RawMessage {
 }
 
 export interface ChatUser {
+  user_id: string
+  first_name: string
+  last_name: string
+
   id: string
   name: string
   username: string
@@ -88,14 +92,12 @@ export function useWebSocket() {
       }
     }
 
-    ws.current.onerror = (ev: Event) => {
-      console.error("WS error:", ev)
+    ws.current.onerror = (err) => {
+      console.error("WS error:", err)
     }
 
-    ws.current.onclose = (ev: CloseEvent) => {
-      console.warn(
-        `WS closed (code=${ev.code} reason="${ev.reason}"). Reconnecting in ${retryRef.current}ms…`
-      )
+    ws.current.onclose = () => {
+      console.log("WS closed")
       setIsConnected(false)
       ws.current = null
 
@@ -110,7 +112,10 @@ export function useWebSocket() {
   useEffect(() => {
     connect()
     return () => {
-      ws.current?.close()
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          console.log('closing websocket');
+        ws.current.close();
+      }
     }
   }, [connect])
 
