@@ -53,52 +53,5 @@ export const mockGroups = [
   }
 ];
 
-// Mock data for notifications in the social network
-
-export const mockNotifications = [
-  {
-    id: 1,
-    type: 'friend_request',
-    message: 'John Doe sent you a friend request.',
-    sender: 'John Doe',
-    avatar: 'https://picsum.photos/50',
-    timestamp: '2023-11-01T10:30:00Z',
-    status: 'pending'
-  },
-  {
-    id: 2,
-    type: 'group_invite',
-    message: 'Jane Smith invited you to join the group "Book Lovers".',
-    sender: 'Jane Smith',
-    avatar: 'https://picsum.photos/50',
-    timestamp: '2023-11-02T14:45:00Z',
-    status: 'pending'
-  },
-  {
-    id: 3,
-    type: 'event',
-    message: 'There is an upcoming event "Tech Meetup" in the group "Tech Enthusiasts".',
-    sender: 'Tech Enthusiasts',
-    avatar: 'https://picsum.photos/50',
-    timestamp: '2023-11-03T09:15:00Z',
-    status: 'new'
-  },
-  {
-    id: 4,
-    type: 'friend_request',
-    message: 'Mike Johnson sent you a friend request.',
-    sender: 'Mike Johnson',
-    avatar: 'https://picsum.photos/50',
-    timestamp: '2023-10-30T16:20:00Z',
-    status: 'accepted'
-  },
-  {
-    id: 5,
-    type: 'group_invite',
-    message: 'Emily Brown invited you to join the group "Travel Buddies".',
-    sender: 'Emily Brown',
-    avatar: 'https://picsum.photos/50',
-    timestamp: '2023-10-29T11:10:00Z',
-    status: 'declined'
-  }
-]; 
+// DEPRECATED: Mock notifications removed - using real notification system
+// All notification data now comes from the backend API 

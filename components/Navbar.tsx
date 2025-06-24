@@ -69,7 +69,7 @@ export const Navbar: React.FC = () => {
           message: n.message,
           timestamp: new Date(n.timestamp),
           isRead: n.status === 'read',
-          actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
+          actionRequired: (n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation') && n.status === 'new',
           fromUser: n.actor_id ? {
             id: n.actor_id.toString(),
             name: n.sender,

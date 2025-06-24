@@ -143,7 +143,7 @@ export function NotificationCenter({
                         className={`p-4 hover:bg-muted/50 cursor-pointer ${
                           !notification.isRead ? "bg-muted/30" : ""
                         } ${
-                          notificationResponses[notification.id] ? "bg-gray-100" : ""
+                          notificationResponses[notification.id] || !notification.actionRequired ? "bg-gray-100 text-gray-600" : ""
                         }`}
                         onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
                       >
@@ -173,16 +173,18 @@ export function NotificationCenter({
                             <p className="text-sm text-muted-foreground mb-2">{notification.message}</p>
                             <p className="text-xs text-muted-foreground">{notification.timestamp.toLocaleString()}</p>
 
-                            {notification.actionRequired && (
+                            {(notification.type === 'group_invitation' || notification.type === 'follow_request' || notification.type === 'group_join_request') && (
                               <div className="flex gap-2 mt-3">
                                 <Button
                                   size="sm"
                                   variant={notificationResponses[notification.id] === "accept" ? "default" : "outline"}
-                                  disabled={!!notificationResponses[notification.id]}
-                                  className={notificationResponses[notification.id] === "accept" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                                  disabled={!!notificationResponses[notification.id] || !notification.actionRequired}
+                                  className={notificationResponses[notification.id] === "accept" ? "bg-green-600 hover:bg-green-700 text-white" : notification.actionRequired ? "hover:bg-green-50 hover:border-green-300 hover:text-green-700" : ""}
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleNotificationAction(notification, "accept")
+                                    if (notification.actionRequired) {
+                                      handleNotificationAction(notification, "accept")
+                                    }
                                   }}
                                 >
                                   <Check className="h-3 w-3 mr-1" />
@@ -191,10 +193,13 @@ export function NotificationCenter({
                                 <Button
                                   size="sm"
                                   variant={notificationResponses[notification.id] === "decline" ? "destructive" : "outline"}
-                                  disabled={!!notificationResponses[notification.id]}
+                                  disabled={!!notificationResponses[notification.id] || !notification.actionRequired}
+                                  className={notificationResponses[notification.id] === "decline" ? "" : notification.actionRequired ? "hover:bg-red-50 hover:border-red-300 hover:text-red-700" : ""}
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleNotificationAction(notification, "decline")
+                                    if (notification.actionRequired) {
+                                      handleNotificationAction(notification, "decline")
+                                    }
                                   }}
                                 >
                                   <X className="h-3 w-3 mr-1" />
