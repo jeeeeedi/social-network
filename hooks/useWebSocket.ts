@@ -63,6 +63,7 @@ export function useWebSocket() {
     }
 
     ws.current.onmessage = (ev: MessageEvent) => {
+      console.log("Got message!!")
       try {
         const raw = JSON.parse(ev.data) as RawMessage
         let chatId: string
@@ -85,7 +86,7 @@ export function useWebSocket() {
           chatId: `private_${raw.requesterId === raw.senderId ? raw.receiverId : raw.senderId}`,
           chatType: raw.chatType,
         }
-        console.log(msg)
+        console.log("This is the message:", msg)
         setMessages(prev => [...prev, msg])
       } catch (err) {
         console.error("Failed to parse WS message:", err, ev.data)

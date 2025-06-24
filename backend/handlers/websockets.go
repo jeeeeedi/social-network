@@ -50,7 +50,7 @@ import (
 type WSMessage struct {
 	ChatID      string    `json:"chatId"`
 	SenderID    string    `json:"senderId"`
-	ReceiverID  string    `json:"receiverId"`
+	ReceiverID  int       `json:"receiverId"`
 	Content     string    `json:"content"`
 	Timestamp   time.Time `json:"timestamp"`
 	MessageType string    `json:"messageType"` // "text" | "emoji"
@@ -102,11 +102,21 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 		var receiverID, groupID int
 		if incomingMsg.ChatType == "private" { // Reduntant if .ChatType is consistent
-			id, _ := strconv.Atoi(strings.TrimPrefix(incomingMsg.ChatID, "private_"))
-			receiverID = id
+			otherUserUUID := strings.TrimPrefix(incomingMsg.ChatID, "private_")
+			reciever, err := db.FetchUserByUUID(otherUserUUID)
+			if err != nil {
+				log.Println("Error fetching user by UUID:", err)
+				continue
+			}
+			receiverID = reciever.UserID
 		} else {
-			id, _ := strconv.Atoi(strings.TrimPrefix(incomingMsg.ChatID, "group_"))
-			groupID = id
+			id, err := strconv.Atoi(strings.TrimPrefix(incomingMsg.ChatID, "group_"))
+			fmt.Println(id)
+			if err != nil {
+				log.Println("Error converting to int:", err)
+				continue
+			}
+			groupID = /* incomingMsg.ChatID */ 1 // PLACEHOLDER, CHANGE LATER
 
 			// ensure this conn is in the group
 			// CHANGE THIS, NEED TO ENSURE USER IS SEEN AS PART OF GROUP EVEN IF THEY HAVEN'T SENT A MESSAGE
@@ -143,7 +153,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			// Send to self and intended recipient
 			clientsMutex.RLock()
 			for clientConn, clientID := range clients {
-				if clientID == strconv.Itoa(receiverID) || clientConn == conn {
+				if clientID == strconv.Itoa( /* receiverID */ 1) || clientConn == conn {
 					recipientConnections = append(recipientConnections, clientConn)
 					// Placeholder, name = id
 					recipientNames = append(recipientNames, clientID)
