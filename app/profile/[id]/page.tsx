@@ -505,7 +505,7 @@ export default function UserProfilePage() {
                   </div>
                 ) : !posts || posts?.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">
-                    No posts yet.
+                    {displayName} hasn&apos;t posted anything yet :(
                   </p>
                 ) : (
                   posts?.map((post) => (
