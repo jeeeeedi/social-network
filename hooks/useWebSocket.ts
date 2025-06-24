@@ -33,61 +33,13 @@ export function useWebSocket() {
   const ws = useRef<WebSocket | null>(null)
 
   useEffect(() => {
-    // In a real app, this would connect to your WebSocket server
-    // For demo purposes, we'll simulate the connection
-    /* const connectWebSocket = () => {
-      try {
-        // Simulated WebSocket connection
-        setIsConnected(true)
-
-        // Simulate receiving messages
-        const simulateMessage = () => {
-          const randomUsers = [
-            { id: "1", name: "Emma Wilson", username: "emmaw", avatar: "/placeholder.svg?height=40&width=40" },
-            { id: "2", name: "David Kim", username: "davidk", avatar: "/placeholder.svg?height=40&width=40" },
-            { id: "3", name: "Lisa Brown", username: "lisab", avatar: "/placeholder.svg?height=40&width=40" },
-          ]
-
-          const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)]
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            senderId: randomUser.id,
-            senderName: randomUser.name,
-            senderAvatar: randomUser.avatar,
-            content: "Hey! How are you doing?",
-            timestamp: new Date(),
-            type: "text",
-            chatId: `private_${randomUser.id}`,
-            chatType: "private",
-          }
-
-          setMessages((prev) => [...prev, newMessage])
-        }
-
-        // Simulate random messages every 30 seconds
-        const interval = setInterval(simulateMessage, 30000)
-
-        return () => clearInterval(interval)
-      } catch (error) {
-        console.error("WebSocket connection failed:", error)
-        setIsConnected(false)
-      }
-    }
-
-    connectWebSocket() */
-
-    // 1) Create the WebSocket
     ws.current = new WebSocket(serverUrl)
 
-    // 2) When connection opens
     ws.current.onopen = () => {
       console.log("WS connected")
       setIsConnected(true)
-      // Optionally, you can notify server who you are:
-      // ws.current!.send(JSON.stringify({ type: "hello", userId: "…" }))
     }
 
-    // 3) When a message comes in
     ws.current.onmessage = (event) => {
       try {
         const incoming: Message = JSON.parse(event.data)
@@ -97,13 +49,10 @@ export function useWebSocket() {
       }
     }
 
-    // 4) Handle errors
     ws.current.onerror = (err) => {
       console.error("WS error", err)
-      // you might setIsConnected(false) or show UI feedback
     }
 
-    // 5) Handle close
     ws.current.onclose = () => {
       console.log("WS closed")
       setIsConnected(false)
@@ -112,7 +61,10 @@ export function useWebSocket() {
 
     // 6) Cleanup on unmount
     return () => {
-      ws.current?.close()
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          console.log('closing websocket');
+        ws.current.close();
+      }
     }
   }, [serverUrl])
 
