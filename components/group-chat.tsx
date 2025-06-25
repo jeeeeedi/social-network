@@ -15,8 +15,9 @@ import type { Message, ChatUser } from "@/hooks/useWebSocket"
 
 interface GroupChatProps {
   group: {
-    id: string
-    name: string
+    group_id: number
+    member_count: number
+    title: string
     avatar: string
     members: ChatUser[]
     description?: string
@@ -99,9 +100,9 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
     return null
   }
 
-  const groupMessages = messages?.filter((msg) => msg.chatId === `group_${group.id}`) || []
+  const groupMessages = messages?.filter((msg) => msg.chatId === `group_${group.group_id}`) || []
   const members = group.members || []
-  const groupName = group.name || "Unknown Group"
+  const groupName = group.title || "Unknown Group"
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -119,7 +120,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
         senderAvatar: "/placeholder.svg?height=40&width=40",
         content: newMessage,
         type: "text",
-        chatId: `group_${group.id}`,
+        chatId: `group_${group.group_id}`,
         chatType: "group",
       })
       setNewMessage("")
@@ -133,7 +134,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
       senderAvatar: "/placeholder.svg?height=40&width=40",
       content: emoji,
       type: "emoji",
-      chatId: `group_${group.id}`,
+      chatId: `group_${group.group_id}`,
       chatType: "group",
     })
     setShowEmojiPicker(false)
@@ -152,19 +153,19 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} className="object-cover"/>
+            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} className="object-cover"/>
             <AvatarFallback>
-              {group.name
+              {group.title
                 .split(" ")
                 .map((n) => n[0])
                 .join("")}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h4 className="text-sm font-semibold">{group.name}</h4>
+            <h4 className="text-sm font-semibold">{group.title}</h4>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Users className="h-3 w-3" />
-              {group.members.length} members
+              {group.member_count} members
             </p>
           </div>
         </div>

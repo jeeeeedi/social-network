@@ -50,6 +50,13 @@ interface Post {
   liked?: boolean;
 }
 
+interface Group {
+  group_id: number;
+  member_count: number;
+  title: string;
+  avatar: string;
+  // specify more fields if needed
+}
 
 
 export default function SocialNetworkPage() {
@@ -69,6 +76,7 @@ export default function SocialNetworkPage() {
   const [userEvents, setUserEvents] = useState<EventWithDetails[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [userRSVPs, setUserRSVPs] = useState<Record<number, string>>({}) // eventId -> "going" | "not_going"
+  const [groups, setGroups] = useState<Group[]>([])
 
   // Mock users data - in real app, fetch from backend
   // const [chatUsers] = useState<ChatUser[]>([
@@ -119,22 +127,22 @@ export default function SocialNetworkPage() {
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
 
   // Mock groups data
-  const [groups] = useState([
-    {
-      id: "1",
-      name: "Design Team",
-      avatar: "/placeholder.svg?height=40&width=40",
-      members: chatUsers.slice(0, 3),
-      description: "Design discussions and updates",
-    },
-    {
-      id: "2",
-      name: "Photography Club",
-      avatar: "/placeholder.svg?height=40&width=40",
-      members: chatUsers.slice(1, 4),
-      description: "Share your best shots!",
-    },
-  ])
+  // const [groups] = useState([
+  //   {
+  //     id: "1",
+  //     name: "Design Team",
+  //     avatar: "/placeholder.svg?height=40&width=40",
+  //     members: chatUsers.slice(0, 3),
+  //     description: "Design discussions and updates",
+  //   },
+  //   {
+  //     id: "2",
+  //     name: "Photography Club",
+  //     avatar: "/placeholder.svg?height=40&width=40",
+  //     members: chatUsers.slice(1, 4),
+  //     description: "Share your best shots!",
+  //   },
+  // ])
 
   // Fetch posts only when user is authenticated
   useEffect(() => {
@@ -161,16 +169,28 @@ export default function SocialNetworkPage() {
           }
         );
 
-        if (!followersResponse.ok || !followingResponse.ok) throw new Error(`Failed to fetch chatUsers: ${followersResponse.status} or ${followingResponse.status}`);
+          const groupsResponse = await fetch(
+          `http://localhost:8080/api/groups`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (!followersResponse.ok || !followingResponse.ok || !groupsResponse.ok) throw new Error(`Failed to fetch chatUsers: ${followersResponse.status} or ${followingResponse.status} or ${groupsResponse.status}`);
         const followersData = await followersResponse.json();
         const followingData = await followingResponse.json();
+        const groupsData = await groupsResponse.json();
         console.log('followersData:', followersData)
         console.log('followingData:', followingData)
+        console.log('groupsData:', groupsData)
+        setGroups(groupsData)
 const mergeArrays = [...followersData.followers, ...followingData.following];
 
 const usersMap = new Map();
 for (const user of mergeArrays) {
-  usersMap.set(user.user_id, user); // user_id must be unique
+  usersMap.set(user.user_uuid, user); // user_id must be unique
 }
 
 const users = Array.from(usersMap.values());
@@ -232,6 +252,7 @@ console.log('users:', users)
   }
 
   const handleGroupClick = (group: any) => {
+    console.log('group clicked:', group)
     setActiveGroupChat(group)
   }
 
@@ -532,7 +553,7 @@ console.log('users:', users)
           </Card>
 
           {/* Group Chats */}
-          {/* <Card>
+          <Card>
             <CardHeader>
               <h3 className="font-semibold flex items-center gap-2">
                 <UsersIcon className="h-4 w-4" />
@@ -542,32 +563,32 @@ console.log('users:', users)
             <CardContent className="space-y-3">
               {groups.map((group) => (
                 <div
-                  key={group.id}
+                  key={group.group_id}
                   className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                   onClick={() => handleGroupClick(group)}
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
+                      <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} />
                       <AvatarFallback>
-                        {group.name
+                        {group.title
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{group.name}</p>
-                      <p className="text-xs text-muted-foreground">{group.members.length} members</p>
+                      <p className="font-medium text-sm">{group.title}</p>
+                      <p className="text-xs text-muted-foreground">{group.member_count} members</p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  {/* <Badge variant="secondary" className="text-xs">
                     {group.members.filter((m) => m.isOnline).length} online
-                  </Badge>
+                  </Badge> */}
                 </div>
               ))}
             </CardContent>
-          </Card> */}
+          </Card>
         </aside>
       </div>
 
