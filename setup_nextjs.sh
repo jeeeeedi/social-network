@@ -95,11 +95,7 @@ npm install \
   @radix-ui/react-menubar \
   @radix-ui/react-navigation-menu \
   @radix-ui/react-select \
-  @radix-ui/react-form \
   @radix-ui/react-alert-dialog \
-  @radix-ui/react-sheet \
-  @radix-ui/react-drawer \
-  @radix-ui/react-resizable \
   @radix-ui/react-context-menu
 
 # Install peer dependencies if needed
@@ -121,32 +117,18 @@ go mod tidy
 
 echo -e "${GREEN}Backend Go dependencies installed.${NC}"
 
-# Run database migrations
-# CHANGE NOTE: No changes here; ensuring database setup is complete as per original setup.
-echo -e "${GREEN}Setting up database...${NC}"
-echo "Running migrations..."
-if make migrateup; then
-    echo -e "${GREEN}Database migrations completed successfully.${NC}"
-else
-    echo -e "${RED}Database migrations failed. Check your setup or ensure SQLite is installed.${NC}"
-    echo -e "${YELLOW}Continuing setup despite migration failure; you may need to resolve this manually.${NC}"
-fi
+# Database is already included in the repository
+echo -e "${GREEN}Database ready - using existing socnet.db${NC}"
 
 echo ""
-# CHANGE NOTE: Added detailed instructions for starting both frontend and backend with updated context.
-echo -e "${GREEN}Full Setup Complete!${NC}"
-echo -e "You can now start the applications:"
-echo -e "${YELLOW}Frontend:${NC} cd frontend && npm run dev"
-echo -e "${YELLOW}   - This will start the Next.js development server, typically on port 3000."
-echo -e "${YELLOW}   - Ensure the backend is running to handle API requests (proxy set to http://localhost:8080)."
-echo -e "${YELLOW}Backend:${NC} go run main.go"
-echo -e "${YELLOW}   - This will start the Go backend server, typically on port 8080."
-echo -e "${YELLOW}   - Run this in a separate terminal if developing locally."
+echo -e "${GREEN}=== Setup Complete! ===${NC}"
 echo ""
-# CHANGE NOTE: Added note about project updates and new dependencies.
-echo -e "${GREEN}Notes on Updates:${NC}"
-echo -e "${YELLOW} - Material-UI (MUI) and related packages (@emotion/react, @emotion/styled) have been integrated for UI components.${NC}"
-echo -e "${YELLOW} - Proxy setting added in frontend/package.json to forward API requests to backend (http://localhost:8080).${NC}"
-echo -e "${YELLOW} - Removed root npm install as root dependencies were deemed unnecessary after review.${NC}"
+echo -e "${GREEN}To start the application:${NC}"
+echo -e "${YELLOW}make dev${NC}    # Starts both backend and frontend"
 echo ""
-echo -e "${GREEN}Happy coding!${NC}"
+echo -e "${GREEN}What was installed:${NC}"
+echo -e "${YELLOW} ✓ Node.js dependencies${NC}"
+echo -e "${YELLOW} ✓ Go dependencies${NC}" 
+echo -e "${YELLOW} ✓ Database ready${NC}"
+echo ""
+echo -e "${GREEN}Happy coding! 🚀${NC}"

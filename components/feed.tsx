@@ -55,9 +55,6 @@ export interface Post {
     filename_new?: string;
     avatar?: string;
   }[];
-  shares?: number;
-  likes?: number;
-  liked?: boolean;
 }
 
 // Helper function to filter posts based on context
@@ -154,21 +151,6 @@ export function Feed({
   }, [currentUser, groupId]);
 
   // console.log("groupId:", groupId, "| groupMembers:", groupMembers);
-
-  const handleLike = async (postUUID: string) => {
-    setPosts(
-      posts.map((post) =>
-        post.post_uuid === postUUID
-          ? {
-              ...post,
-              liked: !post.liked,
-              likes: post.liked ? (post.likes || 0) - 1 : (post.likes || 0) + 1,
-            }
-          : post
-      )
-    );
-    // TODO: Send like status to backend API
-  };
 
   const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -384,7 +366,7 @@ export function Feed({
                 onChange={(e) => {
                   if (e.target.value.length <= 1000) setContent(e.target.value);
                 }}
-                className="min-h-[100px] resize-none placeholder:text-muted-foreground"
+                className="min-h-[100px] resize-none placeholder:text-muted-foreground break-all"
                 maxLength={1000}
               />
               <div className="text-right text-xs text-muted-foreground">
@@ -520,7 +502,7 @@ export function Feed({
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-sm leading-relaxed mb-4">{post.content}</p>
+                <p className="text-sm leading-relaxed mb-4 break-all whitespace-pre-wrap">{post.content}</p>
                 {post.filename_new && (
                   <div className="mb-4 rounded-lg overflow-hidden">
                     <img
@@ -535,32 +517,12 @@ export function Feed({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleLike(post.post_uuid)}
-                      className={post.liked ? "text-red-500" : ""}
-                    >
-                      <Heart
-                        className={`h-4 w-4 mr-2 ${
-                          post.liked ? "fill-current" : ""
-                        }`}
-                      />
-                      {post.likes || 0}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={() => handleCommentClick(post.post_uuid)}
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
                       {post.comments?.length || 0}
                     </Button>
-                    {/* <Button variant="ghost" size="sm">
-                      <Repeat2 className="h-4 w-4 mr-2" />
-                      {post.shares || 0}
-                    </Button> */}
                   </div>
-                  {/* <Button variant="ghost" size="sm">
-                    <Share className="h-4 w-4" />
-                  </Button> */}
                 </div>
                 {/* Comment Section */}
                 {expandedPostUUID === String(post.post_uuid) && (
@@ -601,7 +563,7 @@ export function Feed({
                               }));
                             }
                           }}
-                          className="min-h-[80px] resize-none"
+                          className="min-h-[80px] resize-none placeholder:text-muted-foreground break-all"
                           maxLength={1000}
                           required
                         />
@@ -722,7 +684,7 @@ export function Feed({
                               </span>
                             </div>
                             <div className="pl-8">
-                              <p className="text-sm">{comment.content}</p>
+                              <p className="text-sm leading-relaxed mb-4 break-all whitespace-pre-wrap">{comment.content}</p>
                               {comment.filename_new && (
                                 <div className="mt-2 rounded-lg overflow-hidden">
                                   <img

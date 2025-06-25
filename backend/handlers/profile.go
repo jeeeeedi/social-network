@@ -192,39 +192,39 @@ func PrivacyHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("auto-accept follows error: %v", err)
 			}
 
-			// Create follow_accepted notifications
+			// Create follow_accepted notifications for auto-accepted follows
 			rowsAffected, _ := result.RowsAffected()
 			if rowsAffected > 0 {
 				rows, err := tx.Query(`
                     SELECT follow_id, follower_user_id
                     FROM follows
-                    WHERE followed_user_id = ? AND status = 'accepted'
+                    WHERE followed_user_id = ? AND status = 'accepted' AND updated_at >= datetime('now', '-1 minute')
                 `, int(userID))
 				if err != nil {
 					return fmt.Errorf("fetch accepted follows error: %v", err)
 				}
 				defer rows.Close()
 
-				var nickname string
-				err = tx.QueryRow(`SELECT COALESCE(nickname, '') FROM users WHERE user_id = ?`, int(userID)).Scan(&nickname)
-				if err != nil || nickname == "" {
-					nickname = "Someone"
-				}
-
+				// Create notifications for each auto-accepted follow
 				for rows.Next() {
 					var followID, followerUserID int
 					if err := rows.Scan(&followID, &followerUserID); err != nil {
 						continue
 					}
-					content := fmt.Sprintf("%s accepted your follow request", nickname)
-					notifyQuery := `
-                        INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
-                        VALUES (?, ?, 'follow_accepted', 'follow', ?, ?, 'unread', datetime('now'), ?)
-                    `
-					_, err = tx.Exec(notifyQuery, followerUserID, int(userID), followID, content, int(userID))
-					if err != nil {
-						log.Printf("Notification insert error: %v", err)
-					}
+
+					// Use notification helpers outside transaction for now
+					// Note: This creates a temporary inconsistency but avoids transaction complexity
+					go func(fID, followerID, userID int) {
+						db := &dbTools.DB{}
+						if db, err := db.OpenDB(); err == nil {
+							defer db.CloseDB()
+							notificationHelpers := dbTools.NewNotificationHelpers(db)
+							err = notificationHelpers.CreateFollowAcceptedNotification(followerID, userID, fID)
+							if err != nil {
+								log.Printf("Notification creation error: %v", err)
+							}
+						}
+					}(followID, followerUserID, int(userID))
 				}
 				if err = rows.Err(); err != nil {
 					return fmt.Errorf("accepted follows rows error: %v", err)

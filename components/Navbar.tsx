@@ -71,7 +71,7 @@ export const Navbar: React.FC = () => {
           message: n.message,
           timestamp: new Date(n.timestamp),
           isRead: n.status === 'read',
-          actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
+          actionRequired: (n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation') && n.status === 'new',
           fromUser: n.actor_id ? {
             id: n.actor_id.toString(),
             name: n.sender,
@@ -270,17 +270,8 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  const handleAcceptGroupInvitation = (groupId: string) => {
-    console.log("Accepting group invitation for:", groupId);
-    // TODO: Implement group invitation acceptance
-  };
-
-  const handleDeclineGroupInvitation = (groupId: string) => {
-    console.log("Declining group invitation for:", groupId);
-    // TODO: Implement group invitation decline
-  };
-
-  const handleAcceptGroupJoinRequest = async (userId: string, groupId: string) => {
+  // Reusable function for updating group membership status
+  const updateGroupMembershipStatus = async (groupId: string, userId: string, status: 'accepted' | 'declined', actionDescription: string) => {
     try {
       const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${userId}`, {
         method: 'POST',
@@ -288,32 +279,37 @@ export const Navbar: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: 'accepted' }),
+        body: JSON.stringify({ status }),
       });
       if (response.ok) {
+        console.log(`${actionDescription} successful`);
         fetchNotifications();
+      } else {
+        console.error(`Failed to ${actionDescription.toLowerCase()}:`, response.status);
       }
     } catch (error) {
-      console.error("Failed to accept group join request:", error);
+      console.error(`Failed to ${actionDescription.toLowerCase()}:`, error);
     }
+  };
+
+  // Group invitation handlers (user accepting/declining their own invitation)
+  const handleAcceptGroupInvitation = async (groupId: string) => {
+    if (!currentUser) return;
+    await updateGroupMembershipStatus(groupId, currentUser.user_id.toString(), 'accepted', 'Accept group invitation');
+  };
+
+  const handleDeclineGroupInvitation = async (groupId: string) => {
+    if (!currentUser) return;
+    await updateGroupMembershipStatus(groupId, currentUser.user_id.toString(), 'declined', 'Decline group invitation');
+  };
+
+  // Group join request handlers (group creator accepting/declining someone's request)
+  const handleAcceptGroupJoinRequest = async (userId: string, groupId: string) => {
+    await updateGroupMembershipStatus(groupId, userId, 'accepted', 'Accept group join request');
   };
 
   const handleDeclineGroupJoinRequest = async (userId: string, groupId: string) => {
-    try {
-      const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${userId}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'declined' }),
-      });
-      if (response.ok) {
-        fetchNotifications();
-      }
-    } catch (error) {
-      console.error("Failed to decline group join request:", error);
-    }
+    await updateGroupMembershipStatus(groupId, userId, 'declined', 'Decline group join request');
   };
 
   const isActivePage = (path: string) => {

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"social_network/dbTools"
@@ -14,23 +13,6 @@ import (
 )
 
 // getSubscribedGroups retrieves all groups a user is subscribed to
-func getSubscribedGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
-	// Temporary placeholder for user ID retrieval until middleware is implemented
-	userID := getUserIDFromContext(r, db)
-	if userID == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	groups, err := db.GetGroupsByUserID(userID)
-	if err != nil {
-		http.Error(w, "Failed to retrieve groups", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(groups)
-}
 
 // GroupsHandler handles requests related to groups
 func GroupsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
@@ -55,16 +37,6 @@ func GroupsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	if len(segments) == 2 && segments[0] == "groups" && segments[1] == "my-groups" {
 		if r.Method == http.MethodGet {
 			getMyGroups(w, r, db)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-		return
-	}
-
-	// Handle subscribed groups endpoint
-	if len(segments) == 2 && segments[0] == "groups" && segments[1] == "subscribed" {
-		if r.Method == http.MethodGet {
-			getSubscribedGroups(w, r, db)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -315,13 +287,13 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 		return
 	}
 
-	isCreator, err := db.IsGroupCreator(groupID, userID)
+	isMember, err := db.IsGroupMember(groupID, userID)
 	if err != nil {
 		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
 		return
 	}
-	if !isCreator {
-		http.Error(w, "Forbidden: Only group creator can invite", http.StatusForbidden)
+	if !isMember {
+		http.Error(w, "Forbidden: Only group members can invite", http.StatusForbidden)
 		return
 	}
 
@@ -337,6 +309,19 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 	if err != nil {
 		http.Error(w, "Failed to send invitation", http.StatusInternalServerError)
 		return
+	}
+
+	// Create group invitation notification
+	group, err := db.GetGroupByID(groupID)
+	if err != nil {
+		log.Printf("Failed to get group details for notification: %v", err)
+	} else {
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		err = notificationHelpers.CreateGroupInvitationNotification(userID, invite.InviteeID, groupID, group.Title)
+		if err != nil {
+			log.Printf("Failed to create notification for group invitation: %v", err)
+			// Don't fail the request if notification creation fails
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -378,8 +363,8 @@ func requestToJoinGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, 
 	}
 
 	// Create notification for group creator
-	notificationContent := fmt.Sprintf("%s wants to join your group '%s'", requesterName, group.Title)
-	err = db.CreateNotification(group.CreatorID, userID, "group_join_request", "group", groupID, notificationContent)
+	notificationHelpers := dbTools.NewNotificationHelpers(db)
+	err = notificationHelpers.CreateGroupJoinRequestNotification(userID, group.CreatorID, groupID, group.Title)
 	if err != nil {
 		log.Printf("Failed to create notification: %v", err)
 		// Don't fail the request if notification creation fails
@@ -424,32 +409,25 @@ func updateMembershipStatus(w http.ResponseWriter, r *http.Request, db *dbTools.
 			return
 		}
 
-		// Get group details for notification
+		// Update the original join request notification status
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		notificationStatus := "read"
+		if request.Status == "declined" {
+			notificationStatus = "declined"
+		}
+		err = notificationHelpers.UpdateGroupJoinRequestNotificationStatus(groupID, targetUserID, userID, notificationStatus)
+		if err != nil {
+			log.Printf("Failed to update group join request notification status: %v", err)
+			// Don't fail the request if notification update fails
+		}
+
+		// Create notification for the user whose request was processed
 		group, err := db.GetGroupByID(groupID)
 		if err != nil {
 			log.Printf("Failed to get group details for notification: %v", err)
 		} else {
-			// Get creator name for notification
-			var creatorName string
-			query := `SELECT COALESCE(nickname, first_name) as name FROM users WHERE user_id = ?`
-			err = db.QueryRow(query, userID).Scan(&creatorName)
-			if err != nil {
-				log.Printf("Failed to get creator name: %v", err)
-				creatorName = "Group Owner"
-			}
-
-			// Create notification for the user whose request was processed
-			var notificationContent string
-			var actionType string
-			if request.Status == "accepted" {
-				notificationContent = fmt.Sprintf("Your request to join '%s' has been accepted by %s", group.Title, creatorName)
-				actionType = "follow_accepted" // Reusing existing action type for accepted requests
-			} else {
-				notificationContent = fmt.Sprintf("Your request to join '%s' has been declined by %s", group.Title, creatorName)
-				actionType = "comment" // Using generic action type for declined requests
-			}
-
-			err = db.CreateNotification(targetUserID, userID, actionType, "group", groupID, notificationContent)
+			accepted := request.Status == "accepted"
+			err = notificationHelpers.CreateGroupRequestResponseNotification(userID, targetUserID, groupID, group.Title, accepted)
 			if err != nil {
 				log.Printf("Failed to create notification for join request response: %v", err)
 				// Don't fail the request if notification creation fails
@@ -461,6 +439,18 @@ func updateMembershipStatus(w http.ResponseWriter, r *http.Request, db *dbTools.
 		if err != nil {
 			http.Error(w, "Failed to update membership", http.StatusInternalServerError)
 			return
+		}
+
+		// Update the notification status when user responds to group invitation
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		notificationStatus := "read"
+		if request.Status == "declined" {
+			notificationStatus = "declined"
+		}
+		err = notificationHelpers.UpdateGroupInvitationNotificationStatus(groupID, userID, notificationStatus)
+		if err != nil {
+			log.Printf("Failed to update group invitation notification status: %v", err)
+			// Don't fail the request if notification update fails
 		}
 	} else {
 		http.Error(w, "Forbidden", http.StatusForbidden)

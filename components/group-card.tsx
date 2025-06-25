@@ -156,21 +156,15 @@ export function GroupCard({
             View
           </Button>
 
-          {!isCreator && (
+          {!isCreator && !isMember && !isPending && (
             <Button
               size="sm"
               onClick={handleJoinLeave}
               disabled={isLoading}
-              variant={isMember ? "outline" : "default"}
+              variant="default"
               className="flex-1"
             >
-              {isLoading
-                ? "Loading..."
-                : isMember
-                ? "Leave"
-                : isPending
-                ? "Pending"
-                : "Join"}
+              {isLoading ? "Loading..." : "Join"}
             </Button>
           )}
         </div>

@@ -182,16 +182,16 @@ func RegisterHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if first name already exists
-	query = `SELECT COUNT(*) FROM users WHERE first_name = ? AND status = 'active'`
-	err = db.QueryRow(query, registerReq.FirstName).Scan(&count)
+	// Check if nick name already exists
+	query = `SELECT COUNT(*) FROM users WHERE nickname = ? AND status = 'active'`
+	err = db.QueryRow(query, registerReq.Nickname).Scan(&count)
 	if err != nil {
-		fmt.Printf("First name check error: %v\n", err)
+		fmt.Printf("Nickname check error: %v\n", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 	if count > 0 {
-		http.Error(w, "First name already registered", http.StatusBadRequest)
+		http.Error(w, "Nickname already registered", http.StatusBadRequest)
 		return
 	}
 

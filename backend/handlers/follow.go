@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"social_network/dbTools"
@@ -114,25 +113,15 @@ func FollowHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			}
 			followID = int(followID64)
 
-			// Create notification
-			var nickname string
-			err = db.GetDB().QueryRow(`SELECT COALESCE(nickname, first_name) FROM users WHERE user_id = ?`, currentUserID).Scan(&nickname)
-			if err != nil || nickname == "" {
-				nickname = "Someone"
-			}
-			actionType := "follow_request"
-			content := fmt.Sprintf("%s wants to follow you", nickname)
+			// Create notification using notification helpers
+			notificationHelpers := dbTools.NewNotificationHelpers(db)
 			if status == "accepted" {
-				actionType = "follow_accepted"
-				content = fmt.Sprintf("%s started following you", nickname)
+				err = notificationHelpers.CreateFollowAcceptedNotification(currentUserID, followedUserID, followID)
+			} else {
+				err = notificationHelpers.CreateFollowRequestNotification(currentUserID, followedUserID, followID)
 			}
-			notifyQuery := `
-				INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
-				VALUES (?, ?, ?, 'follow', ?, ?, 'unread', datetime('now'), ?)
-			`
-			_, err = db.GetDB().Exec(notifyQuery, followedUserID, currentUserID, actionType, followID, content, currentUserID)
 			if err != nil {
-				log.Printf("Notification insert error for follow_id %d: %v", followID, err)
+				log.Printf("Notification creation error for follow_id %d: %v", followID, err)
 			}
 		} else {
 			log.Printf("Follow check error: %v", err)
