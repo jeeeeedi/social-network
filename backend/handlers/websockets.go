@@ -135,11 +135,19 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		if incomingMsg.ChatType == "private" {
 			// Send to self and intended recipient
 			clientsMutex.RLock()
+			// For some reason there are 3 connections, self, recipient, and another recipient(???), so we do this instead:
 			for clientConn, clientID := range clients {
-				if clientID == receiverID || clientConn == conn {
+				if clientConn == conn {
 					recipientConnections = append(recipientConnections, clientConn)
-					// Placeholder, name = id
 					recipientIDs = append(recipientIDs, clientID)
+					break
+				}
+			}
+			for clientConn, clientID := range clients {
+				if clientID == receiverID {
+					recipientConnections = append(recipientConnections, clientConn)
+					recipientIDs = append(recipientIDs, clientID)
+					break // Break after first recipient is found.
 				}
 			}
 			clientsMutex.RUnlock()
@@ -154,38 +162,55 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			groupsMutex.RUnlock()
 		}
 
-		/* outgoing, err := formatToWebsocketStandard(incomingMsg, recipientIDs) */
-		rawOutMsg := outMessage{
-			ID:            chatID,
-			ChatID:        incomingMsg.ChatID,
-			RequesterID:   incomingMsg.RequesterID,
-			SenderID:      senderID,
-			OtherUserName: recieverName,
-			OtherUserID:   receiverID,
-			Content:       incomingMsg.Content,
-			Timestamp:     incomingMsg.Timestamp,
-			MessageType:   incomingMsg.MessageType,
-			ChatType:      incomingMsg.ChatType,
-		}
-
-		outgoingMsg, err := json.Marshal(rawOutMsg)
-
+		// fetch the sending user's UUID
+		senderUser, err := db.FetchUserByID(senderID)
 		if err != nil {
-			log.Println("Error formatting message to standard:", err)
+			log.Println("WS: failed to fetch sender UUID:", err)
 			continue
 		}
 
+		fmt.Println("About to send msg to recipients:")
+		fmt.Println(recipientConnections)
+		fmt.Println("or in other words:")
+		for _, conn := range recipientConnections {
+			fmt.Println(&conn)
+		}
 		clientsMutex.RLock()
 		for _, recipientConn := range recipientConnections {
-			if err := recipientConn.WriteMessage(websocket.TextMessage, outgoingMsg); err != nil {
+			outChatID := incomingMsg.ChatID
+			if incomingMsg.ChatType == "private" && recipientConn != conn {
+				outChatID = fmt.Sprintf("private_%s", senderUser.UserUUID)
+			}
+
+			msg := outMessage{
+				ID:            chatID,
+				ChatID:        outChatID,
+				RequesterID:   incomingMsg.RequesterID,
+				SenderID:      senderID,
+				OtherUserName: recieverName,
+				OtherUserID:   receiverID,
+				Content:       incomingMsg.Content,
+				Timestamp:     incomingMsg.Timestamp,
+				MessageType:   incomingMsg.MessageType,
+				ChatType:      incomingMsg.ChatType,
+			}
+			payload, err := json.Marshal(msg)
+			if err != nil {
+				log.Println("WS: marshal error:", err)
+				continue
+			}
+
+			if err := recipientConn.WriteMessage(websocket.TextMessage, payload); err != nil {
+				clientsMutex.RUnlock()
 				clientsMutex.Lock()
-				log.Println("Error writing message to connection:", err, "\nDeleting them...")
+				log.Println("WS: write error, dropping conn:", err)
 				recipientConn.Close()
 				delete(clients, recipientConn)
-				if group := allGroups[incomingMsg.ChatID]; group != nil {
-					delete(group, recipientConn)
+				if room := allGroups[incomingMsg.ChatID]; room != nil {
+					delete(room, recipientConn)
 				}
 				clientsMutex.Unlock()
+				clientsMutex.RLock()
 			}
 		}
 		clientsMutex.RUnlock()
@@ -204,17 +229,3 @@ func cleanUp(conn *websocket.Conn) {
 	groupsMutex.Unlock()
 	conn.Close()
 }
-
-/* func formatToWebsocketStandard(msg WSMessage, recipients []int) ([]byte, error) {
-	if msg.MessageType != "text" && msg.MessageType != "emoji" {
-		return nil, fmt.Errorf("invalid type %q", msg.MessageType)
-	}
-	std := StandardizedMessage{
-		WSMessage:  msg,
-		Recipients: recipients,
-	}
-	if std.Timestamp.IsZero() {
-		std.Timestamp = time.Now().UTC()
-	}
-	return json.Marshal(std)
-} */
