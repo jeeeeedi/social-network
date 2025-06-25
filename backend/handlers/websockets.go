@@ -17,8 +17,8 @@ import (
 
 type inMessage struct {
 	ChatID      string    `json:"chatId"`
-	RequesterID int       `json:"requesterId"`
 	SenderID    string    `json:"senderId"`
+	RequesterID int       `json:"requesterId"`
 	ReceiverID  int       `json:"receiverId"`
 	Content     string    `json:"content"`
 	Timestamp   time.Time `json:"timestamp"`
@@ -27,15 +27,17 @@ type inMessage struct {
 }
 
 type outMessage struct {
-	ID          int       `json:"id"`
-	ChatID      string    `json:"chatId"`
-	RequesterID int       `json:"requesterId"`
-	SenderID    string    `json:"senderId"`
-	ReceiverID  int       `json:"receiverId"`
-	Content     string    `json:"content"`
-	Timestamp   time.Time `json:"timestamp"`
-	MessageType string    `json:"messageType"` // "text" | "emoji"
-	ChatType    string    `json:"chatType"`    // "private" | "group"
+	ID          int    `json:"id"`          // good
+	ChatID      string `json:"chatId"`      // good
+	SenderID    int    `json:"senderId"`    // good
+	RequesterID int    `json:"requesterId"` // good
+	// GroupID missing
+	OtherUserName string    `json:"otherUserName"` // good
+	OtherUserID   int       `json:"otherUserID"`   // good
+	Content       string    `json:"content"`       // good
+	Timestamp     time.Time `json:"timestamp"`     // good
+	MessageType   string    `json:"messageType"`   // "text" | "emoji" // good
+	ChatType      string    `json:"chatType"`      // "private" | "group" // good
 }
 
 var (
@@ -77,6 +79,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		var recieverName string
 		var receiverID, groupID int
 		if incomingMsg.ChatType == "private" { // Reduntant if .ChatType is consistent
 			otherUserUUID := strings.TrimPrefix(incomingMsg.ChatID, "private_")
@@ -87,6 +90,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			receiverID = reciever.UserID
+			recieverName = reciever.FirstName
 		} else {
 			id, err := strconv.Atoi(strings.TrimPrefix(incomingMsg.ChatID, "group_"))
 			fmt.Println(id)
@@ -152,15 +156,16 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 		/* outgoing, err := formatToWebsocketStandard(incomingMsg, recipientIDs) */
 		rawOutMsg := outMessage{
-			ID:          chatID,
-			ChatID:      incomingMsg.ChatID,
-			RequesterID: incomingMsg.RequesterID,
-			SenderID:    incomingMsg.SenderID,
-			ReceiverID:  incomingMsg.ReceiverID,
-			Content:     incomingMsg.Content,
-			Timestamp:   incomingMsg.Timestamp,
-			MessageType: incomingMsg.MessageType,
-			ChatType:    incomingMsg.ChatType,
+			ID:            chatID,
+			ChatID:        incomingMsg.ChatID,
+			RequesterID:   incomingMsg.RequesterID,
+			SenderID:      senderID,
+			OtherUserName: recieverName,
+			OtherUserID:   receiverID,
+			Content:       incomingMsg.Content,
+			Timestamp:     incomingMsg.Timestamp,
+			MessageType:   incomingMsg.MessageType,
+			ChatType:      incomingMsg.ChatType,
 		}
 
 		outgoingMsg, err := json.Marshal(rawOutMsg)

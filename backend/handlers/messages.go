@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 type messageResponse struct {
 	ID              int       `json:"id"`
+	ChatID          string    `json:"chatId"`
 	RequesterID     int       `json:"requesterId"`
 	SenderID        int       `json:"senderId"`
 	OtherUserUUID   string    `json:"otherUserUuid"`
@@ -46,13 +48,12 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	chatType, otherUUID := specificationParts[0], specificationParts[1]
-	otherUserPointer, err := db.FetchUserByUUID(otherUUID)
+	otherUser, err := db.FetchUserByUUID(otherUUID)
 	if err != nil {
 		http.Error(w, "invalid ID/UUID:", http.StatusBadRequest)
 		return
 	}
 
-	var otherUser = otherUserPointer
 	var otherID = otherUser.UserID
 
 	var rawMsgs []dbTools.ChatMessage
@@ -72,13 +73,17 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]messageResponse, len(rawMsgs))
 	for i, msg := range rawMsgs {
+		msgOtherUser, err := db.FetchUserByID(msg.ReceiverID)
+		if err != nil {
+			log.Println("Error fetching user when fetching messages:", err)
+		}
 		resp[i] = messageResponse{
 			ID:              msg.ChatID,
 			RequesterID:     userID,
 			SenderID:        msg.SenderID,
-			OtherUserUUID:   otherUser.UserUUID,
-			OtherUserName:   otherUser.Nickname,
-			OtherUserAvatar: otherUser.Avatar,
+			OtherUserUUID:   msgOtherUser.UserUUID,
+			OtherUserName:   msgOtherUser.FirstName,
+			OtherUserAvatar: msgOtherUser.Avatar,
 			Content:         msg.Content,
 			Timestamp:       msg.CreatedAt,
 			MessageType:     "text", // Placeholder, change later

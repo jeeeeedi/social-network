@@ -75,20 +75,31 @@ export function ChatInterface({
         messageType: "text" | "emoji"
         chatType: "private" | "group"
       }
+      console.log("Fetching chat messages...")
       const raw: Raw[] = await res.json()
 
       const mapped: Message[] = raw.map((msg) => {
-        const isYou = msg.senderId === msg.requesterId
+        console.log(
+`          id: ${String(msg.id)},
+          chatId: ${chatSpec},
+          senderId: ${String(msg.senderId)},
+          otherUserName: ${msg.otherUserName},
+          otherUserAvatar: ${msg.otherUserAvatar},
+          content: ${msg.content},
+          timestamp: ${new Date(msg.timestamp)},
+          messageType: ${msg.messageType},
+          chatType: ${msg.chatType},`
+      )
         return {
           id: String(msg.id),
-          senderId: isYou ? "You" : String(msg.senderId),
+          chatId: chatSpec,
+          senderId: String(msg.senderId),
           otherUserName: msg.otherUserName,
           otherUserAvatar: msg.otherUserAvatar,
           content: msg.content,
           timestamp: new Date(msg.timestamp),
           messageType: msg.messageType,
           chatType: msg.chatType,
-          chatId: chatSpec,
         }
       })
 
@@ -103,6 +114,7 @@ export function ChatInterface({
   }, [user.user_uuid])
 
   useEffect(() => {
+    console.log("Adding message:", chatMessages[chatMessages.length - 1])
     scrollToBottom()
     setFocus()
   }, [chatMessages])
@@ -186,9 +198,9 @@ export function ChatInterface({
             {chatMessages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-2 ${message.senderId === "You" ? "justify-end" : "justify-start"}`}
+                className={`flex gap-2 ${message.otherUserName === user.first_name ? "justify-end" : "justify-start"}`}
               >
-                {message.senderId !== "You" && (
+                {message.otherUserName !== user.first_name && (
                   <Avatar className="h-6 w-6">
                     <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} />
                     <AvatarFallback className="text-xs">
@@ -200,7 +212,7 @@ export function ChatInterface({
                   </Avatar>
                 )}
                 <div
-                  className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${message.senderId === "You" ? "bg-primary text-primary-foreground" : "bg-muted"
+                  className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${message.otherUserName === user.first_name ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}
                 >
                   {message.messageType === "emoji" ? (
@@ -209,7 +221,7 @@ export function ChatInterface({
                     <p className="break-all whitespace-pre-wrap">{message.content}</p>
                   )}
                   <p
-                    className={`text-xs mt-1 ${message.senderId === "You" ? "text-primary-foreground/70" : "text-muted-foreground"
+                    className={`text-xs mt-1 ${message.otherUserName === user.first_name ? "text-primary-foreground/70" : "text-muted-foreground"
                       }`}
                   >
                     {message.timestamp.toLocaleTimeString([], {

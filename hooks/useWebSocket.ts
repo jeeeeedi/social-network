@@ -15,19 +15,17 @@ export interface Message {
 }
 
 interface RawMessage {
-  id: number;
-  chatId: string;
-  senderId: number;
-  requesterId: number;
-  receiverId?: number;
-  groupId?: number;
-  otherUserName: string;
-  otherUserAvatar: string | null;
-  content: string;
-  timestamp: string;
-  messageType: "text" | "emoji";
-  chatType: "private" | "group";
-  recipients: number[];
+  id: number; // good
+  chatId: string; // good
+  senderId: number; // good
+  requesterId: number; // good
+  groupId?: number; // Missing in backend
+  otherUserName: string; // good
+  otherUserID: number | null; // good
+  content: string; // good
+  timestamp: string; // good
+  messageType: "text" | "emoji"; // good
+  chatType: "private" | "group"; // good
 }
 
 export interface ChatUser {
@@ -75,8 +73,8 @@ export function useWebSocket() {
           id: String(raw.id),
           chatId: raw.chatId,
           senderId: String(raw.senderId),
-          otherUserName: raw.otherUserName || "You",
-          otherUserAvatar: raw.otherUserAvatar || null,
+          otherUserName: raw.otherUserName,
+          otherUserAvatar: null,
           content: raw.content,
           timestamp: new Date(raw.timestamp),
           messageType: raw.messageType,
