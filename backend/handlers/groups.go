@@ -487,6 +487,7 @@ func getJoinRequests(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gro
 
 	utils.SendSuccessResponse(w, map[string]interface{}{"requests": requests})
 }
+
 func createGroupEventInGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
 	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
@@ -529,6 +530,19 @@ func createGroupEventInGroups(w http.ResponseWriter, r *http.Request, db *dbTool
 	}
 
 	log.Printf("Successfully created event: %+v", createdEvent)
+
+	// Create notifications for all group members
+	group, err := db.GetGroupByID(groupID)
+	if err != nil {
+		log.Printf("Failed to get group details for event notification: %v", err)
+	} else {
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		err = notificationHelpers.CreateGroupEventNotification(int(userID), groupID, createdEvent.EventID, group.Title, createdEvent.Title)
+		if err != nil {
+			log.Printf("Failed to create event notifications: %v", err)
+			// Don't fail the request if notification creation fails
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
