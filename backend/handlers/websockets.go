@@ -16,7 +16,8 @@ import (
 )
 
 type WSMessage struct {
-	ChatID      string    `json:"id"`
+	/* 	ID          int       `json:"id"` */
+	ChatID      string    `json:"chatId"`
 	RequesterID int       `json:"requesterId"`
 	SenderID    string    `json:"senderId"`
 	ReceiverID  int       `json:"receiverId"`
@@ -24,11 +25,6 @@ type WSMessage struct {
 	Timestamp   time.Time `json:"timestamp"`
 	MessageType string    `json:"messageType"` // "text" | "emoji"
 	ChatType    string    `json:"chatType"`    // "private" | "group"
-}
-
-type StandardizedMessage struct {
-	WSMessage
-	Recipients []int `json:"recipients"`
 }
 
 var (
@@ -76,6 +72,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			reciever, err := db.FetchUserByUUID(otherUserUUID)
 			if err != nil {
 				log.Println("Error fetching user by UUID:", err)
+				log.Println("Got incorrect UUID:", otherUserUUID)
 				continue
 			}
 			receiverID = reciever.UserID
@@ -143,7 +140,9 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			groupsMutex.RUnlock()
 		}
 
-		outgoing, err := formatToWebsocketStandard(incomingMsg, recipientIDs)
+		/* outgoing, err := formatToWebsocketStandard(incomingMsg, recipientIDs) */
+		outgoingMsg, err := json.Marshal(incomingMsg)
+
 		if err != nil {
 			log.Println("Error formatting message to standard:", err)
 			continue
@@ -151,7 +150,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 		clientsMutex.RLock()
 		for _, recipientConn := range recipientConnections {
-			if err := recipientConn.WriteMessage(websocket.TextMessage, outgoing); err != nil {
+			if err := recipientConn.WriteMessage(websocket.TextMessage, outgoingMsg); err != nil {
 				clientsMutex.Lock()
 				log.Println("Error writing message to connection:", err, "\nDeleting them...")
 				recipientConn.Close()
@@ -179,7 +178,7 @@ func cleanUp(conn *websocket.Conn) {
 	conn.Close()
 }
 
-func formatToWebsocketStandard(msg WSMessage, recipients []int) ([]byte, error) {
+/* func formatToWebsocketStandard(msg WSMessage, recipients []int) ([]byte, error) {
 	if msg.MessageType != "text" && msg.MessageType != "emoji" {
 		return nil, fmt.Errorf("invalid type %q", msg.MessageType)
 	}
@@ -191,4 +190,4 @@ func formatToWebsocketStandard(msg WSMessage, recipients []int) ([]byte, error) 
 		std.Timestamp = time.Now().UTC()
 	}
 	return json.Marshal(std)
-}
+} */

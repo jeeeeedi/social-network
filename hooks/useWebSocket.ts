@@ -77,17 +77,19 @@ export function useWebSocket() {
         } else {
           chatId = `group_${raw.groupId!}`
         }
+        console.log("Just checked if message was private or group")
         const msg: Message = {
           id: String(raw.id),
+          chatId,
           senderId: String(raw.senderId),
           otherUserName: raw.otherUserName || "You",
           otherUserAvatar: raw.otherUserAvatar || null,
           content: raw.content,
           timestamp: new Date(raw.timestamp),
           messageType: raw.messageType,
-          chatId,
           chatType: raw.chatType,
         }
+        console.log("Finally, adding message to messages:", msg)
         setMessages(prev => [...prev, msg])
       } catch (err) {
         console.error("Failed to parse WS message:", err, ev.data)
