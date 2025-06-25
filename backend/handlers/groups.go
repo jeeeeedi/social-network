@@ -108,7 +108,7 @@ func GroupsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.Method == http.MethodGet {
-			getGroupMembers(w, r, db, groupID)
+			getGroupMembers(w, db, groupID)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -140,7 +140,7 @@ func GroupsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		case http.MethodPost:
 			createGroupEventInGroups(w, r, db, groupID)
 		case http.MethodGet:
-			getGroupEventsInGroups(w, r, db, groupID)
+			getGroupEventsInGroups(w, db, groupID)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -436,7 +436,7 @@ func updateMembershipStatus(w http.ResponseWriter, r *http.Request, db *dbTools.
 	utils.SendSuccessResponse(w, map[string]interface{}{"message": "Membership updated"})
 }
 
-func getGroupMembers(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
+func getGroupMembers(w http.ResponseWriter, db *dbTools.DB, groupID int) {
 	members, err := db.GetGroupMembers(groupID)
 	if err != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve members")
@@ -549,7 +549,7 @@ func createGroupEventInGroups(w http.ResponseWriter, r *http.Request, db *dbTool
 	json.NewEncoder(w).Encode(createdEvent)
 }
 
-func getGroupEventsInGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB, groupID int) {
+func getGroupEventsInGroups(w http.ResponseWriter, db *dbTools.DB, groupID int) {
 	events, err := db.GetEventsByGroupID(groupID)
 	if err != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve events")

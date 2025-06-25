@@ -98,8 +98,8 @@ export function Feed({
 
   const postsUrl = groupId ? `${API_URL}/api/getgroupposts/${groupId}` : `${API_URL}/api/getfeedposts`;
   const filteredPosts = groupId 
-    ? posts.filter(post => post.group_id === Number(groupId))
-    : posts.filter(post => !post.group_id);
+    ? (posts || []).filter(post => post.group_id === Number(groupId))
+    : (posts || []).filter(post => !post.group_id);
 
   const fetchPosts = async () => {
     try {
@@ -110,10 +110,11 @@ export function Feed({
       });
       if (res.ok) {
         const posts = await res.json();
-        setPosts(posts);
+        setPosts(Array.isArray(posts) ? posts : []);
       }
     } catch (err) {
       console.error("Failed to fetch posts:", err);
+      setPosts([]);
     }
   };
 

@@ -7,12 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  MessageCircle,
-  User,
-  Users as UsersIcon,
-  Calendar,
-} from "lucide-react"
+import { MessageCircle, User, Users as UsersIcon, Calendar } from "lucide-react"
 import { ChatInterface } from "@/components/chat-interface"
 import { GroupChat } from "@/components/group-chat"
 import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
@@ -114,24 +109,13 @@ export default function SocialNetworkPage() {
     fetchEvents();
   }, [currentUser, authLoading]);
 
-  const handleUserClick = (user: ChatUser) => {
-    setActiveChat(user)
-  }
-
-  const handleGroupClick = (group: any) => {
-    setActiveGroupChat(group)
-  }
-
   const handleEventResponse = async (eventId: number, response: "going" | "not_going") => {
     if (!currentUser) return;
     
     try {
       const success = await respondToEvent(eventId, response);
       if (success) {
-        setUserRSVPs(prev => ({
-          ...prev,
-          [eventId]: response
-        }));
+        setUserRSVPs(prev => ({ ...prev, [eventId]: response }));
       } else {
         alert('Failed to update RSVP. Please try again.');
       }
@@ -139,6 +123,16 @@ export default function SocialNetworkPage() {
       console.error('Failed to update RSVP:', error);
       alert('Failed to update RSVP. Please try again.');
     }
+  }
+
+  const handleUserClick = (user: ChatUser) => {
+    if (user.isFollowing || user.isFollowedBy) {
+      setActiveChat(user);
+    }
+  }
+
+  const handleGroupClick = (group: any) => {
+    setActiveGroupChat(group);
   }
 
   // Show loading while AuthContext is checking session
