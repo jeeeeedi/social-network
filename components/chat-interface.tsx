@@ -206,7 +206,7 @@ export function ChatInterface({
                   {message.messageType === "emoji" ? (
                     <span className="text-2xl">{message.content}</span>
                   ) : (
-                    <p>{message.content}</p>
+                    <p className="break-all whitespace-pre-wrap">{message.content}</p>
                   )}
                   <p
                     className={`text-xs mt-1 ${message.senderId === "You" ? "text-primary-foreground/70" : "text-muted-foreground"

@@ -70,17 +70,10 @@ export function useWebSocket() {
         const raw = JSON.parse(ev.data) as RawMessage
         console.log("This is the message:")
         console.log(raw)
-        let chatId: string
-        if (raw.chatType === "private") {
-          const otherId = raw.senderId === raw.requesterId ? raw.receiverId! : raw.senderId
-          chatId = `private_${otherId}`
-        } else {
-          chatId = `group_${raw.groupId!}`
-        }
         console.log("Just checked if message was private or group")
         const msg: Message = {
           id: String(raw.id),
-          chatId,
+          chatId: raw.chatId,
           senderId: String(raw.senderId),
           otherUserName: raw.otherUserName || "You",
           otherUserAvatar: raw.otherUserAvatar || null,

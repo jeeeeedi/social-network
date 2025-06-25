@@ -15,8 +15,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type WSMessage struct {
-	/* 	ID          int       `json:"id"` */
+type inMessage struct {
+	ChatID      string    `json:"chatId"`
+	RequesterID int       `json:"requesterId"`
+	SenderID    string    `json:"senderId"`
+	ReceiverID  int       `json:"receiverId"`
+	Content     string    `json:"content"`
+	Timestamp   time.Time `json:"timestamp"`
+	MessageType string    `json:"messageType"` // "text" | "emoji"
+	ChatType    string    `json:"chatType"`    // "private" | "group"
+}
+
+type outMessage struct {
+	ID          int       `json:"id"`
 	ChatID      string    `json:"chatId"`
 	RequesterID int       `json:"requesterId"`
 	SenderID    string    `json:"senderId"`
@@ -60,7 +71,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var incomingMsg WSMessage
+		var incomingMsg inMessage
 		if err := json.Unmarshal(rawMsg, &incomingMsg); err != nil {
 			log.Println("Error unmarshalling:", err)
 			continue
@@ -113,7 +124,6 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			log.Println("Error inserting message into DB:", err)
 			continue
 		}
-		chatMsg.ChatID = chatID
 
 		var recipientConnections []*websocket.Conn
 		var recipientIDs []int
@@ -141,7 +151,19 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 
 		/* outgoing, err := formatToWebsocketStandard(incomingMsg, recipientIDs) */
-		outgoingMsg, err := json.Marshal(incomingMsg)
+		rawOutMsg := outMessage{
+			ID:          chatID,
+			ChatID:      incomingMsg.ChatID,
+			RequesterID: incomingMsg.RequesterID,
+			SenderID:    incomingMsg.SenderID,
+			ReceiverID:  incomingMsg.ReceiverID,
+			Content:     incomingMsg.Content,
+			Timestamp:   incomingMsg.Timestamp,
+			MessageType: incomingMsg.MessageType,
+			ChatType:    incomingMsg.ChatType,
+		}
+
+		outgoingMsg, err := json.Marshal(rawOutMsg)
 
 		if err != nil {
 			log.Println("Error formatting message to standard:", err)
