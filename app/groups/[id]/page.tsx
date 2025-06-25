@@ -2,6 +2,8 @@
 
 // This is the dynamic group detail page. It displays group info, posts, and actions (invite, event, post).
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import React, { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -107,7 +109,7 @@ export default function GroupDetailPage() {
         setGroup(groupData);
 
         // Fetch group members
-        const membersResponse = await fetch(`http://localhost:8080/api/groups/${groupId}/members`, {
+        const membersResponse = await fetch(`${API_URL}/api/groups/${groupId}/members`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -131,7 +133,7 @@ export default function GroupDetailPage() {
         }
 
         // Fetch group events
-        const eventsResponse = await fetch(`http://localhost:8080/api/groups/${groupId}/events`, {
+        const eventsResponse = await fetch(`${API_URL}/api/groups/${groupId}/events`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -204,7 +206,7 @@ export default function GroupDetailPage() {
     
     try {
       for (const userId of selectedUsers) {
-        const response = await fetch(`http://localhost:8080/api/groups/${groupId}/invite`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/invite`, {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -247,7 +249,7 @@ export default function GroupDetailPage() {
     try {
       const eventDateTime = new Date(`${eventDate}T${eventTime}`);
       
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/events`, {
+      const response = await fetch(`${API_URL}/api/groups/${groupId}/events`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -290,7 +292,7 @@ export default function GroupDetailPage() {
   
   const handleEventResponse = async (eventId: number, response: "going" | "not_going") => {
     try {
-      const apiResponse = await fetch(`http://localhost:8080/api/events/${eventId}/rsvp`, {
+      const apiResponse = await fetch(`${API_URL}/api/events/${eventId}/rsvp`, {
         method: 'POST',
         credentials: 'include',
         headers: {

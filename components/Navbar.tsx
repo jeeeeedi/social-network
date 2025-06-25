@@ -1,5 +1,7 @@
 "use client"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -53,7 +55,7 @@ export const Navbar: React.FC = () => {
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/notifications', {
+      const response = await fetch(`${API_URL}/api/notifications`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -73,7 +75,7 @@ export const Navbar: React.FC = () => {
           fromUser: n.actor_id ? {
             id: n.actor_id.toString(),
             name: n.sender,
-            avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
+            avatar: n.avatar ? `${API_URL}${n.avatar}` : "/placeholder.svg"
           } : undefined,
           groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
           followId: n.type === 'follow_request' ? n.parent_id.toString() : undefined,
@@ -90,7 +92,7 @@ export const Navbar: React.FC = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/users', {
+      const response = await fetch(`${API_URL}/api/users`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -105,7 +107,7 @@ export const Navbar: React.FC = () => {
           first_name: u.first_name,
           last_name: u.last_name,
           nickname: u.nickname,
-          avatar: u.avatar ? `http://localhost:8080${u.avatar}` : undefined,
+          avatar: u.avatar ? `${API_URL}${u.avatar}` : undefined,
         })) || [];
         setUsers(formattedUsers);
       }
@@ -174,7 +176,7 @@ export const Navbar: React.FC = () => {
 
   const handleMarkAsRead = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/notifications/${id}`, {
+      const response = await fetch(`${API_URL}/api/notifications/${id}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -196,7 +198,7 @@ export const Navbar: React.FC = () => {
     try {
       const payload = { follow_id: parseInt(followId), action: 'accept' };
       console.log('Sending payload to /api/follow_requests:', payload);
-      const response = await fetch('http://localhost:8080/api/follow_requests', {
+      const response = await fetch(`${API_URL}/api/follow_requests`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -237,7 +239,7 @@ export const Navbar: React.FC = () => {
     try {
       const payload = { follow_id: parseInt(followId), action: 'decline' };
       console.log('Sending payload to /api/follow_requests:', payload);
-      const response = await fetch('http://localhost:8080/api/follow_requests', {
+      const response = await fetch(`${API_URL}/api/follow_requests`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -271,7 +273,7 @@ export const Navbar: React.FC = () => {
   // Reusable function for updating group membership status
   const updateGroupMembershipStatus = async (groupId: string, userId: string, status: 'accepted' | 'declined', actionDescription: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${userId}`, {
+      const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${userId}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -437,7 +439,7 @@ export const Navbar: React.FC = () => {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : undefined}
+                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `${API_URL}${currentUser.avatar}` : undefined}
                     alt={currentUser?.nickname || "User"}
                     className="object-cover"
                   />

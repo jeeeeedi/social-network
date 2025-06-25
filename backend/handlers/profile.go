@@ -19,7 +19,7 @@ type PrivacyRequest struct {
 }
 
 // ProfileHandler fetches user profile data
-func ProfileHandler(w http.ResponseWriter, r *http.Request) {
+func ProfileHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("ProfileHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -41,17 +41,6 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
-
 	// Fetch limited profile data
 	var profile dbTools.User
 	query := `
@@ -60,7 +49,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
         FROM users
         WHERE user_uuid = ? AND status = 'active'
     `
-	err = db.QueryRow(query, userUUID).Scan(
+	err := db.QueryRow(query, userUUID).Scan(
 		&profile.UserID, &profile.UserUUID, &profile.FirstName, &profile.LastName,
 		&profile.Nickname, &profile.Avatar, &profile.Privacy,
 	)
@@ -148,7 +137,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PrivacyHandler updates user privacy setting
-func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
+func PrivacyHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
@@ -159,16 +148,6 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
 		return
 	}
-
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
 
 	// Verify session and get user ID
 	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
@@ -273,7 +252,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ProfileMeHandler fetches the current user's profile
-func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
+func ProfileMeHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Println("ProfileMeHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -285,17 +264,6 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
 		return
 	}
-
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
 
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {

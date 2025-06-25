@@ -1,17 +1,30 @@
-FROM golang:1.23
+# BACKEND DOCKERFILE
 
-# Required to use CGO + SQLite
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies for CGO
+RUN apk add --no-cache gcc musl-dev
+
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download && go mod verify
+
+COPY backend/ ./
+
+## No need to install the sqlite3 command-line tool inside the container?
+# RUN apk add --no-cache sqlite
+
+# Enable CGO for sqlite3
 ENV CGO_ENABLED=1
 
-# Install system packages needed for SQLite
-RUN apt-get update && \
-    apt-get install -y gcc sqlite3 libsqlite3-dev make
+RUN go build -o server .
 
-# Set up Go work directory
-WORKDIR /go-migrate
+# Final image
+FROM alpine:3.19
+WORKDIR /app
+COPY --from=builder /app/server .
+COPY backend/db ./db
+EXPOSE 8080
 
-# Install migrate CLI with SQLite support
-RUN go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-
-# Expose the migrate binary
-ENTRYPOINT ["/go/bin/migrate"]
+CMD ["./server"]

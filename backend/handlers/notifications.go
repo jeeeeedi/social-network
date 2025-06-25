@@ -12,22 +12,13 @@ import (
 )
 
 // NotificationHandler manages user notifications with cleaner, service-based architecture
-func NotificationHandler(w http.ResponseWriter, r *http.Request) {
+func NotificationHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("NotificationHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
 
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {

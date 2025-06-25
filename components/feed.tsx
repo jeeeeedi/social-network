@@ -1,5 +1,7 @@
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -106,8 +108,8 @@ export function Feed({
       try {
         // Fetch posts (group or global)
         const url = groupId
-          ? `http://localhost:8080/api/getgroupposts/${groupId}`
-          : "http://localhost:8080/api/getfeedposts";
+          ? `${API_URL}/api/getgroupposts/${groupId}`
+          : `${API_URL}/api/getfeedposts`;
         const res = await fetch(url, {
           method: "GET",
           credentials: "include",
@@ -126,7 +128,7 @@ export function Feed({
       if (!groupId) {
         try {
           const followersResponse = await fetch(
-            `http://localhost:8080/api/followers/${currentUser.user_uuid}`,
+            `${API_URL}/api/followers/${currentUser.user_uuid}`,
             {
               method: "GET",
               credentials: "include",
@@ -203,7 +205,7 @@ export function Feed({
     if (image) formData.append("file", image);
 
     try {
-      const res = await fetch("http://localhost:8080/api/createposts", {
+      const res = await fetch(`${API_URL}/api/createposts`, {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -221,8 +223,8 @@ export function Feed({
       // Refresh posts
       const postsRes = await fetch(
         groupId
-          ? `http://localhost:8080/api/getgroupposts/${groupId}`
-          : "http://localhost:8080/api/getfeedposts",
+          ? `${API_URL}/api/getgroupposts/${groupId}`
+          : `${API_URL}/api/getfeedposts`,
         {
           method: "GET",
           credentials: "include",
@@ -266,7 +268,7 @@ export function Feed({
     }
 
     try {
-      const res = await fetch("http://localhost:8080/api/createcomment", {
+      const res = await fetch(`${API_URL}/api/createcomment`, {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -289,8 +291,8 @@ export function Feed({
       // Refresh posts to get updated comments
       const postsRes = await fetch(
         groupId
-          ? `http://localhost:8080/api/getgroupposts/${groupId}`
-          : "http://localhost:8080/api/getfeedposts",
+          ? `${API_URL}/api/getgroupposts/${groupId}`
+          : `${API_URL}/api/getfeedposts`,
         {
           method: "GET",
           credentials: "include",
@@ -344,7 +346,7 @@ export function Feed({
               <AvatarImage
                 src={
                   currentUser?.avatar && currentUser.avatar.trim() !== ""
-                    ? `http://localhost:8080${currentUser.avatar}`
+                    ? `${API_URL}${currentUser.avatar}`
                     : "/placeholder.svg?height=40&width=40"
                 }
                 alt={currentUser?.nickname || "User"}
@@ -475,7 +477,7 @@ export function Feed({
                       <AvatarImage
                         src={
                           post.avatar && post.avatar.trim() !== ""
-                            ? `http://localhost:8080${post.avatar}`
+                            ? `${API_URL}${post.avatar}`
                             : "/placeholder.svg"
                         }
                         alt={`@${post.nickname}_avatar`}
@@ -504,7 +506,7 @@ export function Feed({
                 {post.filename_new && (
                   <div className="mb-4 rounded-lg overflow-hidden">
                     <img
-                      src={`http://localhost:8080/uploads/${post.filename_new}`}
+                      src={`${API_URL}/uploads/${post.filename_new}`}
                       alt={`postImage_${post.filename_new}`}
                       className="mx-auto object-cover max-w-[300px] max-h-[300px]"
                     />
@@ -537,7 +539,7 @@ export function Feed({
                             src={
                               currentUser?.avatar &&
                               currentUser.avatar.trim() !== ""
-                                ? `http://localhost:8080${currentUser.avatar}`
+                                ? `${API_URL}${currentUser.avatar}`
                                 : "/placeholder.svg?height=32&width=32"
                             }
                             alt={currentUser?.nickname || "User"}
@@ -663,7 +665,7 @@ export function Feed({
                                   src={
                                     comment.avatar &&
                                     comment.avatar.trim() !== ""
-                                      ? `http://localhost:8080${comment.avatar}`
+                                      ? `${API_URL}${comment.avatar}`
                                       : "/placeholder.svg"
                                   }
                                   alt={`@${comment.nickname}_avatar`}
@@ -686,7 +688,7 @@ export function Feed({
                               {comment.filename_new && (
                                 <div className="mt-2 rounded-lg overflow-hidden">
                                   <img
-                                    src={`http://localhost:8080/uploads/${comment.filename_new}`}
+                                    src={`${API_URL}/uploads/${comment.filename_new}`}
                                     alt="Comment image"
                                     className="max-w-80 max-h-80 object-cover mx-auto"
                                   />

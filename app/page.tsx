@@ -1,5 +1,7 @@
 "use client"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -137,7 +139,7 @@ export default function SocialNetworkPage() {
       
       setPostsLoading(true);
       try {
-        const res = await fetch("http://localhost:8080/api/getfeedposts", {
+        const res = await fetch(`${API_URL}/api/getfeedposts`, {
           method: "GET",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -220,7 +222,7 @@ export default function SocialNetworkPage() {
         formData.append("image", image);
       }
 
-      const res = await fetch("http://localhost:8080/api/createposts", {
+      const res = await fetch(`${API_URL}/api/createposts`, {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -234,7 +236,7 @@ export default function SocialNetworkPage() {
       setImagePreview(null);
       
       // Refresh posts
-      const postsRes = await fetch("http://localhost:8080/api/getfeedposts", {
+      const postsRes = await fetch(`${API_URL}/api/getfeedposts`, {
         method: "GET",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -322,7 +324,7 @@ export default function SocialNetworkPage() {
               <div className="flex items-center gap-3 mb-6">
                 <Avatar className="h-12 w-12">
                   <AvatarImage 
-                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
+                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `${API_URL}${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
                     alt={currentUser?.nickname || "User"} 
                     className="object-cover"
                   />

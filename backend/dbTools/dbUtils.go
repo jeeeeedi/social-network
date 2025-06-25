@@ -2,6 +2,7 @@ package dbTools
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -14,36 +15,44 @@ type DB struct {
 }
 
 func (d *DB) OpenDB() (*DB, error) {
+	log.Println("[DB] Opening database at ./db/socnet.db ...")
 	db, err := sql.Open("sqlite3", "./db/socnet.db")
 	if err != nil {
+		log.Printf("[DB] sql.Open error: %v", err)
 		return nil, err
 	}
 	d.db = db
 
 	err = d.RunMigration()
 	if err != nil {
+		log.Printf("[DB] Migration error: %v", err)
 		d.db.Close()
 	}
 	return d, nil
 }
 
 func (d *DB) RunMigration() error {
+	log.Println("[DB] Running migrations from ./db/migrations ...")
 	driver, err := sqlite3.WithInstance(d.db, &sqlite3.Config{})
 	if err != nil {
+		log.Printf("[DB] sqlite3.WithInstance error: %v", err)
 		d.db.Close()
 		return err
 	}
 
 	m, err := migrate.NewWithDatabaseInstance("file://./db/migrations", "sqlite3", driver)
 	if err != nil {
+		log.Printf("[DB] migrate.NewWithDatabaseInstance error: %v", err)
 		d.db.Close()
 		return err
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Printf("[DB] m.Up() error: %v", err)
 		d.db.Close()
 		return err
 	}
+	log.Println("[DB] Migration complete.")
 	return nil
 }
 

@@ -33,7 +33,7 @@ type SessionResponse struct {
 }
 
 // LoginHandler handles user login
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 
 	if r.Method == "OPTIONS" {
@@ -60,17 +60,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		http.Error(w, "DB connection failed", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
-
 	// Find user by email
 	var user dbTools.User
 	var hashedPassword string
@@ -79,7 +68,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	          COALESCE(avatar, '') as avatar, privacy, role, created_at, updated_at
 	          FROM users WHERE email = ? AND status = 'active'`
 
-	err = db.QueryRow(query, loginReq.Email).Scan(
+	err := db.QueryRow(query, loginReq.Email).Scan(
 		&user.UserID, &user.UserUUID, &user.Email, &hashedPassword,
 		&user.FirstName, &user.LastName, &user.DateOfBirth, &user.Nickname,
 		&user.AboutMe, &user.Avatar, &user.Privacy, &user.Role, &user.CreatedAt, &user.UpdatedAt,
@@ -117,7 +106,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // RegisterHandler handles user registration
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+func RegisterHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 
 	if r.Method == "OPTIONS" {
@@ -178,16 +167,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid date of birth format (use YYYY-MM-DD)", http.StatusBadRequest)
 		return
 	}
-
-	// Open database connection
-	db := &dbTools.DB{}
-	db, err = db.OpenDB()
-	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		http.Error(w, "DB connection failed", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
 
 	// Check if email already exists
 	var count int
@@ -337,21 +316,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // LogoutHandler handles user logout
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func LogoutHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		http.Error(w, "DB connection failed", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
-	err = utils.ClearSession(db.GetDB(), w, r)
+	err := utils.ClearSession(db.GetDB(), w, r)
 	if err != nil {
 		http.Error(w, "Failed to logout", http.StatusInternalServerError)
 		return
@@ -361,21 +333,12 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // SessionCheckHandler checks if user is logged in
-func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
+func SessionCheckHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		fmt.Printf("DB connection error: %v\n", err)
-		http.Error(w, "DB connection failed", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
 
 	// Use utility function to get user ID from session
 	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)

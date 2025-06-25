@@ -26,55 +26,13 @@ export interface ChatUser {
 }
 
 export function useWebSocket() {
-  const serverUrl = "ws://localhost:8080/api/ws"
+  const serverUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/api/ws"
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])
   const ws = useRef<WebSocket | null>(null)
 
   useEffect(() => {
-    // In a real app, this would connect to your WebSocket server
-    // For demo purposes, we'll simulate the connection
-    /* const connectWebSocket = () => {
-      try {
-        // Simulated WebSocket connection
-        setIsConnected(true)
-
-        // Simulate receiving messages
-        const simulateMessage = () => {
-          const randomUsers = [
-            { id: "1", name: "Emma Wilson", username: "emmaw", avatar: "/placeholder.svg?height=40&width=40" },
-            { id: "2", name: "David Kim", username: "davidk", avatar: "/placeholder.svg?height=40&width=40" },
-            { id: "3", name: "Lisa Brown", username: "lisab", avatar: "/placeholder.svg?height=40&width=40" },
-          ]
-
-          const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)]
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            senderId: randomUser.id,
-            senderName: randomUser.name,
-            senderAvatar: randomUser.avatar,
-            content: "Hey! How are you doing?",
-            timestamp: new Date(),
-            type: "text",
-            chatId: `private_${randomUser.id}`,
-            chatType: "private",
-          }
-
-          setMessages((prev) => [...prev, newMessage])
-        }
-
-        // Simulate random messages every 30 seconds
-        const interval = setInterval(simulateMessage, 30000)
-
-        return () => clearInterval(interval)
-      } catch (error) {
-        console.error("WebSocket connection failed:", error)
-        setIsConnected(false)
-      }
-    }
-
-    connectWebSocket() */
 
     // 1) Create the WebSocket
     ws.current = new WebSocket(serverUrl)
