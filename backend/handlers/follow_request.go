@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func FollowRequestHandler(w http.ResponseWriter, r *http.Request) {
+func FollowRequestHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("FollowRequestHandler called at %s for URL %s, Method: %s", time.Now().Format(time.RFC3339), r.URL.Path, r.Method)
 	middleware.SetCORSHeaders(w)
 
@@ -25,15 +25,6 @@ func FollowRequestHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Only POST is allowed")
 		return
 	}
-
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
 
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {

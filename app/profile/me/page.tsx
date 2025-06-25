@@ -1,6 +1,6 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -93,7 +93,7 @@ export default function MyProfilePage() {
 
         // Fetch followers
         const followersResponse = await fetch(
-          `${API_URL}/followers/${currentUser.user_uuid}`,
+          `${API_URL}/api/followers/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",
@@ -115,7 +115,7 @@ export default function MyProfilePage() {
 
         // Fetch following
         const followingResponse = await fetch(
-          `${API_URL}/following/${currentUser.user_uuid}`,
+          `${API_URL}/api/following/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",
@@ -133,7 +133,7 @@ export default function MyProfilePage() {
 
         // Fetch posts
         const myPostsRes = await fetch(
-          `${API_URL}/getprofileposts/${currentUser.user_uuid}`,
+          `${API_URL}/api/getprofileposts/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",

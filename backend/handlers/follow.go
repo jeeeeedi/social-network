@@ -14,7 +14,7 @@ import (
 )
 
 // FollowHandler handles follow and unfollow requests
-func FollowHandler(w http.ResponseWriter, r *http.Request) {
+func FollowHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("FollowHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 
@@ -33,22 +33,6 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	userUUID := strings.Split(path, "/")[0]
 	if userUUID == "" {
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing user UUID")
-		return
-	}
-
-	// Initialize database
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
-
-	if db.GetDB() == nil {
-		log.Println("Nil database connection")
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
 		return
 	}
 
@@ -181,7 +165,7 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // FollowStatusHandler checks if the current user is following a profile
-func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
+func FollowStatusHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("FollowStatusHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 
@@ -200,22 +184,6 @@ func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
 	userUUID := strings.Split(path, "/")[0]
 	if userUUID == "" {
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing user UUID")
-		return
-	}
-
-	// Initialize database
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
-
-	if db.GetDB() == nil {
-		log.Println("Nil database connection")
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
 		return
 	}
 

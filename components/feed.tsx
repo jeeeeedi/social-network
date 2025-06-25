@@ -1,6 +1,6 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -111,8 +111,8 @@ export function Feed({
       try {
         // Fetch posts (group or global)
         const url = groupId
-          ? `${API_URL}/getgroupposts/${groupId}`
-          : `${API_URL}/getfeedposts`;
+          ? `${API_URL}/api/getgroupposts/${groupId}`
+          : `${API_URL}/api/getfeedposts`;
         const res = await fetch(url, {
           method: "GET",
           credentials: "include",
@@ -131,7 +131,7 @@ export function Feed({
       if (!groupId) {
         try {
           const followersResponse = await fetch(
-            `${API_URL}/followers/${currentUser.user_uuid}`,
+            `${API_URL}/api/followers/${currentUser.user_uuid}`,
             {
               method: "GET",
               credentials: "include",
@@ -223,7 +223,7 @@ export function Feed({
     if (image) formData.append("file", image);
 
     try {
-      const res = await fetch(`${API_URL}/createposts`, {
+      const res = await fetch(`${API_URL}/api/createposts`, {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -241,8 +241,8 @@ export function Feed({
       // Refresh posts
       const postsRes = await fetch(
         groupId
-          ? `${API_URL}/getgroupposts/${groupId}`
-          : `${API_URL}/getfeedposts`,
+          ? `${API_URL}/api/getgroupposts/${groupId}`
+          : `${API_URL}/api/getfeedposts`,
         {
           method: "GET",
           credentials: "include",
@@ -286,7 +286,7 @@ export function Feed({
     }
 
     try {
-      const res = await fetch(`${API_URL}/createcomment`, {
+      const res = await fetch(`${API_URL}/api/createcomment`, {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -309,8 +309,8 @@ export function Feed({
       // Refresh posts to get updated comments
       const postsRes = await fetch(
         groupId
-          ? `${API_URL}/getgroupposts/${groupId}`
-          : `${API_URL}/getfeedposts`,
+          ? `${API_URL}/api/getgroupposts/${groupId}`
+          : `${API_URL}/api/getfeedposts`,
         {
           method: "GET",
           credentials: "include",

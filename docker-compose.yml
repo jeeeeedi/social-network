@@ -1,4 +1,4 @@
-version: "3.9"
+# version: "3.9" ## specifying version is not needed in recent Docker Compose
 services:
   backend:
     build:
@@ -6,8 +6,9 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "8080:8080"
+    volumes:
+      - ./backend/db:/app/db
     restart: unless-stopped
-
   frontend:
     build:
       context: .
@@ -15,7 +16,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8080/api
+      - NEXT_PUBLIC_API_URL=http://backend:8080
     depends_on:
       - backend
     restart: unless-stopped

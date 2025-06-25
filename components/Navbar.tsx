@@ -1,6 +1,6 @@
 "use client"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -55,7 +55,7 @@ export const Navbar: React.FC = () => {
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/notifications`, {
+      const response = await fetch(`${API_URL}/api/notifications`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -92,7 +92,7 @@ export const Navbar: React.FC = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const response = await fetch(`${API_URL}/users`, {
+      const response = await fetch(`${API_URL}/api/users`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -176,7 +176,7 @@ export const Navbar: React.FC = () => {
 
   const handleMarkAsRead = async (id: string) => {
     try {
-      const response = await fetch(`${API_URL}/notifications/${id}`, {
+      const response = await fetch(`${API_URL}/api/notifications/${id}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -198,7 +198,7 @@ export const Navbar: React.FC = () => {
     try {
       const payload = { follow_id: parseInt(followId), action: 'accept' };
       console.log('Sending payload to /api/follow_requests:', payload);
-      const response = await fetch(`${API_URL}/follow_requests`, {
+      const response = await fetch(`${API_URL}/api/follow_requests`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -239,7 +239,7 @@ export const Navbar: React.FC = () => {
     try {
       const payload = { follow_id: parseInt(followId), action: 'decline' };
       console.log('Sending payload to /api/follow_requests:', payload);
-      const response = await fetch(`${API_URL}/follow_requests`, {
+      const response = await fetch(`${API_URL}/api/follow_requests`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -282,7 +282,7 @@ export const Navbar: React.FC = () => {
 
   const handleAcceptGroupJoinRequest = async (userId: string, groupId: string) => {
     try {
-      const response = await fetch(`${API_URL}/groups/${groupId}/membership/${userId}`, {
+      const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${userId}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -300,7 +300,7 @@ export const Navbar: React.FC = () => {
 
   const handleDeclineGroupJoinRequest = async (userId: string, groupId: string) => {
     try {
-      const response = await fetch(`${API_URL}/groups/${groupId}/membership/${userId}`, {
+      const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${userId}`, {
         method: 'POST',
         credentials: 'include',
         headers: {

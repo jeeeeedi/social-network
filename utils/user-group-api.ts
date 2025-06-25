@@ -6,7 +6,7 @@
  * - Helper functions for display formatting
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export interface UserInfo {
   user_id: number;
@@ -60,7 +60,7 @@ export async function getUserById(userId: number): Promise<UserInfo | null> {
   }
 
   try {
-    const response = await fetch(`${API_URL}/users/${userId}`, {
+    const response = await fetch(`${API_URL}/api/users/${userId}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -101,7 +101,7 @@ export async function getUsersByIds(userIds: number[]): Promise<Map<number, User
   // Fetch uncached users
   if (uncachedIds.length > 0) {
     try {
-      const response = await fetch(`${API_URL}/users/batch`, {
+      const response = await fetch(`${API_URL}/api/users/batch`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -150,7 +150,7 @@ export async function getGroupById(groupId: number): Promise<GroupInfo | null> {
   }
 
   try {
-    const response = await fetch(`${API_URL}/groups/${groupId}`, {
+    const response = await fetch(`${API_URL}/api/groups/${groupId}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -228,7 +228,7 @@ export function getGroupAvatarFallback(group: GroupInfo): string {
  */
 export async function getUserEvents(): Promise<EventInfo[]> {
   try {
-    const response = await fetch(`${API_URL}/events`, {
+    const response = await fetch(`${API_URL}/api/events`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -278,7 +278,7 @@ export async function enrichEvents(events: EventInfo[]): Promise<EventWithDetail
  */
 export async function respondToEvent(eventId: number, response: "going" | "not_going"): Promise<boolean> {
   try {
-    const apiResponse = await fetch(`${API_URL}/events/${eventId}/rsvp`, {
+    const apiResponse = await fetch(`${API_URL}/api/events/${eventId}/rsvp`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -301,7 +301,7 @@ export async function respondToEvent(eventId: number, response: "going" | "not_g
  */
 export async function getUserEventRSVP(eventId: number): Promise<string | null> {
   try {
-    const response = await fetch(`${API_URL}/events/${eventId}/rsvps`, {
+    const response = await fetch(`${API_URL}/api/events/${eventId}/rsvps`, {
       method: 'GET',
       credentials: 'include',
       headers: {

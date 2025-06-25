@@ -33,7 +33,7 @@ func getSubscribedGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB)
 }
 
 // GroupsHandler handles requests related to groups
-func GroupsHandler(w http.ResponseWriter, r *http.Request) {
+func GroupsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			log.Println("Panic recovered in GroupsHandler:", rec)
@@ -42,15 +42,6 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	middleware.SetCORSHeaders(w)
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Println("Failed to open database connection:", err)
-		http.Error(w, "Database unavailable", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
 
 	path := r.URL.Path
 	segments := strings.Split(strings.Trim(path, "/"), "/")

@@ -1,3 +1,5 @@
+# FRONTEND Dockerfile for Next.js application
+
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -18,4 +20,8 @@ COPY --from=builder /app/next.config.mjs .
 COPY --from=builder /app/tsconfig.json .
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+# `npm run dev` runs the development server (not optimized, not for production).
+# CMD ["npm", "run", "dev"]
+
+# `npx next start` or `npm run start` runs the optimized production build.
+CMD ["npm", "run", "start"]

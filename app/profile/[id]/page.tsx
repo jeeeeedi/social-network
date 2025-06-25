@@ -1,6 +1,6 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -93,7 +93,7 @@ export default function UserProfilePage() {
 
         // Fetch followers
         const followersResponse = await fetch(
-          `${API_URL}/followers/${userUUID}`,
+          `${API_URL}/api/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -111,7 +111,7 @@ export default function UserProfilePage() {
 
         // Fetch following
         const followingResponse = await fetch(
-          `${API_URL}/following/${userUUID}`,
+          `${API_URL}/api/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -131,7 +131,7 @@ export default function UserProfilePage() {
         if (currentUser && currentUser.user_uuid !== userUUID) {
           try {
             const followResponse = await fetch(
-              `${API_URL}/follow/status/${userUUID}`,
+              `${API_URL}/api/follow/status/${userUUID}`,
               { credentials: "include" }
             );
             const followData = await followResponse.json();
@@ -165,7 +165,7 @@ export default function UserProfilePage() {
         ) {
           try {
             const myPostsRes = await fetch(
-              `${API_URL}/getprofileposts/${userUUID}`,
+              `${API_URL}/api/getprofileposts/${userUUID}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -202,7 +202,7 @@ export default function UserProfilePage() {
 
     try {
       const response = await fetch(
-        `${API_URL}/follow/${userUUID}`,
+        `${API_URL}/api/follow/${userUUID}`,
         {
           method: isFollowing ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -218,7 +218,7 @@ export default function UserProfilePage() {
 
         // Refresh followers and following
         const followersResponse = await fetch(
-          `${API_URL}/followers/${userUUID}`,
+          `${API_URL}/api/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -231,7 +231,7 @@ export default function UserProfilePage() {
         }
 
         const followingResponse = await fetch(
-          `${API_URL}/following/${userUUID}`,
+          `${API_URL}/api/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",

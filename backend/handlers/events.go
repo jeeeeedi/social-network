@@ -12,17 +12,8 @@ import (
 )
 
 // EventsHandler handles general event-related requests (not group-specific)
-func EventsHandler(w http.ResponseWriter, r *http.Request) {
+func EventsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
-
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		http.Error(w, "Database unavailable", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
 
 	path := r.URL.Path
 	segments := strings.Split(strings.Trim(path, "/"), "/")
