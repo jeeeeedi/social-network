@@ -28,3 +28,7 @@ pnpm-debug.log*
 
 # DB
 ./backend/db/socnet.db
+# Development/testing files
+cookies.txt
+test-cookies.txt
+*.cookies

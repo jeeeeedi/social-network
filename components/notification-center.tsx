@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -52,6 +53,20 @@ export function NotificationCenter({
   const [isOpen, setIsOpen] = useState(false)
   const [notificationResponses, setNotificationResponses] = useState<Record<string, "accept" | "decline" | null>>({})
   const unreadCount = notifications.filter((n) => !n.isRead).length
+  const router = useRouter()
+
+  const handleNotificationClick = (notification: Notification) => {
+    // Handle navigation for event notifications
+    if (notification.type === "event_created" && notification.groupId) {
+      router.push(`/groups/${notification.groupId}`)
+      setIsOpen(false) // Close the dropdown
+    }
+    
+    // Mark as read if unread
+    if (!notification.isRead) {
+      onMarkAsRead(notification.id)
+    }
+  }
 
   const getNotificationIcon = (type: Notification["type"]) => {
     switch (type) {
@@ -145,7 +160,7 @@ export function NotificationCenter({
                         } ${
                           notificationResponses[notification.id] || !notification.actionRequired ? "bg-gray-100 text-gray-600" : ""
                         }`}
-                        onClick={() => !notification.isRead && onMarkAsRead(notification.id)}
+                        onClick={() => handleNotificationClick(notification)}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>

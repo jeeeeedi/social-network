@@ -118,7 +118,8 @@ export default function GroupDetailPage() {
         });
         
         if (membersResponse.ok) {
-          const membersData: GroupMember[] = await membersResponse.json();
+          const response = await membersResponse.json();
+          const membersData: GroupMember[] = response.members || [];
           
           // Enrich members with user details
           const memberIds = membersData.map(m => m.member_id);

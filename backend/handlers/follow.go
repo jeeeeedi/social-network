@@ -69,7 +69,8 @@ func FollowHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			WHERE follower_user_id = ? AND followed_user_id = ?
 		`
 		err = db.GetDB().QueryRow(checkQuery, currentUserID, followedUserID).Scan(&followID, &existingStatus)
-		if err == nil {
+		switch err {
+		case nil:
 			if existingStatus == "pending" || existingStatus == "accepted" {
 				utils.SendErrorResponse(w, http.StatusBadRequest, "Already following or request pending")
 				return
@@ -90,7 +91,7 @@ func FollowHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			status = newStatus
-		} else if err == sql.ErrNoRows {
+		case sql.ErrNoRows:
 			status = "pending"
 			if privacy == "public" {
 				status = "accepted"
@@ -123,7 +124,7 @@ func FollowHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("Notification creation error for follow_id %d: %v", followID, err)
 			}
-		} else {
+		default:
 			log.Printf("Follow check error: %v", err)
 			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check follow status")
 			return

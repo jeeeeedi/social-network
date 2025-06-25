@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuth } from '@/contexts/AuthContext';
 import { validateRegister } from '@/utils/validate';
 import { registerUser } from '@/lib/auth';
 
@@ -23,7 +22,7 @@ export default function RegisterPage() {
     aboutMe: '',
     avatar: null as File | null,
   });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const router = useRouter();
@@ -31,7 +30,6 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    setRegisterError(null); // Reset error on input change
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,7 +60,7 @@ export default function RegisterPage() {
       router.push('/login');
     } catch (err) {
       console.error('Registration error:', err);
-      setRegisterError(err.message || 'Registration failed. There was a server error. Please try again later.');
+      setRegisterError((err as Error).message || 'Registration failed. There was a server error. Please try again later.');
     } finally {
       setIsSubmitting(false);
     }

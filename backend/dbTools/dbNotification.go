@@ -165,6 +165,37 @@ func (nh *NotificationHelpers) CreateGroupRequestResponseNotification(responderI
 	return nh.service.CreateNotification(requesterID, responderID, actionType, "group", groupID, content)
 }
 
+// CreateGroupEventNotification creates event notifications for all group members
+func (nh *NotificationHelpers) CreateGroupEventNotification(creatorID, groupID, eventID int, groupTitle, eventTitle string) error {
+	// Get all group members
+	members, err := nh.db.GetGroupMembers(groupID)
+	if err != nil {
+		return fmt.Errorf("failed to get group members: %v", err)
+	}
+
+	// Get creator's name
+	creatorName, err := nh.getUserNickname(creatorID)
+	if err != nil {
+		creatorName = "Someone"
+	}
+
+	// Create notification content
+	content := fmt.Sprintf("%s created a new event '%s' in group '%s'", creatorName, eventTitle, groupTitle)
+
+	// Send notification to all accepted group members (except the creator)
+	for _, member := range members {
+		if member.Status == "accepted" && member.MemberID != creatorID {
+			err := nh.service.CreateNotification(member.MemberID, creatorID, "group_event", "group", groupID, content)
+			if err != nil {
+				log.Printf("Failed to create event notification for member %d: %v", member.MemberID, err)
+				// Continue with other members even if one fails
+			}
+		}
+	}
+
+	return nil
+}
+
 // UpdateFollowRequestNotificationStatus updates follow request notification status to read
 func (nh *NotificationHelpers) UpdateFollowRequestNotificationStatus(followID, updaterID int) error {
 	query := `UPDATE notifications

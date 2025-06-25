@@ -21,3 +21,11 @@ func SendSuccessResponse(w http.ResponseWriter, data map[string]interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }
+
+// GetNotificationStatus converts request status to notification status
+func GetNotificationStatus(requestStatus string) string {
+	if requestStatus == "declined" {
+		return "declined"
+	}
+	return "read"
+}

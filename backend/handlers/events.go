@@ -245,6 +245,19 @@ func createGroupEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gr
 
 	log.Printf("Successfully created event: %+v", createdEvent)
 
+	// Create notifications for all group members
+	group, err := db.GetGroupByID(groupID)
+	if err != nil {
+		log.Printf("Failed to get group details for event notification: %v", err)
+	} else {
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		err = notificationHelpers.CreateGroupEventNotification(userID, groupID, createdEvent.EventID, group.Title, createdEvent.Title)
+		if err != nil {
+			log.Printf("Failed to create event notifications: %v", err)
+			// Don't fail the request if notification creation fails
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(createdEvent)

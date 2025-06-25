@@ -6,69 +6,26 @@ import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-
-import {
-  Camera,
-  Heart,
-  MessageCircle,
-  MoreHorizontal,
-  Repeat2,
-  Send,
-  Share,
-  User,
-  Users as UsersIcon,
-  X,
-  Calendar,
-} from "lucide-react"
+import { MessageCircle, User, Users as UsersIcon, Calendar } from "lucide-react"
 import { ChatInterface } from "@/components/chat-interface"
 import { GroupChat } from "@/components/group-chat"
 import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
 import { useAuth } from "@/contexts/AuthContext"
-import { sanitize } from "@/utils/sanitize"
-import { formatDateTime } from "@/utils/formatDate"
 import { Feed } from "@/components/feed"
 import { useRouter } from "next/navigation"
 import { getUserEvents, enrichEvents, respondToEvent, type EventWithDetails } from "@/utils/user-group-api"
 
-interface Post {
-  post_id: number;
-  nickname: string;
-  content: string;
-  created_at: string;
-  avatar?: string;
-  filename_new?: string;
-  likes?: number;
-  comments?: number;
-  shares?: number;
-  liked?: boolean;
-}
-
 export default function SocialNetworkPage() {
   const router = useRouter()
-  const { currentUser, logout, loading: authLoading } = useAuth()
-  const [content, setContent] = useState("")
-  const [posts, setPosts] = useState<Post[]>([])
-  const [image, setImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [privacy, setPrivacy] = useState("public")
-  const [submitting, setSubmitting] = useState(false)
-  const [postsLoading, setPostsLoading] = useState(false)
-
-  const { messages, sendMessage, isConnected, onlineUsers, setOnlineUsers } = useWebSocket()
-  const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
-  const [activeGroupChat, setActiveGroupChat] = useState<any>(null)
+  const { currentUser, loading: authLoading } = useAuth()
   const [userEvents, setUserEvents] = useState<EventWithDetails[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
-  const [userRSVPs, setUserRSVPs] = useState<Record<number, string>>({}) // eventId -> "going" | "not_going"
+  const [userRSVPs, setUserRSVPs] = useState<Record<number, string>>({})
+
+  const { messages, sendMessage, isConnected } = useWebSocket()
+  const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
+  const [activeGroupChat, setActiveGroupChat] = useState<any>(null)
 
   // Mock users data - in real app, fetch from backend
   const [chatUsers] = useState<ChatUser[]>([
@@ -132,31 +89,6 @@ export default function SocialNetworkPage() {
     },
   ])
 
-  // Fetch posts only when user is authenticated
-  useEffect(() => {
-    const fetchPosts = async () => {
-      if (!currentUser) return;
-      
-      setPostsLoading(true);
-      try {
-        const res = await fetch(`${API_URL}/api/getfeedposts`, {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
-        const postData = await res.json();
-        setPosts(postData);
-        
-      } catch {
-        setPosts([]);
-      } finally {
-        setPostsLoading(false);
-      }
-    };
-    fetchPosts();
-  }, [currentUser]);
-
   // Fetch events when user is authenticated
   useEffect(() => {
     const fetchEvents = async () => {
@@ -177,91 +109,13 @@ export default function SocialNetworkPage() {
     fetchEvents();
   }, [currentUser, authLoading]);
 
-  const handleUserClick = (user: ChatUser) => {
-    setActiveChat(user)
-  }
-
-  const handleGroupClick = (group: any) => {
-    setActiveGroupChat(group)
-  }
-
-  const handleLike = async (postId: number) => {
-    // Optimistically update the UI
-    setPosts(posts.map(post => 
-      post.post_id === postId 
-        ? { ...post, liked: !post.liked, likes: (post.likes || 0) + (post.liked ? -1 : 1) }
-        : post
-    ));
-    // TODO: Send to backend
-  }
-
-  const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setImage(file)
-      const reader = new FileReader()
-      reader.onload = (e) => setImagePreview(e.target?.result as string)
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleRemoveImage = () => {
-    setImage(null)
-    setImagePreview(null)
-  }
-
-  const handlePost = async () => {
-    if (!content.trim() && !image) return;
-    
-    setSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("content", sanitize(content));
-      formData.append("privacy", privacy);
-      if (image) {
-        formData.append("image", image);
-      }
-
-      const res = await fetch(`${API_URL}/api/createposts`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error(`Failed to create post: ${res.status}`);
-      
-      // Clear form
-      setContent("");
-      setImage(null);
-      setImagePreview(null);
-      
-      // Refresh posts
-      const postsRes = await fetch(`${API_URL}/api/getfeedposts`, {
-        method: "GET",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (postsRes.ok) {
-        const postData = await postsRes.json();
-        setPosts(postData);
-      }
-    } catch (error) {
-      console.error("Failed to create post:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   const handleEventResponse = async (eventId: number, response: "going" | "not_going") => {
     if (!currentUser) return;
     
     try {
       const success = await respondToEvent(eventId, response);
       if (success) {
-        setUserRSVPs(prev => ({
-          ...prev,
-          [eventId]: response
-        }));
+        setUserRSVPs(prev => ({ ...prev, [eventId]: response }));
       } else {
         alert('Failed to update RSVP. Please try again.');
       }
@@ -269,6 +123,16 @@ export default function SocialNetworkPage() {
       console.error('Failed to update RSVP:', error);
       alert('Failed to update RSVP. Please try again.');
     }
+  }
+
+  const handleUserClick = (user: ChatUser) => {
+    if (user.isFollowing || user.isFollowedBy) {
+      setActiveChat(user);
+    }
+  }
+
+  const handleGroupClick = (group: any) => {
+    setActiveGroupChat(group);
   }
 
   // Show loading while AuthContext is checking session
@@ -283,35 +147,10 @@ export default function SocialNetworkPage() {
     )
   }
 
-  // Show login/register interface if not authenticated
+  // Redirect to login if not authenticated
   if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
-          <CardHeader>
-            <h2 className="text-3xl font-bold text-center">Welcome to SocialHub</h2>
-            <p className="text-center text-muted-foreground">
-              Connect with friends and the world around you.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              className="w-full" 
-              onClick={() => router.push('/login')}
-            >
-              Login
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => router.push('/register')}
-            >
-              Register
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    router.push('/login');
+    return null;
   }
 
   return (
@@ -343,10 +182,6 @@ export default function SocialNetworkPage() {
               </div>
 
               <nav className="space-y-2">
-                {/* <Button variant="ghost" className="w-full justify-start gap-3">
-                  <Home className="h-5 w-5" />
-                  Home
-                </Button> */}
                 <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/profile/me'}>
                   <User className="h-5 w-5" />
                   Profile
@@ -438,49 +273,53 @@ export default function SocialNetworkPage() {
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
-              {chatUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                    user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
-                  }`}
-                  onClick={() => handleUserClick(user)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                        <AvatarFallback>
-                          {user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      {user.isOnline && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
+              {chatUsers.length > 0 ? (
+                chatUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                      user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
+                    }`}
+                    onClick={() => handleUserClick(user)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                          <AvatarFallback>
+                            {user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        {user.isOnline && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.isOnline ? "Online" : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {(user.isFollowing || user.isFollowedBy) && (
+                        <Badge variant="outline" className="text-xs">
+                          {user.isFollowing && user.isFollowedBy
+                            ? "Friends"
+                            : user.isFollowing
+                              ? "Following"
+                              : "Follower"}
+                        </Badge>
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {user.isOnline ? "Online" : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
-                      </p>
-                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {(user.isFollowing || user.isFollowedBy) && (
-                      <Badge variant="outline" className="text-xs">
-                        {user.isFollowing && user.isFollowedBy
-                          ? "Friends"
-                          : user.isFollowing
-                            ? "Following"
-                            : "Follower"}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No chats available</p>
+              )}
             </CardContent>
           </Card>
 
@@ -493,32 +332,36 @@ export default function SocialNetworkPage() {
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
-              {groups.map((group) => (
-                <div
-                  key={group.id}
-                  className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => handleGroupClick(group)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
-                      <AvatarFallback>
-                        {group.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-sm">{group.name}</p>
-                      <p className="text-xs text-muted-foreground">{group.members.length} members</p>
+              {groups.length > 0 ? (
+                groups.map((group) => (
+                  <div
+                    key={group.id}
+                    className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                    onClick={() => handleGroupClick(group)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
+                        <AvatarFallback>
+                          {group.name
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{group.name}</p>
+                        <p className="text-xs text-muted-foreground">{group.members?.length || 0} members</p>
+                      </div>
                     </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {group.members?.filter((m: any) => m.isOnline).length || 0} online
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {group.members.filter((m) => m.isOnline).length} online
-                  </Badge>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No group chats available</p>
+              )}
             </CardContent>
           </Card>
         </aside>
@@ -543,7 +386,6 @@ export default function SocialNetworkPage() {
           onClose={() => setActiveGroupChat(null)}
         />
       )}
-
     </div>
   )
 }

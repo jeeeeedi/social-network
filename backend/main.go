@@ -52,7 +52,7 @@ func setHandlers(db *dbTools.DB) {
 	// User API routes
 	http.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
 		handlers.UserByIDHandler(db, w, r)
-	})        // Handle /api/users/{id}
+	}) // Handle /api/users/{id}
 	http.HandleFunc("/api/users/batch", func(w http.ResponseWriter, r *http.Request) {
 		handlers.BatchUsersHandler(db, w, r)
 	}) // Handle batch user requests
@@ -92,6 +92,9 @@ func setHandlers(db *dbTools.DB) {
 	})
 	http.HandleFunc("/api/follow_requests", func(w http.ResponseWriter, r *http.Request) {
 		handlers.FollowRequestHandler(db, w, r)
+	})
+	http.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
+		handlers.NotificationHandler(db, w, r)
 	})
 	http.HandleFunc("/api/notifications/", func(w http.ResponseWriter, r *http.Request) {
 		handlers.NotificationHandler(db, w, r)
