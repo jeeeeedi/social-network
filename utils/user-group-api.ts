@@ -163,7 +163,8 @@ export async function getGroupById(groupId: number): Promise<GroupInfo | null> {
       return null;
     }
 
-    const group: GroupInfo = await response.json();
+    const responseData = await response.json();
+    const group: GroupInfo = responseData.group || responseData;
     groupCache.set(groupId, group);
     return group;
   } catch (error) {
@@ -184,6 +185,9 @@ export function clearCaches() {
  * Helper function to format user display name
  */
 export function formatUserName(user: UserInfo): string {
+  if (!user) {
+    return "Unknown User";
+  }
   return user.nickname || `${user.first_name} ${user.last_name}`;
 }
 
@@ -191,6 +195,9 @@ export function formatUserName(user: UserInfo): string {
  * Helper function to get user avatar URL
  */
 export function getUserAvatarUrl(user: UserInfo): string {
+  if (!user) {
+    return "/placeholder.svg";
+  }
   if (user.avatar) {
     return user.avatar.startsWith('http') 
       ? user.avatar 
@@ -203,6 +210,9 @@ export function getUserAvatarUrl(user: UserInfo): string {
  * Helper function to get group avatar URL
  */
 export function getGroupAvatarUrl(group: GroupInfo): string {
+  if (!group) {
+    return "/placeholder.svg";
+  }
   if (group.avatar) {
     return group.avatar.startsWith('http') 
       ? group.avatar 
@@ -215,6 +225,9 @@ export function getGroupAvatarUrl(group: GroupInfo): string {
  * Helper function to get group avatar fallback initials
  */
 export function getGroupAvatarFallback(group: GroupInfo): string {
+  if (!group || !group.title) {
+    return "GR"; // Default fallback
+  }
   return group.title
     .split(" ")
     .map(word => word.charAt(0))
