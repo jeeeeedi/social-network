@@ -250,7 +250,7 @@ export function ChatInterface({
             </AvatarFallback>
           </Avatar>
           <div>
-            <h4 className="text-sm font-semibold">{user.name}</h4>
+            <h4 className="text-sm font-semibold break-words">{user.name}</h4>
             <p className="text-xs text-muted-foreground">
               {user.isOnline ? (
                 <span className="flex items-center gap-1">
@@ -291,14 +291,14 @@ export function ChatInterface({
                       </Avatar>
                     )}
                     <div
-                      className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${
+                      className={`max-w-[70%] rounded-lg px-3 py-2 text-sm break-words ${
                         message.senderId === "you" ? "bg-primary text-primary-foreground" : "bg-muted"
                       }`}
                     >
                       {message.type === "emoji" ? (
                         <span className="text-2xl">{message.content}</span>
                       ) : (
-                        <p>{message.content}</p>
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
                       )}
                       <p
                         className={`text-xs mt-1 ${

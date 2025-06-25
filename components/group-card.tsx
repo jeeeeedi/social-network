@@ -47,7 +47,6 @@ export interface Event {
 interface GroupCardProps {
   group: Group;
   onJoinGroup: (groupId: string) => void;
-  onLeaveGroup: (groupId: string) => void;
   onViewGroup: (groupId: string) => void;
   currentUserId: string;
 }
@@ -55,7 +54,6 @@ interface GroupCardProps {
 export function GroupCard({
   group,
   onJoinGroup,
-  onLeaveGroup,
   onViewGroup,
   currentUserId,
 }: GroupCardProps) {
@@ -66,17 +64,17 @@ export function GroupCard({
     return null;
   }
 
-  const handleJoinLeave = async () => {
+  const handleJoin = async () => {
     setIsLoading(true);
     try {
-      if (group.isMember) {
-        await onLeaveGroup(group.id);
-      } else {
-        await onJoinGroup(group.id);
-      }
+      await onJoinGroup(group.id);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCardClick = () => {
+    onViewGroup(group.id);
   };
 
   const upcomingEvents = (group.events || []).filter(
@@ -89,7 +87,10 @@ export function GroupCard({
   const isPending = group.isPending && !isCreator;
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card 
+      className="cursor-pointer hover:bg-muted/50 hover:shadow-md transition-all duration-200 border-2 hover:border-primary/20"
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
@@ -113,7 +114,7 @@ export function GroupCard({
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold">{groupName}</h3>
+              <h3 className="font-semibold break-words">{groupName}</h3>
               {group.isPrivate ? (
                 <Lock className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -121,14 +122,14 @@ export function GroupCard({
               )}
               {isCreator && <Crown className="h-4 w-4 text-yellow-500" />}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground break-words">
               Created by {group.creatorName}
             </p>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground line-clamp-2">
+        <p className="text-sm text-muted-foreground line-clamp-2 break-words">
           {group.description}
         </p>
 
@@ -145,12 +146,12 @@ export function GroupCard({
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="outline"
             size="sm"
             onClick={() => onViewGroup(group.id)}
-            className="flex-1"
+            className="flex-1 hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             View
@@ -159,10 +160,10 @@ export function GroupCard({
           {!isCreator && !isMember && !isPending && (
             <Button
               size="sm"
-              onClick={handleJoinLeave}
+              onClick={handleJoin}
               disabled={isLoading}
               variant="default"
-              className="flex-1"
+              className="flex-1 hover:bg-primary/90 transition-colors"
             >
               {isLoading ? "Loading..." : "Join"}
             </Button>
@@ -174,7 +175,7 @@ export function GroupCard({
           {isCreator && (
             <Badge
               variant="default"
-              className="w-fit bg-yellow-500 hover:bg-yellow-600"
+              className="w-fit bg-yellow-500 hover:bg-yellow-600 transition-colors"
             >
               <Crown className="h-3 w-3 mr-1" />
               Owner

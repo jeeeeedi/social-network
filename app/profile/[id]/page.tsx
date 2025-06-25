@@ -355,7 +355,7 @@ export default function UserProfilePage() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold">{displayName}</h1>
+            <h1 className="text-xl font-semibold break-words">{displayName}</h1>
           </div>
         </div>
       </div>
@@ -385,7 +385,7 @@ export default function UserProfilePage() {
 
               <div className="flex-1 space-y-4">
                 <div>
-                  <h2 className="text-2xl font-bold">{displayName}</h2>
+                  <h2 className="text-2xl font-bold break-words">{displayName}</h2>
                   {profile.nickname && (
                     <p className="text-muted-foreground">@{profile.nickname}</p>
                   )}

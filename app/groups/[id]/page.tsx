@@ -428,7 +428,7 @@ export default function GroupDetailPage() {
                   </AvatarFallback>
           </Avatar>
           <div>
-                  <h3 className="font-semibold text-lg">{group.title}</h3>
+                  <h3 className="font-semibold text-lg break-words">{group.title}</h3>
                   <p className="text-sm text-muted-foreground">
                     {members.filter(m => m.status === 'accepted').length} members
                   </p>
@@ -456,12 +456,6 @@ export default function GroupDetailPage() {
                     <MessageCircle className="h-4 w-4" />
                     Group Chat
                   </Button>
-                  {!isCreator && (
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-destructive">
-                      <Settings className="h-4 w-4" />
-                      Leave Group
-                    </Button>
-                  )}
                 </nav>
               )}
             </CardContent>
@@ -491,7 +485,7 @@ export default function GroupDetailPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-medium text-sm">
+                    <p className="font-medium text-sm break-words">
                       {formatUserName(member.user!)}
                     </p>
                     {member.member_id === group.creator_id && (
@@ -634,7 +628,7 @@ export default function GroupDetailPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-sm">{formatUserName(user)}</p>
+                        <p className="font-medium text-sm break-words">{formatUserName(user)}</p>
                         <p className="text-xs text-muted-foreground">@{user.nickname || user.first_name}</p>
                       </div>
                     </div>

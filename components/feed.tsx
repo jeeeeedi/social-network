@@ -81,21 +81,28 @@ export function Feed({
   groupId?: string | number;
   groupMembers?: any[];
 }) {
-  const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [privacy, setPrivacy] = useState("public");
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [expandedPostUUID, setExpandedPostUUID] = useState<string | null>(null);
-  const [commentContent, setCommentContent] = useState<Record<string, string>>({});
-  const [commentImage, setCommentImage] = useState<Record<string, File | null>>({});
-  const [commentImagePreview, setCommentImagePreview] = useState<Record<string, string | null>>({});
-  const [followers, setFollowers] = useState<any[]>([]);
+  const [privacy, setPrivacy] = useState("public");
   const [selectedFollowers, setSelectedFollowers] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [expandedPostUUID, setExpandedPostUUID] = useState<string | null>(null);
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [commentContent, setCommentContent] = useState<{
+    [key: string]: string;
+  }>({});
+  const [commentImage, setCommentImage] = useState<{
+    [key: string]: File | null;
+  }>({});
+  const [commentImagePreview, setCommentImagePreview] = useState<{
+    [key: string]: string | null;
+  }>({});
   const postsUrl = groupId ? `${API_URL}/api/getgroupposts/${groupId}` : `${API_URL}/api/getfeedposts`;
   const filteredPosts = groupId 
     ? (posts || []).filter(post => post.group_id === Number(groupId))
@@ -246,7 +253,38 @@ export function Feed({
     }
   };
 
-  const handleCommentSubmit = async (postUUID: string, e: React.FormEvent<HTMLFormElement>) => {
+  const handleCommentClick = (postUUID: string) => {
+    setExpandedPostUUID(expandedPostUUID === postUUID ? null : postUUID);
+  };
+
+  const togglePostExpansion = (postUUID: string) => {
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postUUID)) {
+        newSet.delete(postUUID);
+      } else {
+        newSet.add(postUUID);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleCommentExpansion = (commentId: string) => {
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCommentSubmit = async (
+    postUUID: string,
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
     const content = commentContent[postUUID];
     if (!content?.trim()) return;
@@ -308,12 +346,14 @@ export function Feed({
               <Textarea
                 placeholder="What's on your mind?"
                 value={content}
-                onChange={(e) => e.target.value.length <= 1000 && setContent(e.target.value)}
-                className="min-h-[100px] resize-none placeholder:text-muted-foreground break-all"
-                maxLength={1000}
+                onChange={(e) => {
+                  if (e.target.value.length <= 2000) setContent(e.target.value);
+                }}
+                className="min-h-[100px] resize-none placeholder:text-muted-foreground break-words"
+                maxLength={2000}
               />
               <div className="text-right text-xs text-muted-foreground">
-                {content.length}/1000
+                {content.length}/2000
               </div>
               {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
               
@@ -407,7 +447,7 @@ export function Feed({
                   <div className="flex items-center gap-3">
                     <UserAvatar user={post} size="lg" />
                     <div>
-                      <h4 className="font-semibold">{post.nickname}</h4>
+                      <h4 className="font-semibold break-words">{post.nickname}</h4>
                       <span className="text-xs text-muted-foreground">
                         Posted on {formatDateTime(post.created_at)}
                       </span>
@@ -422,8 +462,29 @@ export function Feed({
               </CardHeader>
               
               <CardContent className="pt-0">
-                <p className="text-sm leading-relaxed mb-4 break-all whitespace-pre-wrap">{post.content}</p>
-                
+                {(() => {
+                  const isExpanded = expandedPosts.has(post.post_uuid);
+                  const isLongContent = post.content.length > 300;
+                  const displayContent = isLongContent && !isExpanded 
+                    ? post.content.substring(0, 300) + "..."
+                    : post.content;
+                  
+                  return (
+                    <div>
+                      <p className="text-sm leading-relaxed mb-4 break-words whitespace-pre-wrap">
+                        {displayContent}
+                      </p>
+                      {isLongContent && (
+                        <button
+                          onClick={() => togglePostExpansion(post.post_uuid)}
+                          className="text-primary text-sm font-medium hover:underline mb-4"
+                        >
+                          {isExpanded ? "Show less" : "Show more"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
                 {post.filename_new && (
                   <div className="mb-4 rounded-lg overflow-hidden">
                     <img
@@ -450,18 +511,22 @@ export function Feed({
                         <Textarea
                           placeholder="Write a comment..."
                           value={commentContent[post.post_uuid] || ""}
-                          onChange={(e) => e.target.value.length <= 1000 && setCommentContent(prev => ({
-                            ...prev,
-                            [post.post_uuid]: e.target.value,
-                          }))}
-                          className="min-h-[80px] resize-none placeholder:text-muted-foreground break-all"
-                          maxLength={1000}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 2000) {
+                              setCommentContent((prev) => ({
+                                ...prev,
+                                [post.post_uuid]: e.target.value,
+                              }));
+                            }
+                          }}
+                          className="min-h-[80px] resize-none placeholder:text-muted-foreground break-words"
+                          maxLength={2000}
                           required
                         />
                       </div>
                       
                       <div className="text-right text-xs text-muted-foreground">
-                        {commentContent[post.post_uuid]?.length || 0}/1000
+                        {commentContent[post.post_uuid]?.length || 0}/2000
                       </div>
                       
                       <div className="flex items-center justify-between gap-2 mb-4">
@@ -518,9 +583,30 @@ export function Feed({
                               </span>
                             </div>
                             <div className="pl-8">
-                              <p className="text-sm leading-relaxed mb-4 break-all whitespace-pre-wrap">
-                                {comment.content}
-                              </p>
+                              {(() => {
+                                const commentId = comment.comment_id.toString();
+                                const isExpanded = expandedComments.has(commentId);
+                                const isLongContent = comment.content.length > 200;
+                                const displayContent = isLongContent && !isExpanded 
+                                  ? comment.content.substring(0, 200) + "..."
+                                  : comment.content;
+                                
+                                return (
+                                  <div>
+                                    <p className="text-sm leading-relaxed mb-4 break-words whitespace-pre-wrap">
+                                      {displayContent}
+                                    </p>
+                                    {isLongContent && (
+                                      <button
+                                        onClick={() => toggleCommentExpansion(commentId)}
+                                        className="text-primary text-sm font-medium hover:underline mb-2"
+                                      >
+                                        {isExpanded ? "Show less" : "Show more"}
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               {comment.filename_new && (
                                 <div className="mt-2 rounded-lg overflow-hidden">
                                   <img

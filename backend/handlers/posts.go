@@ -189,7 +189,7 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
 		return err
 	}
-	if len(content) > 1100 {
+	if len(content) > 2000 {
 		http.Error(w, "Content too long", http.StatusBadRequest)
 		return err
 	}
@@ -296,7 +296,7 @@ func CreateCommentHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request
 		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
 		return err
 	}
-	if len(content) > 1100 {
+	if len(content) > 2000 {
 		http.Error(w, "Content too long", http.StatusBadRequest)
 		return err
 	}

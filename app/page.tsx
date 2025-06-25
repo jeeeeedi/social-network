@@ -273,53 +273,49 @@ export default function SocialNetworkPage() {
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
-              {chatUsers.length > 0 ? (
-                chatUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                      user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
-                    }`}
-                    onClick={() => handleUserClick(user)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                          <AvatarFallback>
-                            {user.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        {user.isOnline && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.isOnline ? "Online" : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {(user.isFollowing || user.isFollowedBy) && (
-                        <Badge variant="outline" className="text-xs">
-                          {user.isFollowing && user.isFollowedBy
-                            ? "Friends"
-                            : user.isFollowing
-                              ? "Following"
-                              : "Follower"}
-                        </Badge>
+              {chatUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                    user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
+                  }`}
+                  onClick={() => handleUserClick(user)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                        <AvatarFallback>
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      {user.isOnline && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
                       )}
                     </div>
+                    <div>
+                      <p className="font-medium text-sm break-words">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {user.isOnline ? "Online" : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
+                      </p>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No chats available</p>
-              )}
+                  <div className="flex flex-col items-end gap-1">
+                    {(user.isFollowing || user.isFollowedBy) && (
+                      <Badge variant="outline" className="text-xs">
+                        {user.isFollowing && user.isFollowedBy
+                          ? "Friends"
+                          : user.isFollowing
+                            ? "Following"
+                            : "Follower"}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
@@ -332,27 +328,25 @@ export default function SocialNetworkPage() {
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
-              {groups.length > 0 ? (
-                groups.map((group) => (
-                  <div
-                    key={group.id}
-                    className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                    onClick={() => handleGroupClick(group)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
-                        <AvatarFallback>
-                          {group.name
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-sm">{group.name}</p>
-                        <p className="text-xs text-muted-foreground">{group.members?.length || 0} members</p>
-                      </div>
+              {groups.map((group) => (
+                <div
+                  key={group.id}
+                  className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => handleGroupClick(group)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
+                      <AvatarFallback>
+                        {group.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium text-sm break-words">{group.name}</p>
+                      <p className="text-xs text-muted-foreground">{group.members.length} members</p>
                     </div>
                     <Badge variant="secondary" className="text-xs">
                       {group.members?.filter((m: any) => m.isOnline).length || 0} online

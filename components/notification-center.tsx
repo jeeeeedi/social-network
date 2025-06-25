@@ -185,7 +185,7 @@ export function NotificationCenter({
                                 <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground mb-2">{notification.message}</p>
+                            <p className="text-sm text-muted-foreground mb-2 break-words whitespace-pre-wrap line-clamp-3">{notification.message}</p>
                             <p className="text-xs text-muted-foreground">{notification.timestamp.toLocaleString()}</p>
 
                             {(notification.type === 'group_invitation' || notification.type === 'follow_request' || notification.type === 'group_join_request') && (

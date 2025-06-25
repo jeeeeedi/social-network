@@ -161,7 +161,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
             </AvatarFallback>
           </Avatar>
           <div>
-            <h4 className="text-sm font-semibold">{group.name}</h4>
+            <h4 className="text-sm font-semibold break-words">{group.name}</h4>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Users className="h-3 w-3" />
               {group.members.length} members
@@ -192,7 +192,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium">{message.senderName}</span>
+                        <span className="text-xs font-medium break-words">{message.senderName}</span>
                         <span className="text-xs text-muted-foreground">
                           {message.timestamp.toLocaleTimeString([], {
                             hour: "2-digit",
@@ -200,11 +200,11 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                           })}
                         </span>
                       </div>
-                      <div className="bg-muted rounded-lg px-3 py-2 text-sm">
+                      <div className="bg-muted rounded-lg px-3 py-2 text-sm break-words">
                         {message.type === "emoji" ? (
                           <span className="text-2xl">{message.content}</span>
                         ) : (
-                          <p>{message.content}</p>
+                          <p className="whitespace-pre-wrap break-words">{message.content}</p>
                         )}
                       </div>
                     </div>

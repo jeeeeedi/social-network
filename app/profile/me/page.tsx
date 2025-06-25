@@ -167,7 +167,7 @@ export default function MyProfilePage() {
       newPrivacyValue || (privacy === "public" ? "private" : "public");
     try {
       const response = await fetch(
-        `${API_URL}/profile/privacy`,
+        `${API_URL}/api/profile/privacy`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -269,7 +269,7 @@ export default function MyProfilePage() {
             <div className="flex-1 space-y-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold">{displayName}</h1>
+                  <h1 className="text-3xl font-bold break-words">{displayName}</h1>
                   {profile.privacy === "public" ? (
                     <Unlock className="h-5 w-5 text-muted-foreground" />
                   ) : (
@@ -282,6 +282,10 @@ export default function MyProfilePage() {
               </div>
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Mail className="h-4 w-4" />
+                  {profile.email}
+                </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   Joined {formatDateOnly(profile.created_at)}
