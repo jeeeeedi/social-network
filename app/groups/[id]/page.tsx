@@ -56,14 +56,6 @@ interface EventWithCreator extends Event {
   creator?: UserInfo;
 }
 
-interface GroupChatType {
-  id: string;
-  name: string;
-  avatar: string;
-  members: ChatUser[];
-  description?: string;
-}
-
 export default function GroupDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -86,7 +78,14 @@ export default function GroupDetailPage() {
   const [eventDescription, setEventDescription] = useState("")
   const [eventDate, setEventDate] = useState("")
   const [eventTime, setEventTime] = useState("")
-  const [activeGroupChat, setActiveGroupChat] = useState<GroupChatType | null>(null)
+  const [activeGroupChat, setActiveGroupChat] = useState<{
+    group_id: number;
+    member_count: number;
+    title: string;
+    avatar: string;
+    members: ChatUser[];
+    description?: string;
+  } | null>(null)
   const [eventRsvps, setEventRsvps] = useState<Record<number, "going" | "not_going" | null>>({})
 
   const [messages, setMessages] = useState<Message[]>([])
@@ -326,25 +325,29 @@ export default function GroupDetailPage() {
   const handleGroupChatClick = () => {
     if (!group) return;
     
-    const groupChat: GroupChatType = {
-      id: group.group_id.toString(),
-      name: group.title,
+    const acceptedMembers = members.filter(member => member.status === 'accepted' && member.user)
+
+    const groupChat = {
+      group_id: group.group_id,
+      member_count: acceptedMembers.length,
+      title: group.title,
       avatar: getGroupAvatarUrl(group),
-      members: members
-        .filter(member => member.status === 'accepted' && member.user)
-        .map(member => ({
-          id: member.member_id.toString(),
-          name: formatUserName(member.user!),
-          username: member.user!.nickname || member.user!.first_name,
-          avatar: getUserAvatarUrl(member.user!),
-          isOnline: false, // TODO: Implement online status
-          isFollowing: false,
-          isFollowedBy: false,
-        })),
+      members: acceptedMembers.map(member => ({
+        user_uuid: member.user!.user_uuid,
+        first_name: member.user!.first_name,
+        last_name: member.user!.last_name,
+        id: member.member_id.toString(),
+        name: formatUserName(member.user!),
+        username: member.user!.nickname || member.user!.first_name,
+        avatar: getUserAvatarUrl(member.user!),
+        isOnline: false, // TODO: Implement online status
+        isFollowing: false,
+        isFollowedBy: false,
+      })),
       description: group.description,
     };
     
-         setActiveGroupChat(groupChat);
+    setActiveGroupChat(groupChat);
   }
 
   const sendMessage = (message: Omit<Message, "id" | "timestamp">) => {

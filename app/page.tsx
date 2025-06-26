@@ -43,6 +43,105 @@ export default function SocialNetworkPage() {
   const [userEvents, setUserEvents] = useState<EventWithDetails[]>([]);
   const [eventsLoading, setEventsLoading] = useState<boolean>(true);
 
+  // NEW: Fetch groups, chat users and events once the current user is available
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Helper to fetch the user's groups
+    const fetchGroups = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/groups/my-groups`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) {
+          throw new Error("Failed to fetch groups");
+        }
+        const data = await res.json();
+        setGroups(data || []);
+      } catch (err) {
+        console.error("Failed to load groups:", err);
+      }
+    };
+
+    // Helper to fetch users that can participate in private chats (followers / following)
+    const fetchChatUsers = async () => {
+      try {
+        const [allUsersRes, followersRes, followingRes] = await Promise.all([
+          fetch(`${API_URL}/api/users`, { credentials: "include" }),
+          fetch(`${API_URL}/api/followers/${currentUser.user_uuid}`, { credentials: "include" }),
+          fetch(`${API_URL}/api/following/${currentUser.user_uuid}`, { credentials: "include" }),
+        ]);
+
+        if (!allUsersRes.ok) {
+          throw new Error("Failed to fetch users");
+        }
+
+        const allUsersData = await allUsersRes.json();
+        const allUsers = allUsersData.users || allUsersData;
+
+        const followersData = followersRes.ok ? await followersRes.json() : { followers: [] };
+        const followingData = followingRes.ok ? await followingRes.json() : { followers: [] };
+
+        const followerUUIDs = new Set<string>(
+          (followersData.followers || []).map((f: any) => f.user_uuid)
+        );
+        const followingUUIDs = new Set<string>(
+          (followingData.followers || followingData.following || []).map((f: any) => f.user_uuid)
+        );
+
+        const transformed = (allUsers as any[])
+          .filter((u) =>
+            // exclude self and keep only followers or following
+            u.user_uuid !== currentUser.user_uuid &&
+            (followingUUIDs.has(u.user_uuid) || followerUUIDs.has(u.user_uuid))
+          )
+          .map((u) => ({
+            user_uuid: u.user_uuid,
+            first_name: u.first_name,
+            last_name: u.last_name,
+            id: u.user_uuid,
+            name: `${u.first_name} ${u.last_name}`.trim(),
+            username: u.nickname || u.first_name,
+            avatar: u.avatar
+              ? u.avatar.startsWith("http")
+                ? u.avatar
+                : `${API_URL}${u.avatar}`
+              : "/placeholder.svg",
+            isOnline: false, // TODO: integrate with websocket presence
+            isFollowing: followingUUIDs.has(u.user_uuid),
+            isFollowedBy: followerUUIDs.has(u.user_uuid),
+            lastSeen: undefined,
+          }));
+
+        setChatUsers(transformed);
+      } catch (err) {
+        console.error("Failed to load chat users:", err);
+      }
+    };
+
+    // Helper to fetch and enrich events
+    const fetchEvents = async () => {
+      try {
+        setEventsLoading(true);
+        const events = await getUserEvents();
+        const enriched = await enrichEvents(events);
+        setUserEvents(enriched);
+      } catch (err) {
+        console.error("Failed to load events:", err);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    fetchGroups();
+    fetchChatUsers();
+    fetchEvents();
+  }, [currentUser]);
+
   const handleEventResponse = async (eventId: number, response: "going" | "not_going") => {
     if (!currentUser) return;
 
@@ -60,9 +159,7 @@ export default function SocialNetworkPage() {
   };
 
   const handleUserClick = (user: ChatUser) => {
-    if (user.isFollowing || user.isFollowedBy) {
-      setActiveChat(user);
-    }
+    setActiveChat(user);
   };
 
   const handleGroupClick = (group: any) => {
@@ -214,11 +311,7 @@ export default function SocialNetworkPage() {
                 chatUsers.map((user) => (
                   <div
                     key={user.id}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                      user.isFollowing || user.isFollowedBy
-                        ? "hover:bg-muted"
-                        : "opacity-50 cursor-not-allowed"
-                    }`}
+                    className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                     onClick={() => handleUserClick(user)}
                   >
                     <div className="flex items-center gap-3">
