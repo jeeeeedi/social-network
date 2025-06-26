@@ -58,7 +58,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           {loginError && (
-            <Alert className="mb-4">
+            <Alert variant="destructive" className="mb-4">
               <AlertDescription>{loginError}</AlertDescription>
             </Alert>
           )}

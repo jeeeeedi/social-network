@@ -283,6 +283,10 @@ export default function MyProfilePage() {
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
+                  <Mail className="h-4 w-4" />
+                  {profile.email}
+                </div>
+                <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   Joined {formatDateOnly(profile.created_at)}
                 </div>

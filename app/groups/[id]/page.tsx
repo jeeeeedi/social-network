@@ -456,12 +456,6 @@ export default function GroupDetailPage() {
                     <MessageCircle className="h-4 w-4" />
                     Group Chat
                   </Button>
-                  {!isCreator && (
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-destructive">
-                      <Settings className="h-4 w-4" />
-                      Leave Group
-                    </Button>
-                  )}
                 </nav>
               )}
             </CardContent>
