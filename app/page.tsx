@@ -12,6 +12,7 @@ import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket";
 import { useAuth } from "@/contexts/AuthContext";
 import { Feed } from "@/components/feed";
 import { useRouter } from "next/navigation";
+import { EventCard } from "@/components/event-card"
 import {
   getUserEvents,
   enrichEvents,
@@ -154,6 +155,36 @@ export default function SocialNetworkPage() {
                   Groups
                 </Button>
               </nav>
+            </CardContent>
+          </Card>
+
+          {/* Events */}
+          <Card>
+            <CardHeader>
+              <h3 className="font-semibold flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Upcoming Events
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {eventsLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Loading events...</p>
+              ) : userEvents.length > 0 ? (
+                userEvents
+                  .filter(event => new Date(event.event_date_time) > new Date())
+                  .slice(0, 3)
+                  .map((event) => (
+                    <EventCard
+                      key={event.event_id}
+                      event={event}
+                      rsvpStatus={userRSVPs[event.event_id] as "going" | "not_going" | null}
+                      onRsvpChange={handleEventResponse}
+                      variant="home"
+                    />
+                  ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No upcoming events</p>
+              )}
             </CardContent>
           </Card>
         </aside>

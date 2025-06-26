@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Heart, MessageCircle, Users as UsersIcon, Settings, ArrowLeft, UserPlus, Calendar } from "lucide-react"
 import { GroupChat } from "@/components/group-chat"
+import { EventCard } from "@/components/event-card"
 import { useAuth } from "@/contexts/AuthContext"
 import type { Message, ChatUser } from "@/hooks/useWebSocket"
 import { getUserById, getUsersByIds, getGroupById, formatUserName, getUserAvatarUrl, getGroupAvatarUrl, getGroupAvatarFallback, type UserInfo, type GroupInfo } from "@/utils/user-group-api"
@@ -535,54 +536,16 @@ export default function GroupDetailPage() {
         </CardHeader>
             <CardContent className="space-y-3">
               {events.length > 0 ? (
-                events.slice(0, 3).map((event) => {
-                  const eventDate = new Date(event.event_date_time);
-                  const isUpcoming = eventDate > new Date();
-                  
-                  return (
-                    <div key={event.event_id} className="p-3 border rounded-lg space-y-2">
-                      <div>
-                        <h4 className="font-medium text-sm">{event.title}</h4>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {event.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          by {event.creator ? formatUserName(event.creator) : 'Unknown'}
-                        </p>
-                      </div>
-                      
-                      {isUpcoming && isMember && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={eventRsvps[event.event_id] === "going" ? "default" : "outline"}
-                            onClick={() => handleEventResponse(event.event_id, "going")}
-                            className="flex-1 text-xs"
-                          >
-                            Going
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={eventRsvps[event.event_id] === "not_going" ? "destructive" : "outline"}
-                            onClick={() => handleEventResponse(event.event_id, "not_going")}
-                            className="flex-1 text-xs"
-                          >
-                            Not Going
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {!isUpcoming && (
-                        <Badge variant="secondary" className="text-xs">
-                          Past Event
-                        </Badge>
-            )}
-          </div>
-                  );
-                })
+                events.slice(0, 3).map((event) => (
+                  <EventCard
+                    key={event.event_id}
+                    event={event}
+                    rsvpStatus={eventRsvps[event.event_id]}
+                    onRsvpChange={handleEventResponse}
+                    showRsvpButtons={isMember}
+                    variant="group"
+                  />
+                ))
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">No events yet</p>
               )}
