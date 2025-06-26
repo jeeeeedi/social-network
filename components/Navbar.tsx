@@ -106,7 +106,7 @@ export const Navbar: React.FC = () => {
           user_uuid: u.user_uuid,
           first_name: u.first_name,
           last_name: u.last_name,
-          nickname: u.nickname,
+          nickname: u.nickname || '',
           avatar: u.avatar ? `${API_URL}${u.avatar}` : undefined,
         })) || [];
         setUsers(formattedUsers);
@@ -366,7 +366,7 @@ export const Navbar: React.FC = () => {
                     <Avatar className="h-6 w-6">
                       <AvatarImage
                         src={user.avatar}
-                        alt={user.nickname}
+                        alt={user.nickname || ''}
                         className="object-cover"
                       />
                       <AvatarFallback>
@@ -374,7 +374,7 @@ export const Navbar: React.FC = () => {
                       </AvatarFallback>
                     </Avatar>
                     <span>{user.first_name} {user.last_name}</span>
-                    <span className="text-sm text-muted-foreground">@{user.nickname}</span>
+                    <span className="text-sm text-muted-foreground">@{user.nickname || ''}</span>
                   </Link>
                 </DropdownMenuItem>
               ))
@@ -456,7 +456,7 @@ export const Navbar: React.FC = () => {
                     {currentUser?.first_name} {currentUser?.last_name}
                   </p>
                   <p className="w-[200px] truncate text-sm text-muted-foreground">
-                    @{currentUser?.nickname}
+                    @{currentUser?.nickname || ''}
                   </p>
                 </div>
               </div>

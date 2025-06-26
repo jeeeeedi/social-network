@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"social_network/dbTools"
 	"social_network/middleware"
@@ -39,6 +40,7 @@ func GetFeedPostsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request)
 
 	// Get all public posts and all posts from the current user
 	posts, err := db.GetFeedPosts(userID)
+	log.Print("GetFeedPosts: ", userID, posts)
 	if err != nil {
 		http.Error(w, "Failed to retrieve posts", http.StatusInternalServerError)
 		// log.Print("GetFeedPostsHandler: Error retrieving posts:", err)

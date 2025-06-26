@@ -167,7 +167,7 @@ export default function MyProfilePage() {
       newPrivacyValue || (privacy === "public" ? "private" : "public");
     try {
       const response = await fetch(
-        `${API_URL}/profile/privacy`,
+        `${API_URL}/api/profile/privacy`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -397,7 +397,7 @@ export default function MyProfilePage() {
                     </p>
                     {follower.nickname && (
                       <p className="text-xs text-muted-foreground truncate">
-                        @{follower.nickname}
+                        @{follower.nickname || ''}
                       </p>
                     )}
                   </div>
@@ -441,7 +441,7 @@ export default function MyProfilePage() {
                     </p>
                     {follow.nickname && (
                       <p className="text-xs text-muted-foreground truncate">
-                        @{follow.nickname}
+                        @{follow.nickname || ''}
                       </p>
                     )}
                   </div>

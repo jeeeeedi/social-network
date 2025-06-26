@@ -387,7 +387,7 @@ export default function UserProfilePage() {
                 <div>
                   <h2 className="text-2xl font-bold">{displayName}</h2>
                   {profile.nickname && (
-                    <p className="text-muted-foreground">@{profile.nickname}</p>
+                    <p className="text-muted-foreground">@{profile.nickname || ''}</p>
                   )}
                 </div>
 
@@ -586,7 +586,7 @@ export default function UserProfilePage() {
                           </p>
                           {follower.nickname && (
                             <p className="text-xs text-muted-foreground truncate">
-                              @{follower.nickname}
+                              @{follower.nickname || ''}
                             </p>
                           )}
                         </div>
@@ -643,7 +643,7 @@ export default function UserProfilePage() {
                           </p>
                           {follow.nickname && (
                             <p className="text-xs text-muted-foreground truncate">
-                              @{follow.nickname}
+                              @{follow.nickname || ''}
                             </p>
                           )}
                         </div>

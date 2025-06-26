@@ -176,7 +176,7 @@ export default function SocialNetworkPage() {
                     {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : "Your Name"}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    @{currentUser?.nickname || "yourhandle"}
+                    @{currentUser?.nickname || ""}
                   </p>
                 </div>
               </div>
