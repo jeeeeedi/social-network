@@ -88,8 +88,15 @@ export function GroupCard({
   const isMember = group.isMember || isCreator;
   const isPending = group.isPending && !isCreator;
 
+  const handleCardClick = () => {
+    onViewGroup(group.id);
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card 
+      className="hover:shadow-md transition-shadow cursor-pointer" 
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
@@ -149,7 +156,10 @@ export function GroupCard({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onViewGroup(group.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewGroup(group.id);
+            }}
             className="flex-1"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
@@ -159,7 +169,10 @@ export function GroupCard({
           {!isCreator && !isMember && !isPending && (
             <Button
               size="sm"
-              onClick={handleJoinLeave}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleJoinLeave();
+              }}
               disabled={isLoading}
               variant="default"
               className="flex-1"
