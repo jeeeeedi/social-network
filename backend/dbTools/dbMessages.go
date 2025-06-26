@@ -130,6 +130,50 @@ func (database *DB) GetMessagesBetweenUsers(user1ID, user2ID int) ([]ChatMessage
 }
 
 func (database *DB) GetMessagesForGroup(groupID int) ([]ChatMessage, error) {
-	// Placeholder
-	return nil, nil
+	var (
+		qry  string
+		// args []any
+	)
+
+	// baseCond := `(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)`
+	// // always only active messages
+	// statusCond := `status = 'active'`
+
+	// first page
+	qry = fmt.Sprintf(`
+            SELECT chat_id, sender_id, content, created_at
+              FROM chat_messages
+             WHERE (group_id = ?)
+             ORDER BY chat_id DESC
+        `)
+	// args = []any{user1ID, user2ID, user2ID, user1ID}
+
+	rows, err := database.Query(qry, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []ChatMessage
+	for rows.Next() {
+		var m ChatMessage
+		// adjust Scan targets to match your Message struct
+		if err := rows.Scan(
+			&m.ChatID,
+			&m.SenderID,
+			// &m.ReceiverID,
+			&m.Content,
+			&m.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, m)
+	}
+
+	// reverse to oldest-first
+	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
+	}
+
+	return msgs, nil
 }

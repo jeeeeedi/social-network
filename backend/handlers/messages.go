@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,17 +45,27 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 	specificationParts := strings.SplitN(chatSpecifications, "_", 2)
 	if len(specificationParts) != 2 {
+		fmt.Println("error 00")
 		http.Error(w, "invalid chat specification:", http.StatusBadRequest)
 		return
 	}
 	chatType, otherUUID := specificationParts[0], specificationParts[1]
-	otherUser, err := db.FetchUserByUUID(otherUUID)
-	if err != nil {
-		http.Error(w, "invalid ID/UUID:", http.StatusBadRequest)
-		return
+	var otherUser *dbTools.User
+	var otherID int
+	if chatType == "private" {
+		otherUser, err = db.FetchUserByUUID(otherUUID)
+		if err != nil {
+			fmt.Println("error 01")
+			http.Error(w, "invalid ID/UUID:", http.StatusBadRequest)
+			return
+		}
+		otherID = otherUser.UserID
+	} else {
+		otherID, err = strconv.Atoi(otherUUID)
+		if err != nil {
+			log.Println("atoi err:", err)
+		}
 	}
-
-	var otherID = otherUser.UserID
 
 	var rawMsgs []dbTools.ChatMessage
 	switch chatType {
@@ -73,17 +84,21 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]messageResponse, len(rawMsgs))
 	for i, msg := range rawMsgs {
-		msgOtherUser, err := db.FetchUserByID(msg.ReceiverID)
-		if err != nil {
-			log.Println("Error fetching user when fetching messages:", err)
+		var msgOtherUser *dbTools.UserAPI
+		if chatType == "private" {
+			msgOtherUser, err = db.FetchUserByID(msg.ReceiverID)
+			if err != nil {
+				log.Println("Error fetching user when fetching messages:", err)
+			}
+			resp[i].OtherUserUUID = msgOtherUser.UserUUID
+			resp[i].OtherUserName = msgOtherUser.FirstName
+			resp[i].OtherUserAvatar = msgOtherUser.Avatar
 		}
+		// else if group, maybe fetch user by msg to add the other data like useruuid, firstname and avatar
 		resp[i] = messageResponse{
 			ID:              msg.ChatID,
 			RequesterID:     userID,
 			SenderID:        msg.SenderID,
-			OtherUserUUID:   msgOtherUser.UserUUID,
-			OtherUserName:   msgOtherUser.FirstName,
-			OtherUserAvatar: msgOtherUser.Avatar,
 			Content:         msg.Content,
 			Timestamp:       msg.CreatedAt,
 			MessageType:     "text", // Placeholder, change later
@@ -97,6 +112,7 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	fmt.Println("resp to messages:", resp)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		fmt.Println("JSON encode error:", err)

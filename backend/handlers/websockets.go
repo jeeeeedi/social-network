@@ -50,6 +50,8 @@ var (
 func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	conn, err := upgrader.Upgrade(w, r, nil)
+	var groupIdString string
+
 	if err != nil {
 		http.Error(w, "Could not open websocket", http.StatusBadRequest)
 		return
@@ -60,6 +62,26 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Could not get user ID from session cookie: %v\n", err)
 		return
+	}
+	listOfAllGroups, err := db.GetAllGroups(userID)
+	if err != nil {
+		log.Println("err getting all groups:", err)
+	}
+
+	for groupId := range listOfAllGroups {
+		listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupId)
+		if err != nil {
+			log.Println("getting group members failed:", err)
+		}
+		for _, grMember := range listOfAllGroupMemberIDs {
+			if grMember.MembershipID == userID {
+				//Add to group connection
+				if allGroups[groupIdString] == nil {
+					allGroups[groupIdString] = make(map[*websocket.Conn]bool)
+				}
+				allGroups[groupIdString][conn] = true
+			}
+		}
 	}
 	clientsMutex.Lock()
 	clients[conn] = userID
@@ -79,6 +101,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		fmt.Println("incomingMsg:", incomingMsg)
 		var recieverName string
 		var receiverID, groupID int
 		if incomingMsg.ChatType == "private" { // Reduntant if .ChatType is consistent
@@ -92,21 +115,22 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			receiverID = reciever.UserID
 			recieverName = reciever.FirstName
 		} else {
-			id, err := strconv.Atoi(strings.TrimPrefix(incomingMsg.ChatID, "group_"))
-			fmt.Println(id)
+			groupIdString = strings.TrimPrefix(incomingMsg.ChatID, "group_")
+			groupID, err = strconv.Atoi(groupIdString)
+			fmt.Println("groupID:", groupID)
 			if err != nil {
 				log.Println("Error converting to int:", err)
 				continue
 			}
-			groupID = /* incomingMsg.ChatID */ 1 // PLACEHOLDER, CHANGE LATER
 
 			// ensure this conn is in the group
 			// CHANGE THIS, NEED TO ENSURE USER IS SEEN AS PART OF GROUP EVEN IF THEY HAVEN'T SENT A MESSAGE
+			
 			groupsMutex.Lock()
-			if allGroups[incomingMsg.ChatID] == nil {
-				allGroups[incomingMsg.ChatID] = make(map[*websocket.Conn]bool)
+			if allGroups[groupIdString] == nil {
+				allGroups[groupIdString] = make(map[*websocket.Conn]bool)
 			}
-			allGroups[incomingMsg.ChatID][conn] = true
+			allGroups[groupIdString][conn] = true
 			groupsMutex.Unlock()
 		}
 
@@ -123,6 +147,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			Status:     "active",
 			UpdatedAt:  &incomingMsg.Timestamp,
 		}
+		fmt.Println("groupId:", chatMsg.GroupID)
 		chatID, err := db.AddMessageToDB(&chatMsg)
 		if err != nil {
 			log.Println("Error inserting message into DB:", err)
@@ -154,7 +179,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Broadcast to all connections in the group
 			groupsMutex.RLock()
-			for groupMemberConn := range allGroups[incomingMsg.ChatID] {
+			for groupMemberConn := range allGroups[groupIdString] {
 				recipientConnections = append(recipientConnections, groupMemberConn)
 				// Placeholder, name = id
 				recipientIDs = append(recipientIDs, clients[groupMemberConn])

@@ -34,6 +34,7 @@ export function ChatInterface({
   onSendMessage,
   onClose,
 }: ChatInterfaceProps) {
+    console.log('chat messages:', liveMessages)
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [history, setHistory] = useState<Message[]>([])

@@ -254,6 +254,7 @@ console.log('users:', users)
   const handleGroupClick = (group: any) => {
     console.log('group clicked:', group)
     setActiveGroupChat(group)
+    // fetch messages and set them in group messages
   }
 
   const handleLike = async (postId: number) => {

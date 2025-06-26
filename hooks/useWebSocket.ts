@@ -113,7 +113,7 @@ export function useWebSocket() {
       }
     }
   }, [connect])
-
+// figure out how to send the group messages to the backend
   const sendMessage = useCallback(
     (msg: Omit<Message, "id" | "timestamp">) => {
       const outgoing: Message = {
