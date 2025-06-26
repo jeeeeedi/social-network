@@ -232,6 +232,9 @@ func RegisterHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		registerReq.Avatar = "/uploads/" + filename
+	} else {
+		// No avatar uploaded, assign default avatar
+		registerReq.Avatar = "/uploads/default_avatar.jpg"
 	}
 
 	// Hash password
@@ -261,7 +264,7 @@ func RegisterHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		query,
 		userUUID, registerReq.Email, string(hashedPassword),
 		registerReq.FirstName, registerReq.LastName, registerReq.DOB,
-		utils.NullIfEmpty(registerReq.Nickname), utils.NullIfEmpty(registerReq.AboutMe), utils.NullIfEmpty(registerReq.Avatar),
+		utils.NullIfEmpty(registerReq.Nickname), utils.NullIfEmpty(registerReq.AboutMe), registerReq.Avatar,
 		currentTime, currentTime,
 	)
 	if err != nil {

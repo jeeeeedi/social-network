@@ -3,6 +3,7 @@ package dbTools
 import (
 	"context"
 	"database/sql"
+	"log"
 	"social_network/utils"
 )
 
@@ -52,7 +53,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-            u.nickname, u.avatar,
+            COALESCE(u.nickname, '') as nickname, u.avatar,
             COALESCE(f.file_id, 0) as file_id, 
             f.filename_new
         FROM posts p
@@ -75,6 +76,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
     `, userID, userID)
 	// COALESCE(f.file_id, 0): If f.file_id != NULL, use its value. If f.file_id = NULL (no file w/post), use 0 instead.
 	if err != nil {
+		log.Print("GetFeedPosts: Error querying posts:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -101,6 +103,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 			&filenameNew,
 		)
 		if err != nil {
+			log.Print("GetFeedPosts: Error scanning post row:", err)
 			return nil, err
 		}
 		if groupID.Valid {
@@ -130,6 +133,7 @@ func (d *DB) GetFeedPosts(userID int) ([]PostResponse, error) {
 		postResponse.Comments = comments
 		postsResponse = append(postsResponse, postResponse)
 	}
+	log.Print("GetFeedPosts: Retrieved posts:", postsResponse)
 	return postsResponse, nil
 }
 
@@ -156,7 +160,7 @@ func (d *DB) GetProfilePosts(currentUserID int, targetUserUUID string) ([]PostRe
 		rows, err = d.GetDB().Query(`
             SELECT 
                 p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-                u.nickname, u.avatar, 
+                COALESCE(u.nickname, '') as nickname, u.avatar, 
                 COALESCE(f.file_id, 0) as file_id, 
                 f.filename_new
             FROM posts p
@@ -187,7 +191,7 @@ func (d *DB) GetProfilePosts(currentUserID int, targetUserUUID string) ([]PostRe
 		rows, err = d.GetDB().Query(`
             SELECT 
                 p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-                u.nickname, u.avatar, 
+                COALESCE(u.nickname, '') as nickname, u.avatar, 
                 COALESCE(f.file_id, 0) as file_id, 
                 f.filename_new
             FROM posts p
@@ -333,7 +337,7 @@ func (d *DB) GetCommentsForPost(ctx context.Context, postUUID string) ([]Comment
             p.privacy,
             c.status,
             c.created_at,
-            u.nickname,
+            COALESCE(u.nickname, '') as nickname,
 			u.avatar,
             COALESCE(f.file_id, 0) as file_id,
             f.filename_new
@@ -452,7 +456,7 @@ func (d *DB) GetGroupPosts(userID int, groupID int) ([]PostResponse, error) {
 	rows, err := d.GetDB().Query(`
         SELECT 
             p.post_id, p.post_uuid, p.poster_id, p.group_id, p.content, p.privacy, p.status, p.created_at, 
-            u.nickname, u.avatar,
+            COALESCE(u.nickname, '') as nickname, u.avatar,
             COALESCE(f.file_id, 0) as file_id, 
             f.filename_new
         FROM posts p
