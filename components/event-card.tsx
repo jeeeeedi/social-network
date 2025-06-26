@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getEventGoingUsers, formatUserName, type UserInfo } from "@/utils/user-group-api";
 
 export interface EventCardProps {
   event: {
@@ -32,14 +33,26 @@ export function EventCard({
   variant = "home"
 }: EventCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [goingUsers, setGoingUsers] = useState<UserInfo[]>([]);
+  const [loadingGoingUsers, setLoadingGoingUsers] = useState(false);
   const eventDate = new Date(event.event_date_time);
   const isUpcoming = eventDate > new Date();
   const isGoing = rsvpStatus === "going";
   const isNotGoing = rsvpStatus === "not_going";
   
-  const formatUserName = (creator: { first_name: string; last_name: string }) => {
-    return `${creator.first_name} ${creator.last_name}`;
-  };
+
+
+  // Fetch going users on component mount
+  useEffect(() => {
+    const fetchGoingUsers = async () => {
+      setLoadingGoingUsers(true);
+      const users = await getEventGoingUsers(event.event_id);
+      setGoingUsers(users);
+      setLoadingGoingUsers(false);
+    };
+
+    fetchGoingUsers();
+  }, [event.event_id, rsvpStatus]); // Re-fetch when RSVP status changes
 
   const handleRsvp = (response: "going" | "not_going") => {
     onRsvpChange?.(event.event_id, response);
@@ -85,14 +98,33 @@ export function EventCard({
         {/* Creator info (for group page) */}
         {variant === "group" && event.creator && (
           <p className="text-xs text-muted-foreground">
-            by {formatUserName(event.creator)}
+            by {event.creator.first_name} {event.creator.last_name}
           </p>
         )}
         
-        {/* Expand/Collapse hint for group page descriptions */}
-        {variant === "group" && event.description && event.description.length > 100 && (
+        {/* Going users list */}
+        {(goingUsers.length > 0 || loadingGoingUsers) && (
+          <div className="mt-3 mb-3">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Going: </span>
+              {loadingGoingUsers ? (
+                <span>Loading...</span>
+              ) : (
+                <span className={!isExpanded && goingUsers.length > 8 ? 'line-clamp-2' : ''}>
+                  {goingUsers.map((user, index) => 
+                    `${formatUserName(user)}${index < goingUsers.length - 1 ? ', ' : ''}`
+                  ).join('')}
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+        
+        {/* Expand/Collapse hint */}
+        {((goingUsers.length > 8) || (variant === "group" && event.description && event.description.length > 100)) && (
           <p className="text-xs text-blue-500 mt-1">
-            {isExpanded ? "Click to collapse" : "Click to read more"}
+            {isExpanded ? "Click to collapse" : 
+             goingUsers.length > 8 ? "Click to see all attendees" : "Click to read more"}
           </p>
         )}
       </div>

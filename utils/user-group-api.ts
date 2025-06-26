@@ -335,3 +335,29 @@ export async function getUserEventRSVP(eventId: number): Promise<string | null> 
     return null;
   }
 }
+
+/**
+ * Get users who are going to an event
+ */
+export async function getEventGoingUsers(eventId: number): Promise<UserInfo[]> {
+  try {
+    const response = await fetch(`${API_URL}/api/events/${eventId}/rsvps`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (!response.ok) return [];
+
+    const rsvps = await response.json();
+    const goingUserIds = rsvps
+      .filter((rsvp: any) => rsvp.response === 'going')
+      .map((rsvp: any) => rsvp.responder_id);
+    
+    if (!goingUserIds.length) return [];
+
+    const usersMap = await getUsersByIds(goingUserIds);
+    return Array.from(usersMap.values());
+  } catch {
+    return [];
+  }
+}

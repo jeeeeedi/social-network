@@ -248,3 +248,34 @@ func (nh *NotificationHelpers) getUserNickname(userID int) (string, error) {
 	err := nh.db.QueryRow(query, userID).Scan(&nickname)
 	return nickname, err
 }
+
+// CreateGroupPostNotification creates post notifications for all group members
+func (nh *NotificationHelpers) CreateGroupPostNotification(posterID, groupID, postID int, groupTitle string) error {
+	// Get all group members
+	members, err := nh.db.GetGroupMembers(groupID)
+	if err != nil {
+		return fmt.Errorf("failed to get group members: %v", err)
+	}
+
+	// Get poster's name
+	posterName, err := nh.getUserNickname(posterID)
+	if err != nil {
+		posterName = "Someone"
+	}
+
+	// Create notification content
+	content := fmt.Sprintf("%s posted in group '%s'", posterName, groupTitle)
+
+	// Send notification to all accepted group members (except the poster)
+	for _, member := range members {
+		if member.Status == "accepted" && member.MemberID != posterID {
+			err := nh.service.CreateNotification(member.MemberID, posterID, "post", "group", groupID, content)
+			if err != nil {
+				log.Printf("Failed to create post notification for member %d: %v", member.MemberID, err)
+				// Continue with other members even if one fails
+			}
+		}
+	}
+
+	return nil
+}
