@@ -111,16 +111,16 @@ export default function LoginPage() {
                 'Login'
               )}
             </Button>
-            
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => router.push('/register')}
-            >
-              Don't have an account? Register
-            </Button>
           </form>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full mt-4"
+            onClick={() => router.push('/register')}
+          >
+            Don't have an account? Register
+          </Button>
         </CardContent>
       </Card>
     </div>
