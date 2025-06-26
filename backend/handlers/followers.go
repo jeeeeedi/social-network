@@ -12,7 +12,7 @@ import (
 )
 
 // GetFollowersHandler fetches the list of followers for a user
-func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
+func GetFollowersHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("GetFollowersHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -34,17 +34,6 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
-
 	// Fetch user_id and privacy for authorization
 	var userID int
 	var privacy string
@@ -53,7 +42,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
         FROM users
         WHERE user_uuid = ? AND status = 'active'
     `
-	err = db.QueryRow(query, userUUID).Scan(&userID, &privacy)
+	err := db.QueryRow(query, userUUID).Scan(&userID, &privacy)
 	if err != nil {
 		log.Printf("User fetch error for user_uuid %s: %v", userUUID, err)
 		w.WriteHeader(http.StatusNotFound)
@@ -143,7 +132,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetFollowingHandler fetches the list of users a user is following
-func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
+func GetFollowingHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("GetFollowingHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -165,17 +154,6 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
-
 	// Fetch user_id and privacy for authorization
 	var userID int
 	var privacy string
@@ -184,7 +162,7 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
         FROM users
         WHERE user_uuid = ? AND status = 'active'
     `
-	err = db.QueryRow(query, userUUID).Scan(&userID, &privacy)
+	err := db.QueryRow(query, userUUID).Scan(&userID, &privacy)
 	if err != nil {
 		log.Printf("User fetch error for user_uuid %s: %v", userUUID, err)
 		w.WriteHeader(http.StatusNotFound)

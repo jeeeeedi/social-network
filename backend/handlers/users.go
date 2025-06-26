@@ -11,7 +11,7 @@ import (
 )
 
 // UsersHandler fetches all active users except the logged-in user
-func UsersHandler(w http.ResponseWriter, r *http.Request) {
+func UsersHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("UsersHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -23,17 +23,6 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
 		return
 	}
-
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
 
 	// Get the logged-in user's ID from session
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)

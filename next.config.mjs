@@ -37,8 +37,7 @@ const nextConfig = {
   },
   // Improve development experience
   devIndicators: {
-    buildActivity: true,
-    buildActivityPosition: 'bottom-right',
+    position: 'bottom-left',
   },
 }
 

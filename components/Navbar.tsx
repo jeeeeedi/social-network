@@ -1,5 +1,7 @@
 "use client"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -53,7 +55,7 @@ export const Navbar: React.FC = () => {
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/notifications', {
+      const response = await fetch(`${API_URL}/api/notifications`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -69,11 +71,11 @@ export const Navbar: React.FC = () => {
           message: n.message,
           timestamp: new Date(n.timestamp),
           isRead: n.status === 'read',
-          actionRequired: n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation',
+          actionRequired: (n.type === 'group_join_request' || n.type === 'follow_request' || n.type === 'group_invitation') && n.status === 'new',
           fromUser: n.actor_id ? {
             id: n.actor_id.toString(),
             name: n.sender,
-            avatar: n.avatar ? `http://localhost:8080${n.avatar}` : "/placeholder.svg"
+            avatar: n.avatar ? `${API_URL}${n.avatar}` : "/placeholder.svg"
           } : undefined,
           groupId: n.parent_type === 'group' ? n.parent_id.toString() : undefined,
           followId: n.type === 'follow_request' ? n.parent_id.toString() : undefined,
@@ -90,7 +92,7 @@ export const Navbar: React.FC = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/users', {
+      const response = await fetch(`${API_URL}/api/users`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -104,8 +106,8 @@ export const Navbar: React.FC = () => {
           user_uuid: u.user_uuid,
           first_name: u.first_name,
           last_name: u.last_name,
-          nickname: u.nickname,
-          avatar: u.avatar ? `http://localhost:8080${u.avatar}` : undefined,
+          nickname: u.nickname || '',
+          avatar: u.avatar ? `${API_URL}${u.avatar}` : undefined,
         })) || [];
         setUsers(formattedUsers);
       }
@@ -174,7 +176,7 @@ export const Navbar: React.FC = () => {
 
   const handleMarkAsRead = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/notifications/${id}`, {
+      const response = await fetch(`${API_URL}/api/notifications/${id}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -196,7 +198,7 @@ export const Navbar: React.FC = () => {
     try {
       const payload = { follow_id: parseInt(followId), action: 'accept' };
       console.log('Sending payload to /api/follow_requests:', payload);
-      const response = await fetch('http://localhost:8080/api/follow_requests', {
+      const response = await fetch(`${API_URL}/api/follow_requests`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -237,7 +239,7 @@ export const Navbar: React.FC = () => {
     try {
       const payload = { follow_id: parseInt(followId), action: 'decline' };
       console.log('Sending payload to /api/follow_requests:', payload);
-      const response = await fetch('http://localhost:8080/api/follow_requests', {
+      const response = await fetch(`${API_URL}/api/follow_requests`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -268,50 +270,46 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  const handleAcceptGroupInvitation = (groupId: string) => {
-    console.log("Accepting group invitation for:", groupId);
-    // TODO: Implement group invitation acceptance
-  };
-
-  const handleDeclineGroupInvitation = (groupId: string) => {
-    console.log("Declining group invitation for:", groupId);
-    // TODO: Implement group invitation decline
-  };
-
-  const handleAcceptGroupJoinRequest = async (userId: string, groupId: string) => {
+  // Reusable function for updating group membership status
+  const updateGroupMembershipStatus = async (groupId: string, userId: string, status: 'accepted' | 'declined', actionDescription: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${userId}`, {
+      const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${userId}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: 'accepted' }),
+        body: JSON.stringify({ status }),
       });
       if (response.ok) {
+        console.log(`${actionDescription} successful`);
         fetchNotifications();
+      } else {
+        console.error(`Failed to ${actionDescription.toLowerCase()}:`, response.status);
       }
     } catch (error) {
-      console.error("Failed to accept group join request:", error);
+      console.error(`Failed to ${actionDescription.toLowerCase()}:`, error);
     }
+  };
+
+  // Group invitation handlers (user accepting/declining their own invitation)
+  const handleAcceptGroupInvitation = async (groupId: string) => {
+    if (!currentUser) return;
+    await updateGroupMembershipStatus(groupId, currentUser.user_id.toString(), 'accepted', 'Accept group invitation');
+  };
+
+  const handleDeclineGroupInvitation = async (groupId: string) => {
+    if (!currentUser) return;
+    await updateGroupMembershipStatus(groupId, currentUser.user_id.toString(), 'declined', 'Decline group invitation');
+  };
+
+  // Group join request handlers (group creator accepting/declining someone's request)
+  const handleAcceptGroupJoinRequest = async (userId: string, groupId: string) => {
+    await updateGroupMembershipStatus(groupId, userId, 'accepted', 'Accept group join request');
   };
 
   const handleDeclineGroupJoinRequest = async (userId: string, groupId: string) => {
-    try {
-      const response = await fetch(`http://localhost:8080/api/groups/${groupId}/membership/${userId}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'declined' }),
-      });
-      if (response.ok) {
-        fetchNotifications();
-      }
-    } catch (error) {
-      console.error("Failed to decline group join request:", error);
-    }
+    await updateGroupMembershipStatus(groupId, userId, 'declined', 'Decline group join request');
   };
 
   const isActivePage = (path: string) => {
@@ -368,7 +366,7 @@ export const Navbar: React.FC = () => {
                     <Avatar className="h-6 w-6">
                       <AvatarImage
                         src={user.avatar}
-                        alt={user.nickname}
+                        alt={user.nickname || ''}
                         className="object-cover"
                       />
                       <AvatarFallback>
@@ -376,7 +374,7 @@ export const Navbar: React.FC = () => {
                       </AvatarFallback>
                     </Avatar>
                     <span>{user.first_name} {user.last_name}</span>
-                    <span className="text-sm text-muted-foreground">@{user.nickname}</span>
+                    <span className="text-sm text-muted-foreground">@{user.nickname || ''}</span>
                   </Link>
                 </DropdownMenuItem>
               ))
@@ -441,7 +439,7 @@ export const Navbar: React.FC = () => {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `http://localhost:8080${currentUser.avatar}` : undefined}
+                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `${API_URL}${currentUser.avatar}` : undefined}
                     alt={currentUser?.nickname || "User"}
                     className="object-cover"
                   />
@@ -458,7 +456,7 @@ export const Navbar: React.FC = () => {
                     {currentUser?.first_name} {currentUser?.last_name}
                   </p>
                   <p className="w-[200px] truncate text-sm text-muted-foreground">
-                    @{currentUser?.nickname}
+                    @{currentUser?.nickname || ''}
                   </p>
                 </div>
               </div>

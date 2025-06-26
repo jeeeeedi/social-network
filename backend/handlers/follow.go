@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"social_network/dbTools"
@@ -13,8 +12,7 @@ import (
 	"time"
 )
 
-// FollowHandler handles follow and unfollow requests
-func FollowHandler(w http.ResponseWriter, r *http.Request) {
+func FollowHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("FollowHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 
@@ -36,22 +34,6 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Initialize database
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
-
-	if db.GetDB() == nil {
-		log.Println("Nil database connection")
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
-		return
-	}
-
 	// Get current user ID from session
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
@@ -60,7 +42,7 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get followed user ID from user_uuid
+	// Get followed user ID and privacy
 	var followedUserID int
 	var privacy string
 	userQuery := `SELECT user_id, privacy FROM users WHERE user_uuid = ? AND status = 'active'`
@@ -78,44 +60,65 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var status string
+	var followID int
+	notificationHelpers := dbTools.NewNotificationHelpers(db)
+
 	if r.Method == "POST" {
+		// Check existing follow relationship
 		var existingStatus string
-		var followID int
 		checkQuery := `
-			SELECT follow_id, status FROM follows
-			WHERE follower_user_id = ? AND followed_user_id = ?
-		`
+            SELECT follow_id, status FROM follows
+            WHERE follower_user_id = ? AND followed_user_id = ?
+        `
 		err = db.GetDB().QueryRow(checkQuery, currentUserID, followedUserID).Scan(&followID, &existingStatus)
 		if err == nil {
 			if existingStatus == "pending" || existingStatus == "accepted" {
 				utils.SendErrorResponse(w, http.StatusBadRequest, "Already following or request pending")
 				return
 			}
+			// Handle refollow (cancelled or declined)
 			newStatus := "pending"
 			if privacy == "public" {
 				newStatus = "accepted"
 			}
 			updateQuery := `
-				UPDATE follows
-				SET status = ?, updated_at = datetime('now'), updater_id = ?
-				WHERE follow_id = ?
-			`
-			_, err = db.GetDB().Exec(updateQuery, newStatus, currentUserID, followID)
+                UPDATE follows
+                SET status = ?, updated_at = datetime('now'), updater_id = ?
+                WHERE follow_id = ?
+            `
+			result, err := db.GetDB().Exec(updateQuery, newStatus, currentUserID, followID)
 			if err != nil {
-				log.Printf("Follow update error: %v", err)
+				log.Printf("Follow update error for follow_id %d: %v", followID, err)
+				utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to update follow status")
+				return
+			}
+			rowsAffected, err := result.RowsAffected()
+			if err != nil || rowsAffected == 0 {
+				log.Printf("No rows affected for follow_id %d: %v", followID, err)
 				utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to update follow status")
 				return
 			}
 			status = newStatus
+			// Create notification for refollow
+			if status == "accepted" {
+				err = notificationHelpers.CreateFollowAcceptedNotification(currentUserID, followedUserID, followID)
+			} else {
+				err = notificationHelpers.CreateFollowRequestNotification(currentUserID, followedUserID, followID)
+			}
+			if err != nil {
+				log.Printf("Notification creation error for follow_id %d: %v", followID, err)
+				// Continue despite notification error to avoid blocking
+			}
 		} else if err == sql.ErrNoRows {
+			// New follow relationship
 			status = "pending"
 			if privacy == "public" {
 				status = "accepted"
 			}
 			followQuery := `
-				INSERT INTO follows (follower_user_id, followed_user_id, status, created_at, updated_at, updater_id)
-				VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
-			`
+                INSERT INTO follows (follower_user_id, followed_user_id, status, created_at, updated_at, updater_id)
+                VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
+            `
 			result, err := db.GetDB().Exec(followQuery, currentUserID, followedUserID, status, currentUserID)
 			if err != nil {
 				log.Printf("Follow insert error: %v", err)
@@ -129,26 +132,15 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			followID = int(followID64)
-
 			// Create notification
-			var nickname string
-			err = db.GetDB().QueryRow(`SELECT COALESCE(nickname, first_name) FROM users WHERE user_id = ?`, currentUserID).Scan(&nickname)
-			if err != nil || nickname == "" {
-				nickname = "Someone"
-			}
-			actionType := "follow_request"
-			content := fmt.Sprintf("%s wants to follow you", nickname)
 			if status == "accepted" {
-				actionType = "follow_accepted"
-				content = fmt.Sprintf("%s started following you", nickname)
+				err = notificationHelpers.CreateFollowAcceptedNotification(currentUserID, followedUserID, followID)
+			} else {
+				err = notificationHelpers.CreateFollowRequestNotification(currentUserID, followedUserID, followID)
 			}
-			notifyQuery := `
-				INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
-				VALUES (?, ?, ?, 'follow', ?, ?, 'unread', datetime('now'), ?)
-			`
-			_, err = db.GetDB().Exec(notifyQuery, followedUserID, currentUserID, actionType, followID, content, currentUserID)
 			if err != nil {
-				log.Printf("Notification insert error for follow_id %d: %v", followID, err)
+				log.Printf("Notification creation error for follow_id %d: %v", followID, err)
+				// Continue despite notification error
 			}
 		} else {
 			log.Printf("Follow check error: %v", err)
@@ -157,18 +149,19 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else { // DELETE
 		updateQuery := `
-			UPDATE follows
-			SET status = 'cancelled', updated_at = datetime('now'), updater_id = ?
-			WHERE follower_user_id = ? AND followed_user_id = ?
-		`
+            UPDATE follows
+            SET status = 'cancelled', updated_at = datetime('now'), updater_id = ?
+            WHERE follower_user_id = ? AND followed_user_id = ?
+        `
 		result, err := db.GetDB().Exec(updateQuery, currentUserID, currentUserID, followedUserID)
 		if err != nil {
 			log.Printf("Follow cancel error: %v", err)
 			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to cancel follow")
 			return
 		}
-		rowsAffected, _ := result.RowsAffected()
-		if rowsAffected == 0 {
+		rowsAffected, err := result.RowsAffected()
+		if err != nil || rowsAffected == 0 {
+			log.Printf("No rows affected for follower_user_id %d, followed_user_id %d: %v", currentUserID, followedUserID, err)
 			utils.SendErrorResponse(w, http.StatusBadRequest, "No follow relationship to cancel")
 			return
 		}
@@ -176,12 +169,14 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendSuccessResponse(w, map[string]interface{}{
-		"status": status,
+		"success":   true,
+		"status":    status,
+		"follow_id": followID,
 	})
 }
 
 // FollowStatusHandler checks if the current user is following a profile
-func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
+func FollowStatusHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("FollowStatusHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 
@@ -200,22 +195,6 @@ func FollowStatusHandler(w http.ResponseWriter, r *http.Request) {
 	userUUID := strings.Split(path, "/")[0]
 	if userUUID == "" {
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing user UUID")
-		return
-	}
-
-	// Initialize database
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
-
-	if db.GetDB() == nil {
-		log.Println("Nil database connection")
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database not initialized")
 		return
 	}
 

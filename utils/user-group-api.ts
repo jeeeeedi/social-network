@@ -6,6 +6,8 @@
  * - Helper functions for display formatting
  */
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 export interface UserInfo {
   user_id: number;
   user_uuid: string;
@@ -58,7 +60,7 @@ export async function getUserById(userId: number): Promise<UserInfo | null> {
   }
 
   try {
-    const response = await fetch(`http://localhost:8080/api/users/${userId}`, {
+    const response = await fetch(`${API_URL}/api/users/${userId}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -99,7 +101,7 @@ export async function getUsersByIds(userIds: number[]): Promise<Map<number, User
   // Fetch uncached users
   if (uncachedIds.length > 0) {
     try {
-      const response = await fetch(`http://localhost:8080/api/users/batch`, {
+      const response = await fetch(`${API_URL}/api/users/batch`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -148,7 +150,7 @@ export async function getGroupById(groupId: number): Promise<GroupInfo | null> {
   }
 
   try {
-    const response = await fetch(`http://localhost:8080/api/groups/${groupId}`, {
+    const response = await fetch(`${API_URL}/api/groups/${groupId}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -161,7 +163,8 @@ export async function getGroupById(groupId: number): Promise<GroupInfo | null> {
       return null;
     }
 
-    const group: GroupInfo = await response.json();
+    const responseData = await response.json();
+    const group: GroupInfo = responseData.group || responseData;
     groupCache.set(groupId, group);
     return group;
   } catch (error) {
@@ -182,6 +185,9 @@ export function clearCaches() {
  * Helper function to format user display name
  */
 export function formatUserName(user: UserInfo): string {
+  if (!user) {
+    return "Unknown User";
+  }
   return user.nickname || `${user.first_name} ${user.last_name}`;
 }
 
@@ -189,10 +195,13 @@ export function formatUserName(user: UserInfo): string {
  * Helper function to get user avatar URL
  */
 export function getUserAvatarUrl(user: UserInfo): string {
+  if (!user) {
+    return "/placeholder.svg";
+  }
   if (user.avatar) {
     return user.avatar.startsWith('http') 
       ? user.avatar 
-      : `http://localhost:8080${user.avatar}`;
+      : `${API_URL}${user.avatar}`;
   }
   return "/placeholder.svg";
 }
@@ -201,10 +210,13 @@ export function getUserAvatarUrl(user: UserInfo): string {
  * Helper function to get group avatar URL
  */
 export function getGroupAvatarUrl(group: GroupInfo): string {
+  if (!group) {
+    return "/placeholder.svg";
+  }
   if (group.avatar) {
     return group.avatar.startsWith('http') 
       ? group.avatar 
-      : `http://localhost:8080${group.avatar}`;
+      : `${API_URL}${group.avatar}`;
   }
   return "/placeholder.svg";
 }
@@ -213,6 +225,9 @@ export function getGroupAvatarUrl(group: GroupInfo): string {
  * Helper function to get group avatar fallback initials
  */
 export function getGroupAvatarFallback(group: GroupInfo): string {
+  if (!group || !group.title) {
+    return "GR"; // Default fallback
+  }
   return group.title
     .split(" ")
     .map(word => word.charAt(0))
@@ -226,7 +241,7 @@ export function getGroupAvatarFallback(group: GroupInfo): string {
  */
 export async function getUserEvents(): Promise<EventInfo[]> {
   try {
-    const response = await fetch(`http://localhost:8080/api/events`, {
+    const response = await fetch(`${API_URL}/api/events`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -276,7 +291,7 @@ export async function enrichEvents(events: EventInfo[]): Promise<EventWithDetail
  */
 export async function respondToEvent(eventId: number, response: "going" | "not_going"): Promise<boolean> {
   try {
-    const apiResponse = await fetch(`http://localhost:8080/api/events/${eventId}/rsvp`, {
+    const apiResponse = await fetch(`${API_URL}/api/events/${eventId}/rsvp`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -299,7 +314,7 @@ export async function respondToEvent(eventId: number, response: "going" | "not_g
  */
 export async function getUserEventRSVP(eventId: number): Promise<string | null> {
   try {
-    const response = await fetch(`http://localhost:8080/api/events/${eventId}/rsvps`, {
+    const response = await fetch(`${API_URL}/api/events/${eventId}/rsvps`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -319,4 +334,4 @@ export async function getUserEventRSVP(eventId: number): Promise<string | null> 
     console.error('Error fetching RSVP status:', error);
     return null;
   }
-} 
+}

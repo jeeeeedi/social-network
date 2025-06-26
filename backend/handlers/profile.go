@@ -19,7 +19,7 @@ type PrivacyRequest struct {
 }
 
 // ProfileHandler fetches user profile data
-func ProfileHandler(w http.ResponseWriter, r *http.Request) {
+func ProfileHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("ProfileHandler called at %s for URL %s", time.Now().Format(time.RFC3339), r.URL.Path)
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -41,17 +41,6 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
-
 	// Fetch limited profile data
 	var profile dbTools.User
 	query := `
@@ -60,7 +49,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
         FROM users
         WHERE user_uuid = ? AND status = 'active'
     `
-	err = db.QueryRow(query, userUUID).Scan(
+	err := db.QueryRow(query, userUUID).Scan(
 		&profile.UserID, &profile.UserUUID, &profile.FirstName, &profile.LastName,
 		&profile.Nickname, &profile.Avatar, &profile.Privacy,
 	)
@@ -148,7 +137,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PrivacyHandler updates user privacy setting
-func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
+func PrivacyHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
@@ -159,16 +148,6 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
 		return
 	}
-
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
 
 	// Verify session and get user ID
 	userID, err := utils.GetUserIDFromSession(db.GetDB(), r)
@@ -213,39 +192,39 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("auto-accept follows error: %v", err)
 			}
 
-			// Create follow_accepted notifications
+			// Create follow_accepted notifications for auto-accepted follows
 			rowsAffected, _ := result.RowsAffected()
 			if rowsAffected > 0 {
 				rows, err := tx.Query(`
                     SELECT follow_id, follower_user_id
                     FROM follows
-                    WHERE followed_user_id = ? AND status = 'accepted'
+                    WHERE followed_user_id = ? AND status = 'accepted' AND updated_at >= datetime('now', '-1 minute')
                 `, int(userID))
 				if err != nil {
 					return fmt.Errorf("fetch accepted follows error: %v", err)
 				}
 				defer rows.Close()
 
-				var nickname string
-				err = tx.QueryRow(`SELECT COALESCE(nickname, '') FROM users WHERE user_id = ?`, int(userID)).Scan(&nickname)
-				if err != nil || nickname == "" {
-					nickname = "Someone"
-				}
-
+				// Create notifications for each auto-accepted follow
 				for rows.Next() {
 					var followID, followerUserID int
 					if err := rows.Scan(&followID, &followerUserID); err != nil {
 						continue
 					}
-					content := fmt.Sprintf("%s accepted your follow request", nickname)
-					notifyQuery := `
-                        INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at, updater_id)
-                        VALUES (?, ?, 'follow_accepted', 'follow', ?, ?, 'unread', datetime('now'), ?)
-                    `
-					_, err = tx.Exec(notifyQuery, followerUserID, int(userID), followID, content, int(userID))
-					if err != nil {
-						log.Printf("Notification insert error: %v", err)
-					}
+
+					// Use notification helpers outside transaction for now
+					// Note: This creates a temporary inconsistency but avoids transaction complexity
+					go func(fID, followerID, userID int) {
+						db := &dbTools.DB{}
+						if db, err := db.OpenDB(); err == nil {
+							defer db.CloseDB()
+							notificationHelpers := dbTools.NewNotificationHelpers(db)
+							err = notificationHelpers.CreateFollowAcceptedNotification(followerID, userID, fID)
+							if err != nil {
+								log.Printf("Notification creation error: %v", err)
+							}
+						}
+					}(followID, followerUserID, int(userID))
 				}
 				if err = rows.Err(); err != nil {
 					return fmt.Errorf("accepted follows rows error: %v", err)
@@ -273,7 +252,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ProfileMeHandler fetches the current user's profile
-func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
+func ProfileMeHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	log.Println("ProfileMeHandler called")
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
@@ -285,17 +264,6 @@ func ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
 		return
 	}
-
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "DB connection failed"})
-		return
-	}
-	defer db.CloseDB()
 
 	currentUserID, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {

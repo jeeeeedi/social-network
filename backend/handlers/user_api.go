@@ -17,7 +17,7 @@ type BatchUserRequest struct {
 }
 
 // UserByIDHandler fetches a user by user_id
-func UserByIDHandler(w http.ResponseWriter, r *http.Request) {
+func UserByIDHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
@@ -42,15 +42,6 @@ func UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	db, err = db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
-
 	// Verify session for access control
 	_, err = utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
@@ -71,7 +62,7 @@ func UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // BatchUsersHandler fetches multiple users by their IDs
-func BatchUsersHandler(w http.ResponseWriter, r *http.Request) {
+func BatchUsersHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
@@ -82,17 +73,8 @@ func BatchUsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := &dbTools.DB{}
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "DB connection failed")
-		return
-	}
-	defer db.CloseDB()
-
 	// Verify session for access control
-	_, err = utils.GetUserIDFromSession(db.GetDB(), r)
+	_, err := utils.GetUserIDFromSession(db.GetDB(), r)
 	if err != nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "Authentication required")
 		return

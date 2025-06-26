@@ -58,7 +58,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           {loginError && (
-            <Alert className="mb-4">
+            <Alert variant="destructive" className="mb-4">
               <AlertDescription>{loginError}</AlertDescription>
             </Alert>
           )}
@@ -111,16 +111,16 @@ export default function LoginPage() {
                 'Login'
               )}
             </Button>
-            
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => router.push('/register')}
-            >
-              Don't have an account? Register
-            </Button>
           </form>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full mt-4"
+            onClick={() => router.push('/register')}
+          >
+            Don't have an account? Register
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -12,17 +12,8 @@ import (
 )
 
 // EventsHandler handles general event-related requests (not group-specific)
-func EventsHandler(w http.ResponseWriter, r *http.Request) {
+func EventsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w)
-
-	db := &dbTools.DB{}
-	var err error
-	db, err = db.OpenDB()
-	if err != nil {
-		http.Error(w, "Database unavailable", http.StatusInternalServerError)
-		return
-	}
-	defer db.CloseDB()
 
 	path := r.URL.Path
 	segments := strings.Split(strings.Trim(path, "/"), "/")
@@ -253,6 +244,19 @@ func createGroupEvent(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gr
 	}
 
 	log.Printf("Successfully created event: %+v", createdEvent)
+
+	// Create notifications for all group members
+	group, err := db.GetGroupByID(groupID)
+	if err != nil {
+		log.Printf("Failed to get group details for event notification: %v", err)
+	} else {
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		err = notificationHelpers.CreateGroupEventNotification(userID, groupID, createdEvent.EventID, group.Title, createdEvent.Title)
+		if err != nil {
+			log.Printf("Failed to create event notifications: %v", err)
+			// Don't fail the request if notification creation fails
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

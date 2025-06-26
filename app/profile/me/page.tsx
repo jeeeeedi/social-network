@@ -1,5 +1,7 @@
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -91,7 +93,7 @@ export default function MyProfilePage() {
 
         // Fetch followers
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${currentUser.user_uuid}`,
+          `${API_URL}/api/followers/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",
@@ -113,7 +115,7 @@ export default function MyProfilePage() {
 
         // Fetch following
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${currentUser.user_uuid}`,
+          `${API_URL}/api/following/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",
@@ -131,7 +133,7 @@ export default function MyProfilePage() {
 
         // Fetch posts
         const myPostsRes = await fetch(
-          `http://localhost:8080/api/getprofileposts/${currentUser.user_uuid}`,
+          `${API_URL}/api/getprofileposts/${currentUser.user_uuid}`,
           {
             method: "GET",
             credentials: "include",
@@ -165,7 +167,7 @@ export default function MyProfilePage() {
       newPrivacyValue || (privacy === "public" ? "private" : "public");
     try {
       const response = await fetch(
-        "http://localhost:8080/api/profile/privacy",
+        `${API_URL}/api/profile/privacy`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -252,7 +254,7 @@ export default function MyProfilePage() {
               <AvatarImage
                 src={
                   profile.avatar && profile.avatar.trim() !== ""
-                    ? `http://localhost:8080${profile.avatar}`
+                    ? `${API_URL}${profile.avatar}`
                     : "/placeholder.svg"
                 }
                 alt={displayName}
@@ -280,6 +282,10 @@ export default function MyProfilePage() {
               </div>
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Mail className="h-4 w-4" />
+                  {profile.email}
+                </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   Joined {formatDateOnly(profile.created_at)}
@@ -343,24 +349,17 @@ export default function MyProfilePage() {
                   {post.filename_new && (
                     <div className="mb-3">
                       <img
-                        src={`http://localhost:8080/uploads/${post.filename_new}`}
+                        src={`${API_URL}/uploads/${post.filename_new}`}
                         alt="Post attachment"
                         className="max-w-xs max-h-48 rounded border object-cover"
                       />
                     </div>
                   )}
                   <div className="flex gap-4 text-muted-foreground">
-                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                      <Heart className="h-3 w-3" />0
-                    </button>
-                    <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                    <span className="flex items-center gap-1 text-xs hover:text-foreground">
                       <MessageCircle className="h-3 w-3" />
                       {post.comments?.length || 0}
-                    </button>
-                    {/* <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                      <Share className="h-3 w-3" />
-                      0
-                    </button> */}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -385,7 +384,7 @@ export default function MyProfilePage() {
                     <AvatarImage
                       src={
                         follower.avatar && follower.avatar.trim() !== ""
-                          ? `http://localhost:8080${follower.avatar}`
+                          ? `${API_URL}${follower.avatar}`
                           : undefined
                       }
                       alt={follower.nickname}
@@ -402,7 +401,7 @@ export default function MyProfilePage() {
                     </p>
                     {follower.nickname && (
                       <p className="text-xs text-muted-foreground truncate">
-                        @{follower.nickname}
+                        @{follower.nickname || ''}
                       </p>
                     )}
                   </div>
@@ -429,7 +428,7 @@ export default function MyProfilePage() {
                     <AvatarImage
                       src={
                         follow.avatar && follow.avatar.trim() !== ""
-                          ? `http://localhost:8080${follow.avatar}`
+                          ? `${API_URL}${follow.avatar}`
                           : undefined
                       }
                       alt={follow.nickname}
@@ -446,7 +445,7 @@ export default function MyProfilePage() {
                     </p>
                     {follow.nickname && (
                       <p className="text-xs text-muted-foreground truncate">
-                        @{follow.nickname}
+                        @{follow.nickname || ''}
                       </p>
                     )}
                   </div>

@@ -15,22 +15,47 @@ func setHandlers(db *dbTools.DB) {
 
 	// API routes
 	http.HandleFunc("/", handlers.HomeHandler)
-	http.HandleFunc("/api/login", handlers.LoginHandler)
-	http.HandleFunc("/api/register", handlers.RegisterHandler)
-	http.HandleFunc("/api/logout", handlers.LogoutHandler)
-	http.HandleFunc("/api/session-check", handlers.SessionCheckHandler)
-	http.HandleFunc("/api/profile/me", handlers.ProfileMeHandler)
-	http.HandleFunc("/api/profile/", handlers.ProfileHandler) // Will handle /api/profile/{uuid}
-	http.HandleFunc("/api/profile/privacy", handlers.PrivacyHandler)
-	http.HandleFunc("/api/groups", handlers.GroupsHandler)  // Adding route for groups
-	http.HandleFunc("/api/events", handlers.EventsHandler)  // Handle events endpoint
-	http.HandleFunc("/api/events/", handlers.EventsHandler) // Handle event subroutes
-	http.HandleFunc("/api/groups/", handlers.GroupsHandler) // Handle subroutes under groups (must be last)
+	http.HandleFunc("/api/login", func(w http.ResponseWriter, r *http.Request) {
+		handlers.LoginHandler(db, w, r)
+	})
+	http.HandleFunc("/api/register", func(w http.ResponseWriter, r *http.Request) {
+		handlers.RegisterHandler(db, w, r)
+	})
+	http.HandleFunc("/api/logout", func(w http.ResponseWriter, r *http.Request) {
+		handlers.LogoutHandler(db, w, r)
+	})
+	http.HandleFunc("/api/session-check", func(w http.ResponseWriter, r *http.Request) {
+		handlers.SessionCheckHandler(db, w, r)
+	})
+	http.HandleFunc("/api/profile/me", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ProfileMeHandler(db, w, r)
+	})
+	http.HandleFunc("/api/profile/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ProfileHandler(db, w, r)
+	}) // Will handle /api/profile/{uuid}
+	http.HandleFunc("/api/profile/privacy", func(w http.ResponseWriter, r *http.Request) {
+		handlers.PrivacyHandler(db, w, r)
+	})
+	http.HandleFunc("/api/groups", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GroupsHandler(db, w, r)
+	})
+	http.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
+		handlers.EventsHandler(db, w, r)
+	})
+	http.HandleFunc("/api/events/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.EventsHandler(db, w, r)
+	}) // Handle event subroutes
+	http.HandleFunc("/api/groups/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GroupsHandler(db, w, r)
+	}) // Handle subroutes under groups (must be last)
 
 	// User API routes
-	http.HandleFunc("/api/users/", handlers.UserByIDHandler)        // Handle /api/users/{id}
-	http.HandleFunc("/api/users/batch", handlers.BatchUsersHandler) // Handle batch user requests
-
+	http.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UserByIDHandler(db, w, r)
+	}) // Handle /api/users/{id}
+	http.HandleFunc("/api/users/batch", func(w http.ResponseWriter, r *http.Request) {
+		handlers.BatchUsersHandler(db, w, r)
+	}) // Handle batch user requests
 	http.HandleFunc("/api/messages/", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MessageHandler(db, w, r)
 	})
@@ -56,13 +81,30 @@ func setHandlers(db *dbTools.DB) {
 	})
 
 	// Routes for FOLLOWS and NOTIFICATIONS
-	http.HandleFunc("/api/followers/", handlers.GetFollowersHandler)
-	http.HandleFunc("/api/following/", handlers.GetFollowingHandler)
-	http.HandleFunc("/api/follow/", handlers.FollowHandler)
-	http.HandleFunc("/api/follow/status/", handlers.FollowStatusHandler)
-	http.HandleFunc("/api/follow_requests", handlers.FollowRequestHandler) // Added for follow request operations
-	http.HandleFunc("/api/notifications/", handlers.NotificationHandler)   // Added for notifications
-	http.HandleFunc("/api/users", handlers.UsersHandler)
+	http.HandleFunc("/api/followers/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetFollowersHandler(db, w, r)
+	})
+	http.HandleFunc("/api/following/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetFollowingHandler(db, w, r)
+	})
+	http.HandleFunc("/api/follow/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.FollowHandler(db, w, r)
+	})
+	http.HandleFunc("/api/follow/status/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.FollowStatusHandler(db, w, r)
+	})
+	http.HandleFunc("/api/follow_requests", func(w http.ResponseWriter, r *http.Request) {
+		handlers.FollowRequestHandler(db, w, r)
+	})
+	http.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
+		handlers.NotificationHandler(db, w, r)
+	})
+	http.HandleFunc("/api/notifications/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.NotificationHandler(db, w, r)
+	})
+	http.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UsersHandler(db, w, r)
+	})
 }
 
 func main() {

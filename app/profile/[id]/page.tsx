@@ -1,5 +1,7 @@
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -92,7 +94,7 @@ export default function UserProfilePage() {
 
         // Fetch followers
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${userUUID}`,
+          `${API_URL}/api/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -110,7 +112,7 @@ export default function UserProfilePage() {
 
         // Fetch following
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${userUUID}`,
+          `${API_URL}/api/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -130,7 +132,7 @@ export default function UserProfilePage() {
         if (currentUser && currentUser.user_uuid !== userUUID) {
           try {
             const followResponse = await fetch(
-              `http://localhost:8080/api/follow/status/${userUUID}`,
+              `${API_URL}/api/follow/status/${userUUID}`,
               { credentials: "include" }
             );
             const followData = await followResponse.json();
@@ -164,7 +166,7 @@ export default function UserProfilePage() {
         ) {
           try {
             const myPostsRes = await fetch(
-              `http://localhost:8080/api/getprofileposts/${userUUID}`,
+              `${API_URL}/api/getprofileposts/${userUUID}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -201,7 +203,7 @@ export default function UserProfilePage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8080/api/follow/${userUUID}`,
+        `${API_URL}/api/follow/${userUUID}`,
         {
           method: isFollowing ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -217,7 +219,7 @@ export default function UserProfilePage() {
 
         // Refresh followers and following
         const followersResponse = await fetch(
-          `http://localhost:8080/api/followers/${userUUID}`,
+          `${API_URL}/api/followers/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -230,7 +232,7 @@ export default function UserProfilePage() {
         }
 
         const followingResponse = await fetch(
-          `http://localhost:8080/api/following/${userUUID}`,
+          `${API_URL}/api/following/${userUUID}`,
           {
             method: "GET",
             credentials: "include",
@@ -318,10 +320,15 @@ export default function UserProfilePage() {
       ? `${profile.first_name} ${profile.last_name}`
       : profile.nickname || "Unknown User";
 
+  // Check if current user is a follower of this profile owner
+  const amIFollower = currentUser && followers.some(
+    (follower) => follower.user_uuid === currentUser.user_uuid
+  );
+
   const canViewDetails =
     profile.privacy === "public" ||
     isOwnProfile ||
-    (isFollowing && followStatus === "accepted");
+    amIFollower;
 
   const getFollowButtonText = () => {
     if (isFollowing) {
@@ -369,7 +376,7 @@ export default function UserProfilePage() {
                   <AvatarImage
                     src={
                       profile.avatar && profile.avatar.trim() !== ""
-                        ? `http://localhost:8080${profile.avatar}`
+                        ? `${API_URL}${profile.avatar}`
                         : undefined
                     }
                     alt={`${displayName}'s avatar`}
@@ -383,15 +390,15 @@ export default function UserProfilePage() {
               </div>
 
               <div className="flex-1 space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{displayName}</h2>
-                  {profile.nickname && (
-                    <p className="text-muted-foreground">@{profile.nickname}</p>
-                  )}
-                </div>
-
                 {canViewDetails ? (
                   <>
+                    <div>
+                      <h2 className="text-2xl font-bold">{displayName}</h2>
+                      {profile.nickname && (
+                        <p className="text-muted-foreground">@{profile.nickname || ''}</p>
+                      )}
+                    </div>
+
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Mail className="h-4 w-4" />
@@ -412,104 +419,114 @@ export default function UserProfilePage() {
                     {profile.about_me && (
                       <p className="text-sm">{profile.about_me}</p>
                     )}
+
+                    <div className="flex flex-wrap gap-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span className="font-semibold">{followers.length}</span>
+                        <span className="text-muted-foreground">followers</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        <span className="font-semibold">{following.length}</span>
+                        <span className="text-muted-foreground">following</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge
+                        variant={
+                          profile.privacy === "public" ? "default" : "secondary"
+                        }
+                      >
+                        {profile.privacy === "public" ? (
+                          <>
+                            <Unlock className="h-3 w-3 mr-1" />
+                            Public
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-3 w-3 mr-1" />
+                            Private
+                          </>
+                        )}
+                      </Badge>
+                      {profile.role && (
+                        <Badge variant="outline">{profile.role}</Badge>
+                      )}
+                      {followStatus === "pending" && (
+                        <Badge variant="outline" className="text-yellow-600">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Request Pending
+                        </Badge>
+                      )}
+                    </div>
+
+                    {!isOwnProfile && currentUser && (
+                      <Button
+                        onClick={handleFollowToggle}
+                        variant={isFollowing ? "outline" : "default"}
+                      >
+                        {getFollowButtonIcon()}
+                        {getFollowButtonText()}
+                      </Button>
+                    )}
+
+                    {isOwnProfile && (
+                      <Button
+                        variant="outline"
+                        onClick={() => router.push("/profile/me")}
+                      >
+                        Edit Profile
+                      </Button>
+                    )}
                   </>
                 ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Limited profile view
-                  </p>
-                )}
+                  <>
+                    <div>
+                      <h2 className="text-2xl font-bold">{displayName}</h2>
+                    </div>
+                    
+                    <div className="text-center py-8">
+                      <Lock className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground text-lg">
+                        Limited profile view
+                      </p>
+                    </div>
 
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span className="font-semibold">{followers.length}</span>
-                    <span className="text-muted-foreground">followers</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    <span className="font-semibold">{following.length}</span>
-                    <span className="text-muted-foreground">following</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge
-                    variant={
-                      profile.privacy === "public" ? "default" : "secondary"
-                    }
-                  >
-                    {profile.privacy === "public" ? (
-                      <>
-                        <Unlock className="h-3 w-3 mr-1" />
-                        Public
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3 w-3 mr-1" />
-                        Private
-                      </>
+                    {!isOwnProfile && currentUser && (
+                      <div className="flex justify-center">
+                        <Button
+                          onClick={handleFollowToggle}
+                          variant={isFollowing ? "outline" : "default"}
+                        >
+                          {getFollowButtonIcon()}
+                          {getFollowButtonText()}
+                        </Button>
+                      </div>
                     )}
-                  </Badge>
-                  {profile.role && (
-                    <Badge variant="outline">{profile.role}</Badge>
-                  )}
-                  {followStatus === "pending" && (
-                    <Badge variant="outline" className="text-yellow-600">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Request Pending
-                    </Badge>
-                  )}
-                </div>
-
-                {!isOwnProfile && currentUser && (
-                  <Button
-                    onClick={handleFollowToggle}
-                    variant={isFollowing ? "outline" : "default"}
-                  >
-                    {getFollowButtonIcon()}
-                    {getFollowButtonText()}
-                  </Button>
-                )}
-
-                {isOwnProfile && (
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push("/profile/me")}
-                  >
-                    Edit Profile
-                  </Button>
+                  </>
                 )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Posts */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Posts ({posts?.length || 0})</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!canViewDetails ? (
-                  <div className="text-center py-8">
-                    <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      This user's posts are private
+        {canViewDetails && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Posts */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Posts ({posts?.length || 0})</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!posts || posts?.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No posts yet.
                     </p>
-                    {!isFollowing && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Follow this user to see their posts
-                      </p>
-                    )}
-                  </div>
-                ) : !posts || posts?.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    {displayName} hasn&apos;t posted anything yet :(
-                  </p>
-                ) : (
-                  posts?.map((post) => (
+                  ) : (
+                    posts?.map((post) => (
                     <Card key={post.post_uuid} className="border-border/50">
                       <CardContent className="p-4">
                         <div className="flex items-center mb-2">
@@ -526,20 +543,17 @@ export default function UserProfilePage() {
                         {post.filename_new && (
                           <div className="mb-3">
                             <img
-                              src={`http://localhost:8080/uploads/${post.filename_new}`}
+                              src={`${API_URL}/uploads/${post.filename_new}`}
                               alt="Post attachment"
                               className="max-w-xs max-h-48 rounded border object-cover"
                             />
                           </div>
                         )}
                         <div className="flex gap-4 text-muted-foreground">
-                          <button className="flex items-center gap-1 text-xs hover:text-foreground">
-                            <Heart className="h-3 w-3" />0
-                          </button>
-                          <button className="flex items-center gap-1 text-xs hover:text-foreground">
+                          <span className="flex items-center gap-1 text-xs hover:text-foreground">
                             <MessageCircle className="h-3 w-3" />{" "}
                             {post.comments ? post.comments.length : 0}
-                          </button>
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
@@ -571,7 +585,7 @@ export default function UserProfilePage() {
                           <AvatarImage
                             src={
                               follower.avatar && follower.avatar.trim() !== ""
-                                ? `http://localhost:8080${follower.avatar}`
+                                ? `${API_URL}${follower.avatar}`
                                 : undefined
                             }
                             alt={follower.nickname}
@@ -588,7 +602,7 @@ export default function UserProfilePage() {
                           </p>
                           {follower.nickname && (
                             <p className="text-xs text-muted-foreground truncate">
-                              @{follower.nickname}
+                              @{follower.nickname || ''}
                             </p>
                           )}
                         </div>
@@ -628,7 +642,7 @@ export default function UserProfilePage() {
                           <AvatarImage
                             src={
                               follow.avatar && follow.avatar.trim() !== ""
-                                ? `http://localhost:8080${follow.avatar}`
+                                ? `${API_URL}${follow.avatar}`
                                 : undefined
                             }
                             alt={follow.nickname}
@@ -645,7 +659,7 @@ export default function UserProfilePage() {
                           </p>
                           {follow.nickname && (
                             <p className="text-xs text-muted-foreground truncate">
-                              @{follow.nickname}
+                              @{follow.nickname || ''}
                             </p>
                           )}
                         </div>
@@ -666,6 +680,7 @@ export default function UserProfilePage() {
             </Card>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

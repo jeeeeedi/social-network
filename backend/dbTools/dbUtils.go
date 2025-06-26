@@ -2,6 +2,7 @@ package dbTools
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -14,36 +15,44 @@ type DB struct {
 }
 
 func (d *DB) OpenDB() (*DB, error) {
+	log.Println("[DB] Opening database at ./db/socnet.db ...")
 	db, err := sql.Open("sqlite3", "./db/socnet.db")
 	if err != nil {
+		log.Printf("[DB] sql.Open error: %v", err)
 		return nil, err
 	}
 	d.db = db
 
 	err = d.RunMigration()
 	if err != nil {
+		log.Printf("[DB] Migration error: %v", err)
 		d.db.Close()
 	}
 	return d, nil
 }
 
 func (d *DB) RunMigration() error {
+	log.Println("[DB] Running migrations from ./db/migrations ...")
 	driver, err := sqlite3.WithInstance(d.db, &sqlite3.Config{})
 	if err != nil {
+		log.Printf("[DB] sqlite3.WithInstance error: %v", err)
 		d.db.Close()
 		return err
 	}
 
 	m, err := migrate.NewWithDatabaseInstance("file://./db/migrations", "sqlite3", driver)
 	if err != nil {
+		log.Printf("[DB] migrate.NewWithDatabaseInstance error: %v", err)
 		d.db.Close()
 		return err
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Printf("[DB] m.Up() error: %v", err)
 		d.db.Close()
 		return err
 	}
+	log.Println("[DB] Migration complete.")
 	return nil
 }
 
@@ -85,47 +94,26 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return d.db.Exec(query, args...)
 }
 
+// Legacy notification functions - DEPRECATED
+// Use NotificationService from dbNotification.go instead
+
 // CreateNotification creates a new notification in the database
+// DEPRECATED: Use NotificationService.CreateNotification instead
 func (d *DB) CreateNotification(receiverID, actorID int, actionType, parentType string, parentID int, content string) error {
-	query := `INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, status, created_at)
-	          VALUES (?, ?, ?, ?, ?, ?, 'unread', datetime('now'))`
-	_, err := d.db.Exec(query, receiverID, actorID, actionType, parentType, parentID, content)
-	return err
+	service := NewNotificationService(d)
+	return service.CreateNotification(receiverID, actorID, actionType, parentType, parentID, content)
 }
 
 // GetNotificationsByUserID retrieves all notifications for a user
+// DEPRECATED: Use NotificationService.GetNotificationsByUserID instead
 func (d *DB) GetNotificationsByUserID(userID int) ([]Notification, error) {
-	query := `SELECT n.notification_id, n.receiver_id, n.actor_id, n.action_type, n.parent_type, n.parent_id,
-	                 n.content, n.status, n.created_at, COALESCE(u.nickname, u.first_name) as nickname, 
-	                 COALESCE(u.avatar, '') as avatar
-	          FROM notifications n
-	          JOIN users u ON n.actor_id = u.user_id
-	          WHERE n.receiver_id = ? AND n.status != 'inactive'
-	          ORDER BY n.created_at DESC`
-
-	rows, err := d.db.Query(query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	notifications := []Notification{}
-	for rows.Next() {
-		var n Notification
-		err := rows.Scan(&n.NotificationID, &n.ReceiverID, &n.ActorID, &n.ActionType, &n.ParentType,
-			&n.ParentID, &n.Content, &n.Status, &n.CreatedAt, &n.Nickname, &n.Avatar)
-		if err != nil {
-			return nil, err
-		}
-		notifications = append(notifications, n)
-	}
-	return notifications, nil
+	service := NewNotificationService(d)
+	return service.GetNotificationsByUserID(userID)
 }
 
 // UpdateNotificationStatus updates a notification's status
+// DEPRECATED: Use NotificationService.UpdateNotificationStatus instead
 func (d *DB) UpdateNotificationStatus(notificationID int, status string, updaterID int) error {
-	query := `UPDATE notifications SET status = ?, updated_at = datetime('now'), updater_id = ?
-	          WHERE notification_id = ?`
-	_, err := d.db.Exec(query, status, updaterID, notificationID)
-	return err
+	service := NewNotificationService(d)
+	return service.UpdateNotificationStatus(notificationID, status, updaterID)
 }
