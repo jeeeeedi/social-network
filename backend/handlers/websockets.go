@@ -64,25 +64,36 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	listOfAllGroups, err := db.GetAllGroups(userID)
+	fmt.Println("listOfAllGroups:", listOfAllGroups)
 	if err != nil {
 		log.Println("err getting all groups:", err)
 	}
 
-	for groupId := range listOfAllGroups {
-		listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupId)
-		if err != nil {
-			log.Println("getting group members failed:", err)
-		}
-		for _, grMember := range listOfAllGroupMemberIDs {
-			if grMember.MembershipID == userID {
-				//Add to group connection
-				if allGroups[groupIdString] == nil {
-					allGroups[groupIdString] = make(map[*websocket.Conn]bool)
+	for _, group := range listOfAllGroups {
+		// grId := strconv.Itoa(group.GroupID)
+		groupID_G, ok := group["group_id"].(int)
+			if !ok {
+					// handle error or invalid type
+					log.Println("group_id is not an int")
+					return
+			}
+			listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupID_G)
+			if err != nil {
+				log.Println("getting group members failed:", err)
+			}
+			for _, grMember := range listOfAllGroupMemberIDs {
+				fmt.Println("membership id:", grMember.MembershipID)
+				if grMember.MemberID == userID {
+					//Add to group connection
+					grId := strconv.Itoa(grMember.GroupID)
+					fmt.Println("Adding a user to the group:", grId)
+					if allGroups[grId] == nil {
+						allGroups[grId] = make(map[*websocket.Conn]bool)
+					}
+					allGroups[grId][conn] = true
 				}
-				allGroups[groupIdString][conn] = true
 			}
 		}
-	}
 	clientsMutex.Lock()
 	clients[conn] = userID
 	clientsMutex.Unlock()
@@ -125,13 +136,14 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 			// ensure this conn is in the group
 			// CHANGE THIS, NEED TO ENSURE USER IS SEEN AS PART OF GROUP EVEN IF THEY HAVEN'T SENT A MESSAGE
-			
-			groupsMutex.Lock()
-			if allGroups[groupIdString] == nil {
-				allGroups[groupIdString] = make(map[*websocket.Conn]bool)
-			}
-			allGroups[groupIdString][conn] = true
-			groupsMutex.Unlock()
+
+			// // Redundant
+			// groupsMutex.Lock()
+			// if allGroups[groupIdString] == nil {
+			// 	allGroups[groupIdString] = make(map[*websocket.Conn]bool)
+			// }
+			// allGroups[groupIdString][conn] = true
+			// groupsMutex.Unlock()
 		}
 
 		senderID, err := utils.GetUserIDFromSession(db.GetDB(), r)
