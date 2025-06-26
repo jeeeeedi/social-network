@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { MessageCircle, User, Users as UsersIcon, Calendar } from "lucide-react"
 import { ChatInterface } from "@/components/chat-interface"
 import { GroupChat } from "@/components/group-chat"
+import { EventCard } from "@/components/event-card"
 import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
 import { useAuth } from "@/contexts/AuthContext"
 import { Feed } from "@/components/feed"
@@ -209,42 +210,15 @@ export default function SocialNetworkPage() {
                 userEvents
                   .filter(event => new Date(event.event_date_time) > new Date())
                   .slice(0, 3)
-                  .map((event) => {
-                    const isGoing = userRSVPs[event.event_id] === "going";
-                    const isNotGoing = userRSVPs[event.event_id] === "not_going";
-                    const eventDate = new Date(event.event_date_time);
-                    
-                    return (
-                      <div key={event.event_id} className="p-3 border rounded-lg space-y-2">
-                        <div>
-                          <h4 className="font-medium text-sm">{event.title}</h4>
-                          <p className="text-xs text-muted-foreground">{event.group?.title || 'Unknown Group'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={isGoing ? "default" : "outline"}
-                            onClick={() => handleEventResponse(event.event_id, "going")}
-                            className="flex-1 text-xs"
-                          >
-                            Going
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={isNotGoing ? "destructive" : "outline"}
-                            onClick={() => handleEventResponse(event.event_id, "not_going")}
-                            className="flex-1 text-xs"
-                          >
-                            Not Going
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
+                  .map((event) => (
+                    <EventCard
+                      key={event.event_id}
+                      event={event}
+                      rsvpStatus={userRSVPs[event.event_id] as "going" | "not_going" | null}
+                      onRsvpChange={handleEventResponse}
+                      variant="home"
+                    />
+                  ))
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">No upcoming events</p>
               )}
