@@ -42,7 +42,8 @@ type outMessage struct {
 
 var (
 	clientsMutex sync.RWMutex
-	clients      = make(map[*websocket.Conn]int) // Connection -> UserID
+	clients      = make(map[*websocket.Conn]int)                 // Connection -> UserID
+	userConns    = make(map[int]*websocket.Conn)                 // UserID -> Latest Connection (only one per user)
 	groupsMutex  sync.RWMutex
 	allGroups    = make(map[string]map[*websocket.Conn]bool) // Each GroupID has a map of all connections. If a key is true, that means that that connection/client is part of the group
 )
@@ -69,12 +70,15 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("err getting all groups:", err)
 	}
 
+	// Add connection to all groups the user is a member of (handled once at connection setup)
+	groupsMutex.Lock()
 	for _, group := range listOfAllGroups {
 		// grId := strconv.Itoa(group.GroupID)
 		groupID_G, ok := group["group_id"].(int)
 		if !ok {
 			// handle error or invalid type
 			log.Println("group_id is not an int")
+			groupsMutex.Unlock()
 			return
 		}
 		listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupID_G)
@@ -94,8 +98,25 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	groupsMutex.Unlock()
+	
 	clientsMutex.Lock()
+	// Close any existing connection for this user
+	if existingConn, exists := userConns[userID]; exists {
+		log.Printf("WebSocketsHandler: Closing existing connection %p for userID=%d", existingConn, userID)
+		existingConn.Close()
+		delete(clients, existingConn)
+		// Remove from all groups
+		groupsMutex.Lock()
+		for _, room := range allGroups {
+			delete(room, existingConn)
+		}
+		groupsMutex.Unlock()
+	}
+	
 	clients[conn] = userID
+	userConns[userID] = conn
+	log.Printf("WebSocketsHandler: Added connection %p for userID=%d\n", conn, userID)
 	clientsMutex.Unlock()
 
 	// Check what groups the client is part of, and enable real time messages.
@@ -113,18 +134,18 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Println("incomingMsg:", incomingMsg)
-		var recieverName string
+		var receiverName string
 		var receiverID, groupID int
-		if incomingMsg.ChatType == "private" { // Reduntant if .ChatType is consistent
+		if incomingMsg.ChatType == "private" { // Redundant if .ChatType is consistent
 			otherUserUUID := strings.TrimPrefix(incomingMsg.ChatID, "private_")
-			reciever, err := db.FetchUserByUUID(otherUserUUID)
+			receiver, err := db.FetchUserByUUID(otherUserUUID)
 			if err != nil {
 				log.Println("Error fetching user by UUID:", err)
 				log.Println("Got incorrect UUID:", otherUserUUID)
 				continue
 			}
-			receiverID = reciever.UserID
-			recieverName = reciever.FirstName
+			receiverID = receiver.UserID
+			receiverName = receiver.FirstName
 		} else {
 			groupIdString = strings.TrimPrefix(incomingMsg.ChatID, "group_")
 			groupID, err = strconv.Atoi(groupIdString)
@@ -133,17 +154,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				log.Println("Error converting to int:", err)
 				continue
 			}
-
-			// ensure this conn is in the group
-			// CHANGE THIS, NEED TO ENSURE USER IS SEEN AS PART OF GROUP EVEN IF THEY HAVEN'T SENT A MESSAGE
-
-			// // Redundant
-			// groupsMutex.Lock()
-			// if allGroups[groupIdString] == nil {
-			// 	allGroups[groupIdString] = make(map[*websocket.Conn]bool)
-			// }
-			// allGroups[groupIdString][conn] = true
-			// groupsMutex.Unlock()
+			// Group membership is already handled at connection setup; no need to add again here.
 		}
 
 		senderID, err := utils.GetUserIDFromSession(db.GetDB(), r)
@@ -161,6 +172,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Println("groupId:", chatMsg.GroupID)
 		chatID, err := db.AddMessageToDB(&chatMsg)
+		log.Print("AddMessageToDB returned chatID:", chatID)
 		if err != nil {
 			log.Println("Error inserting message into DB:", err)
 			continue
@@ -169,21 +181,24 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		var recipientConnections []*websocket.Conn
 
 		if incomingMsg.ChatType == "private" {
-			// Send to self and intended recipient
+			// Send to sender and receiver (one connection each)
+			log.Printf("[WS] Private message: senderID=%d, receiverID=%d", senderID, receiverID)
 			clientsMutex.RLock()
-			// For some reason there are 3 connections, self, recipient, and another recipient(???), so we do this instead:
-			for clientConn := range clients {
-				if clientConn == conn {
-					recipientConnections = append(recipientConnections, clientConn)
-					break
-				}
+			log.Printf("[WS] User connections: %v", userConns)
+			
+			// Add sender's connection
+			if senderConn, exists := userConns[senderID]; exists {
+				log.Printf("[WS] Adding sender connection: %p for userID=%d", senderConn, senderID)
+				recipientConnections = append(recipientConnections, senderConn)
 			}
-			for clientConn, clientID := range clients {
-				if clientID == receiverID {
-					recipientConnections = append(recipientConnections, clientConn)
-					break // Break after first recipient is found.
-				}
+			
+			// Add receiver's connection
+			if receiverConn, exists := userConns[receiverID]; exists {
+				log.Printf("[WS] Adding receiver connection: %p for userID=%d", receiverConn, receiverID)
+				recipientConnections = append(recipientConnections, receiverConn)
 			}
+			
+			log.Printf("[WS] Final recipientConnections: %v", recipientConnections)
 			clientsMutex.RUnlock()
 		} else {
 			// Broadcast to all connections in the group
@@ -194,10 +209,10 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			groupsMutex.RUnlock()
 		}
 
-		// fetch the sending user's UUID
+		// fetch the sending user's information
 		senderUser, err := db.FetchUserByID(senderID)
 		if err != nil {
-			log.Println("WS: failed to fetch sender UUID:", err)
+			log.Println("WS: failed to fetch sender info:", err)
 			continue
 		}
 
@@ -207,20 +222,39 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		for _, conn := range recipientConnections {
 			fmt.Println(&conn)
 		}
+		
 		clientsMutex.RLock()
 		for _, recipientConn := range recipientConnections {
+			// Determine the appropriate chatID and otherUserName for this recipient
 			outChatID := incomingMsg.ChatID
-			if incomingMsg.ChatType == "private" && recipientConn != conn {
-				outChatID = fmt.Sprintf("private_%s", senderUser.UserUUID)
+			otherUserName := receiverName
+			otherUserID := receiverID
+			
+			// If this is a private message and the recipient is not the sender,
+			// adjust the chatID and otherUserName to be from the recipient's perspective
+			if incomingMsg.ChatType == "private" {
+				recipientUserID, exists := clients[recipientConn]
+				if exists && recipientUserID != senderID {
+					// This message is being sent to the receiver, so from their perspective
+					// the "other user" is the sender
+					outChatID = fmt.Sprintf("private_%s", senderUser.UserUUID)
+					otherUserName = senderUser.FirstName
+					otherUserID = senderID
+				} else {
+					// This message is being sent back to the sender, so from their perspective
+					// the "other user" is still the receiver
+					otherUserName = receiverName
+					otherUserID = receiverID
+				}
 			}
 
 			msg := outMessage{
 				ID:            chatID,
 				ChatID:        outChatID,
-				RequesterID:   incomingMsg.RequesterID,
+				RequesterID:   0, // Set appropriately if needed
 				SenderID:      senderID,
-				OtherUserName: recieverName,
-				OtherUserID:   receiverID,
+				OtherUserName: otherUserName,
+				OtherUserID:   otherUserID,
 				Content:       incomingMsg.Content,
 				Timestamp:     incomingMsg.Timestamp,
 				MessageType:   incomingMsg.MessageType,
@@ -232,17 +266,37 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			log.Printf("Sending message to connection %p: %s", recipientConn, string(payload))
+
 			if err := recipientConn.WriteMessage(websocket.TextMessage, payload); err != nil {
-				clientsMutex.RUnlock()
-				clientsMutex.Lock()
 				log.Println("WS: write error, dropping conn:", err)
-				recipientConn.Close()
-				delete(clients, recipientConn)
-				if room := allGroups[incomingMsg.ChatID]; room != nil {
-					delete(room, recipientConn)
-				}
-				clientsMutex.Unlock()
-				clientsMutex.RLock()
+				// Handle connection cleanup without breaking the read lock
+				go func(conn *websocket.Conn) {
+					clientsMutex.Lock()
+					userID := clients[conn]
+					delete(clients, conn)
+					delete(userConns, userID)
+					clientsMutex.Unlock()
+					
+					groupsMutex.Lock()
+					// Use the correct group ID for cleanup
+					var groupRoomKey string
+					if incomingMsg.ChatType == "group" {
+						groupRoomKey = groupIdString
+					}
+					if room := allGroups[groupRoomKey]; room != nil {
+						delete(room, conn)
+						// Clean up empty group rooms
+						if len(room) == 0 {
+							delete(allGroups, groupRoomKey)
+						}
+					}
+					groupsMutex.Unlock()
+					
+					conn.Close()
+				}(recipientConn)
+			} else {
+				log.Printf("Successfully sent message to connection %p", recipientConn)
 			}
 		}
 		clientsMutex.RUnlock()
@@ -251,12 +305,23 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 func cleanUp(conn *websocket.Conn) {
 	clientsMutex.Lock()
+	userID := clients[conn]
 	delete(clients, conn)
+	delete(userConns, userID)
+	log.Printf("cleanUp: deleted client connection: %p for userID=%d", conn, userID)
 	clientsMutex.Unlock()
 
 	groupsMutex.Lock()
-	for _, room := range allGroups {
-		delete(room, conn)
+	for groupID, room := range allGroups {
+		if _, exists := room[conn]; exists {
+			delete(room, conn)
+			log.Printf("cleanUp: removed connection %p from group %s, remaining members: %d", conn, groupID, len(room))
+			// Clean up empty group rooms
+			if len(room) == 0 {
+				delete(allGroups, groupID)
+				log.Printf("cleanUp: removed empty group %s", groupID)
+			}
+		}
 	}
 	groupsMutex.Unlock()
 	conn.Close()

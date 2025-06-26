@@ -96,12 +96,12 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 		// else if group, maybe fetch user by msg to add the other data like useruuid, firstname and avatar
 		resp[i] = messageResponse{
-			ID:              msg.ChatID,
-			RequesterID:     userID,
-			SenderID:        msg.SenderID,
-			Content:         msg.Content,
-			Timestamp:       msg.CreatedAt,
-			MessageType:     "text", // Placeholder, change later
+			ID:          msg.ChatID,
+			RequesterID: userID,
+			SenderID:    msg.SenderID,
+			Content:     msg.Content,
+			Timestamp:   msg.CreatedAt,
+			MessageType: "text", // Placeholder, change later
 		}
 		if chatType == "private" {
 			resp[i].ReceiverID = msg.ReceiverID
@@ -112,7 +112,7 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("resp to messages:", resp)
+	// fmt.Println("resp to messages:", resp)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		fmt.Println("JSON encode error:", err)

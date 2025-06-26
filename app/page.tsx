@@ -597,6 +597,7 @@ console.log('users:', users)
       {activeChat && (
         <ChatInterface
           user={activeChat}
+          currentUser={currentUser}
           messages={messages}
           onSendMessage={sendMessage}
           onClose={() => setActiveChat(null)}

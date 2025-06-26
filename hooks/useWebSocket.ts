@@ -52,23 +52,31 @@ export function useWebSocket() {
   const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])
   const ws = useRef<WebSocket | null>(null)
   const retryRef = useRef(RECONNECT_DELAY)
+  const connectingRef = useRef(false)
 
   const connect = useCallback(() => {
+    // Prevent multiple simultaneous connection attempts
+    if (connectingRef.current || (ws.current && ws.current.readyState === WebSocket.OPEN)) {
+      console.log("Connection already exists or in progress")
+      return
+    }
+    
+    connectingRef.current = true
     ws.current = new WebSocket(serverUrl)
 
     ws.current.onopen = () => {
       console.log("WS connected")
       setIsConnected(true)
+      connectingRef.current = false
       retryRef.current = RECONNECT_DELAY
     }
 
     ws.current.onmessage = (ev: MessageEvent) => {
-      console.log("Got message!!")
+      console.log("Got WebSocket message!!")
       try {
         const raw = JSON.parse(ev.data) as RawMessage
-        console.log("This is the message:")
-        console.log(raw)
-        console.log("Just checked if message was private or group")
+        console.log("Raw message from backend:", raw)
+        
         const msg: Message = {
           id: String(raw.id),
           chatId: raw.chatId,
@@ -80,8 +88,23 @@ export function useWebSocket() {
           messageType: raw.messageType,
           chatType: raw.chatType,
         }
-        console.log("Finally, adding message to messages:", msg)
-        setMessages(prev => [...prev, msg])
+        console.log("Processed message for frontend:", msg)
+        console.log("Adding message to messages state")
+        setMessages(prev => {
+          // Check if message already exists to prevent duplicates
+          const messageExists = prev.some(existingMsg => 
+            existingMsg.id === msg.id && existingMsg.chatId === msg.chatId
+          )
+          
+          if (messageExists) {
+            console.log("Message already exists, skipping duplicate:", msg.id)
+            return prev
+          }
+          
+          const newMessages = [...prev, msg]
+          console.log("Updated messages array:", newMessages)
+          return newMessages
+        })
       } catch (err) {
         console.error("Failed to parse WS message:", err, ev.data)
       }
@@ -94,13 +117,14 @@ export function useWebSocket() {
     ws.current.onclose = () => {
       console.log("WS closed")
       setIsConnected(false)
+      connectingRef.current = false
       ws.current = null
 
-      setTimeout(() => {
+      /* setTimeout(() => {
         // exponential backoff up to 30s
         retryRef.current = Math.min(retryRef.current * 2, 30000)
         connect()
-      }, retryRef.current)
+      }, retryRef.current) */
     }
   }, [])
 
@@ -116,11 +140,17 @@ export function useWebSocket() {
 // figure out how to send the group messages to the backend
   const sendMessage = useCallback(
     (msg: Omit<Message, "id" | "timestamp">) => {
-      const outgoing: Message = {
-        ...msg,
-        id: Date.now().toString(),
+      // Transform the message to match backend expectations
+      const outgoing = {
+        chatId: msg.chatId,
+        senderId: msg.senderId === "You" ? null : msg.senderId, // Backend will get real senderId from session
+        content: msg.content,
         timestamp: new Date(),
+        messageType: msg.messageType,
+        chatType: msg.chatType,
       }
+
+      console.log("Sending message via WebSocket:", outgoing)
 
       if (ws.current?.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify(outgoing))

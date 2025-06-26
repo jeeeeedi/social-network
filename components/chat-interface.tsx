@@ -21,6 +21,13 @@ interface ChatInterfaceProps {
     last_name: string;
     avatar: string;
   }
+  currentUser: {
+    user_id: number;
+    user_uuid: string;
+    first_name: string;
+    last_name: string;
+    [key: string]: any;
+  }
   messages: Message[]
   onSendMessage: (message: Omit<Message, "id" | "timestamp">) => void
   onClose: () => void
@@ -30,6 +37,7 @@ const EMOJIS = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", 
 
 export function ChatInterface({
   user,
+  currentUser,
   messages: liveMessages,
   onSendMessage,
   onClose,
@@ -42,12 +50,14 @@ export function ChatInterface({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const chatSpec = `private_${user.user_uuid}`
-  const chatMessages = [
-    ...history,
-    ...liveMessages.filter(
-      msg => msg.chatId === chatSpec && !history.some(hist => hist.id === msg.id)
-    ),
-  ]
+  // Combine history and liveMessages, deduplicating by message.id
+  const combinedMessages = [...history, ...liveMessages.filter(msg => msg.chatId === chatSpec)]
+  const seenIds = new Set<string>() // Changed to string to match message.id type
+  const chatMessages = combinedMessages.filter(msg => {
+    if (seenIds.has(msg.id || '')) return false
+    seenIds.add(msg.id || '')
+    return true
+  }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort by timestamp
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -116,14 +126,21 @@ export function ChatInterface({
 
   useEffect(() => {
     console.log("Adding message:", chatMessages[chatMessages.length - 1])
+    console.log("Current user ID:", currentUser?.user_id)
+    console.log("Chat messages with sender info:", chatMessages.map(m => ({
+      id: m.id,
+      senderId: m.senderId,
+      isCurrentUser: String(m.senderId) === String(currentUser?.user_id),
+      content: m.content.substring(0, 20) + "..."
+    })))
     scrollToBottom()
     setFocus()
-  }, [chatMessages])
+  }, [chatMessages, currentUser])
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       onSendMessage({
-        senderId: "You",
+        senderId: null, // Backend will determine this from session
         otherUserName: user.first_name,
         otherUserAvatar: user.avatar,
         content: newMessage,
@@ -137,7 +154,7 @@ export function ChatInterface({
 
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
-      senderId: "You",
+      senderId: null, // Backend will determine this from session
       otherUserName: user.first_name,
       otherUserAvatar: user.avatar,
       content: emoji,
@@ -196,43 +213,54 @@ export function ChatInterface({
       <CardContent className="flex flex-col flex-1 p-0 min-h-0">
         <div className="flex-1 overflow-y-auto px-4">
           <div className="space-y-4 py-4"> {/* Scrollarea */}
-            {chatMessages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-2 ${message.otherUserName === user.first_name ? "justify-end" : "justify-start"}`}
-              >
-                {message.otherUserName !== user.first_name && (
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} />
-                    <AvatarFallback className="text-xs">
-                      {message.otherUserName
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+            {chatMessages.map((message) => {
+              // Determine if this message was sent by the current user
+              const isCurrentUserMessage = currentUser && String(message.senderId) === String(currentUser.user_id);
+              
+              return (
                 <div
-                  className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${message.otherUserName === user.first_name ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
+                  key={message.id}
+                  className={`flex gap-2 ${isCurrentUserMessage ? "justify-end" : "justify-start"}`}
                 >
-                  {message.messageType === "emoji" ? (
-                    <span className="text-2xl">{message.content}</span>
-                  ) : (
-                    <p className="break-all whitespace-pre-wrap">{message.content}</p>
+                  {!isCurrentUserMessage && (
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} />
+                      <AvatarFallback className="text-xs">
+                        {message.otherUserName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
                   )}
-                  <p
-                    className={`text-xs mt-1 ${message.otherUserName === user.first_name ? "text-primary-foreground/70" : "text-muted-foreground"
-                      }`}
+                  <div
+                    className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${
+                      isCurrentUserMessage 
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-muted"
+                    }`}
                   >
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+                    {message.messageType === "emoji" ? (
+                      <span className="text-2xl">{message.content}</span>
+                    ) : (
+                      <p className="break-all whitespace-pre-wrap">{message.content}</p>
+                    )}
+                    <p
+                      className={`text-xs mt-1 ${
+                        isCurrentUserMessage 
+                          ? "text-primary-foreground/70" 
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             <div ref={messagesEndRef} />
           </div>
         </div>
