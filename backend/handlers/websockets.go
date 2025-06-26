@@ -72,28 +72,28 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 	for _, group := range listOfAllGroups {
 		// grId := strconv.Itoa(group.GroupID)
 		groupID_G, ok := group["group_id"].(int)
-			if !ok {
-					// handle error or invalid type
-					log.Println("group_id is not an int")
-					return
-			}
-			listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupID_G)
-			if err != nil {
-				log.Println("getting group members failed:", err)
-			}
-			for _, grMember := range listOfAllGroupMemberIDs {
-				fmt.Println("membership id:", grMember.MembershipID)
-				if grMember.MemberID == userID {
-					//Add to group connection
-					grId := strconv.Itoa(grMember.GroupID)
-					fmt.Println("Adding a user to the group:", grId)
-					if allGroups[grId] == nil {
-						allGroups[grId] = make(map[*websocket.Conn]bool)
-					}
-					allGroups[grId][conn] = true
+		if !ok {
+			// handle error or invalid type
+			log.Println("group_id is not an int")
+			return
+		}
+		listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupID_G)
+		if err != nil {
+			log.Println("getting group members failed:", err)
+		}
+		for _, grMember := range listOfAllGroupMemberIDs {
+			fmt.Println("membership id:", grMember.MembershipID)
+			if grMember.MemberID == userID {
+				//Add to group connection
+				grId := strconv.Itoa(grMember.GroupID)
+				fmt.Println("Adding a user to the group:", grId)
+				if allGroups[grId] == nil {
+					allGroups[grId] = make(map[*websocket.Conn]bool)
 				}
+				allGroups[grId][conn] = true
 			}
 		}
+	}
 	clientsMutex.Lock()
 	clients[conn] = userID
 	clientsMutex.Unlock()
@@ -167,23 +167,20 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		}
 
 		var recipientConnections []*websocket.Conn
-		var recipientIDs []int
 
 		if incomingMsg.ChatType == "private" {
 			// Send to self and intended recipient
 			clientsMutex.RLock()
 			// For some reason there are 3 connections, self, recipient, and another recipient(???), so we do this instead:
-			for clientConn, clientID := range clients {
+			for clientConn := range clients {
 				if clientConn == conn {
 					recipientConnections = append(recipientConnections, clientConn)
-					recipientIDs = append(recipientIDs, clientID)
 					break
 				}
 			}
 			for clientConn, clientID := range clients {
 				if clientID == receiverID {
 					recipientConnections = append(recipientConnections, clientConn)
-					recipientIDs = append(recipientIDs, clientID)
 					break // Break after first recipient is found.
 				}
 			}
@@ -193,8 +190,6 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			groupsMutex.RLock()
 			for groupMemberConn := range allGroups[groupIdString] {
 				recipientConnections = append(recipientConnections, groupMemberConn)
-				// Placeholder, name = id
-				recipientIDs = append(recipientIDs, clients[groupMemberConn])
 			}
 			groupsMutex.RUnlock()
 		}
