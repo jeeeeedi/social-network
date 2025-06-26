@@ -413,10 +413,6 @@ export default function GroupDetailPage() {
                     <Calendar className="h-4 w-4" />
                     Create Event
                   </Button>
-                  <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleGroupChatClick}>
-                    <MessageCircle className="h-4 w-4" />
-                    Group Chat
-                  </Button>
                   {!isCreator && (
                     <Button variant="ghost" className="w-full justify-start gap-3 text-destructive">
                       <Settings className="h-4 w-4" />
