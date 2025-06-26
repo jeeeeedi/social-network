@@ -90,18 +90,18 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("Error fetching user when fetching messages:", err)
 			}
-			resp[i].OtherUserUUID = msgOtherUser.UserUUID
-			resp[i].OtherUserName = msgOtherUser.FirstName
-			resp[i].OtherUserAvatar = msgOtherUser.Avatar
 		}
-		// else if group, maybe fetch user by msg to add the other data like useruuid, firstname and avatar
 		resp[i] = messageResponse{
 			ID:              msg.ChatID,
+			ChatID:          chatSpecifications, // or however you track it? CHANGE LATER
 			RequesterID:     userID,
 			SenderID:        msg.SenderID,
+			OtherUserUUID:   msgOtherUser.UserUUID,
+			OtherUserName:   msgOtherUser.FirstName,
+			OtherUserAvatar: msgOtherUser.Avatar,
 			Content:         msg.Content,
 			Timestamp:       msg.CreatedAt,
-			MessageType:     "text", // Placeholder, change later
+			MessageType:     "text",
 		}
 		if chatType == "private" {
 			resp[i].ReceiverID = msg.ReceiverID
