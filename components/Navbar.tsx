@@ -130,6 +130,8 @@ export const Navbar: React.FC = () => {
       case 'event':
       case 'group_event':
         return 'event_created';
+      case 'post':
+        return 'message';
       default:
         return 'message';
     }
@@ -141,6 +143,9 @@ export const Navbar: React.FC = () => {
     }
     if (message.includes('has been declined')) {
       return 'Join Request Declined';
+    }
+    if (message.includes('posted in group')) {
+      return 'New Group Post';
     }
     
     switch (type) {
@@ -154,6 +159,8 @@ export const Navbar: React.FC = () => {
         return 'New Event';
       case 'follow_accepted':
         return 'Request Accepted';
+      case 'post':
+        return 'New Post';
       default:
         return 'Notification';
     }

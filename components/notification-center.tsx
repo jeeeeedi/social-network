@@ -56,8 +56,8 @@ export function NotificationCenter({
   const router = useRouter()
 
   const handleNotificationClick = (notification: Notification) => {
-    // Handle navigation for event notifications
-    if (notification.type === "event_created" && notification.groupId) {
+    // Handle navigation for event and post notifications
+    if ((notification.type === "event_created" || notification.type === "message") && notification.groupId) {
       router.push(`/groups/${notification.groupId}`)
       setIsOpen(false) // Close the dropdown
     }

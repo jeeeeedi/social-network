@@ -254,6 +254,21 @@ func CreatePostHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
+	// Create notifications for group posts
+	if groupIDPtr != nil {
+		group, err := db.GetGroupByID(*groupIDPtr)
+		if err != nil {
+			log.Printf("Failed to get group details for post notification: %v", err)
+		} else {
+			notificationHelpers := dbTools.NewNotificationHelpers(db)
+			err = notificationHelpers.CreateGroupPostNotification(int(currentUserID), *groupIDPtr, postID, group.Title)
+			if err != nil {
+				log.Printf("Failed to create post notifications: %v", err)
+				// Don't fail the request if notification creation fails
+			}
+		}
+	}
+
 	// log.Print("CreatePostHandler with postID, content, privacy, selectedFollowersUUIDs: ", postID, content, privacy, selectedFollowersUUIDs)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
