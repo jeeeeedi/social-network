@@ -85,6 +85,8 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
 			createGroup(w, r, db)
+		case http.MethodPut:
+			getMyGroups(w, r, db)
 		case http.MethodGet:
 			getAllGroups(w, r, db)
 		default:

@@ -172,7 +172,7 @@ export default function SocialNetworkPage() {
           const groupsResponse = await fetch(
           `http://localhost:8080/api/groups`,
           {
-            method: "GET",
+            method: "PUT",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
           }
