@@ -167,7 +167,7 @@ export default function MyProfilePage() {
       newPrivacyValue || (privacy === "public" ? "private" : "public");
     try {
       const response = await fetch(
-        `${API_URL}/profile/privacy`,
+        `${API_URL}/api/profile/privacy`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
