@@ -101,24 +101,3 @@ open-chrome:
 
 # Quick restart
 restart: stop clean start
-
-# Database migration commands
-migrateup:
-	@echo "Running database migrations..."
-	cd backend && make migrateup
-
-migratedown:
-	@echo "Rolling back database migrations..."
-	cd backend && make migratedown
-
-migrateup1:
-	@echo "Running one database migration..."
-	cd backend && make migrateup1
-
-migratedown1:
-	@echo "Rolling back one database migration..."
-	cd backend && make migratedown1
-
-new_migration:
-	@echo "Creating new migration..."
-	cd backend && make new_migration
