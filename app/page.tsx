@@ -27,7 +27,7 @@ interface Group {
   member_count: number;
   title: string;
   avatar: string;
-  members?: any[]; // Optional - used for online count
+  members?: any[];
 }
 
 export default function SocialNetworkPage() {
@@ -50,7 +50,7 @@ export default function SocialNetworkPage() {
     // Helper to fetch the user's groups
     const fetchGroups = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/groups/my-groups`, {
+        const res = await fetch(`${API_URL}/api/groups`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -61,7 +61,11 @@ export default function SocialNetworkPage() {
           throw new Error("Failed to fetch groups");
         }
         const data = await res.json();
-        setGroups(data || []);
+        // Filter for groups where the user is a member (accepted status)
+        const myGroups = Array.isArray(data)
+          ? (data as any[]).filter((g) => g.user_status === 'accepted')
+          : [];
+        setGroups(myGroups);
       } catch (err) {
         console.error("Failed to load groups:", err);
       }
@@ -111,7 +115,6 @@ export default function SocialNetworkPage() {
                 ? u.avatar
                 : `${API_URL}${u.avatar}`
               : "/placeholder.svg",
-            isOnline: false, // TODO: integrate with websocket presence
             isFollowing: followingUUIDs.has(u.user_uuid),
             isFollowedBy: followerUUIDs.has(u.user_uuid),
             lastSeen: undefined,
@@ -299,11 +302,7 @@ export default function SocialNetworkPage() {
               <h3 className="font-semibold flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 Messages
-                {isConnected && (
-                  <Badge variant="secondary" className="text-xs">
-                    Online
-                  </Badge>
-                )}
+                {isConnected}
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -325,17 +324,9 @@ export default function SocialNetworkPage() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        {user.isOnline && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
-                        )}
                       </div>
                       <div>
                         <p className="font-medium text-sm">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.isOnline
-                            ? "Online"
-                            : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
-                        </p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -377,7 +368,16 @@ export default function SocialNetworkPage() {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} />
+                        <AvatarImage 
+                          src={
+                            group.avatar
+                              ? group.avatar.startsWith("http")
+                                ? group.avatar
+                                : `${API_URL}${group.avatar}`
+                              : "/placeholder.svg"
+                          } 
+                          alt={group.title} 
+                        />
                         <AvatarFallback>
                           {group.title
                             .split(" ")
@@ -388,13 +388,10 @@ export default function SocialNetworkPage() {
                       <div>
                         <p className="font-medium text-sm">{group.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {group.members?.length || 0} members
+                          {group.member_count || 0} members
                         </p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {group.members?.filter((m: any) => m.isOnline).length || 0} online
-                    </Badge>
                   </div>
                 ))
               ) : (

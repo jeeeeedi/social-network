@@ -340,7 +340,6 @@ export default function GroupDetailPage() {
         name: formatUserName(member.user!),
         username: member.user!.nickname || member.user!.first_name,
         avatar: getUserAvatarUrl(member.user!),
-        isOnline: false, // TODO: Implement online status
         isFollowing: false,
         isFollowedBy: false,
       })),
@@ -456,12 +455,6 @@ export default function GroupDetailPage() {
                     <Calendar className="h-4 w-4" />
                     Create Event
                   </Button>
-                  {!isCreator && (
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-destructive">
-                      <Settings className="h-4 w-4" />
-                      Leave Group
-                    </Button>
-                  )}
                 </nav>
               )}
             </CardContent>

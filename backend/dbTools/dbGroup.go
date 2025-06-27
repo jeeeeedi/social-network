@@ -133,8 +133,6 @@ func (db *DB) GetAllGroups(userID ...int) ([]map[string]interface{}, error) {
 			return nil, err
 		}
 
-
-
 		group := map[string]interface{}{
 			"group_id":     groupID,
 			"title":        title,

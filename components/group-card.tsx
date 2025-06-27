@@ -47,7 +47,6 @@ export interface Event {
 interface GroupCardProps {
   group: Group;
   onJoinGroup: (groupId: string) => void;
-  onLeaveGroup: (groupId: string) => void;
   onViewGroup: (groupId: string) => void;
   currentUserId: string;
 }
@@ -55,7 +54,6 @@ interface GroupCardProps {
 export function GroupCard({
   group,
   onJoinGroup,
-  onLeaveGroup,
   onViewGroup,
   currentUserId,
 }: GroupCardProps) {
@@ -66,14 +64,10 @@ export function GroupCard({
     return null;
   }
 
-  const handleJoinLeave = async () => {
+  const handleJoin = async () => {
     setIsLoading(true);
     try {
-      if (group.isMember) {
-        await onLeaveGroup(group.id);
-      } else {
         await onJoinGroup(group.id);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +165,7 @@ export function GroupCard({
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                handleJoinLeave();
+                handleJoin();
               }}
               disabled={isLoading}
               variant="default"
