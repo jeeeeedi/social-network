@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"social_network/dbTools"
@@ -31,124 +32,131 @@ func GroupsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		segments = segments[1:]
 	}
 
-	// Handle my-groups endpoint
-	if len(segments) == 2 && segments[0] == "groups" && segments[1] == "my-groups" {
-		if r.Method == http.MethodGet {
-			getMyGroups(w, r, db)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-		return
-	}
+	// Route based on path pattern
+	switch {
+	case matchRoute(segments, "groups", "my-groups"):
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodGet: func() { getMyGroups(w, r, db) },
+		})
 
-	// Handle other endpoints
-	if len(segments) == 1 && segments[0] == "groups" {
-		switch r.Method {
-		case http.MethodPost:
-			createGroup(w, r, db)
-		case http.MethodPut:
-			getMyGroups(w, r, db)
-		case http.MethodGet:
-			getAllGroups(w, r, db)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 2 && segments[0] == "groups" {
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+	case matchRoute(segments, "groups"):
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodPost: func() { createGroup(w, r, db) },
+			http.MethodGet:  func() { getAllGroups(w, r, db) },
+		})
+
+	case matchRoute(segments, "groups", "*"):
+		groupID := parseGroupID(w, segments[1])
+		if groupID == -1 {
 			return
 		}
-		switch r.Method {
-		case http.MethodGet:
-			getGroupByID(w, db, groupID)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "invite" {
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodGet: func() { getGroupByID(w, db, groupID) },
+		})
+
+	case matchRoute(segments, "groups", "*", "invite"):
+		groupID := parseGroupID(w, segments[1])
+		if groupID == -1 {
 			return
 		}
-		if r.Method == http.MethodPost {
-			inviteToGroup(w, r, db, groupID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "request-join" {
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodPost: func() { inviteToGroup(w, r, db, groupID) },
+		})
+
+	case matchRoute(segments, "groups", "*", "request-join"):
+		groupID := parseGroupID(w, segments[1])
+		if groupID == -1 {
 			return
 		}
-		if r.Method == http.MethodPost {
-			requestToJoinGroup(w, r, db, groupID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 4 && segments[0] == "groups" && segments[2] == "membership" {
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodPost: func() { requestToJoinGroup(w, r, db, groupID) },
+		})
+
+	case matchRoute(segments, "groups", "*", "membership", "*"):
+		groupID := parseGroupID(w, segments[1])
+		userID := parseUserID(w, segments[3])
+		if groupID == -1 || userID == -1 {
 			return
 		}
-		userID, err := strconv.Atoi(segments[3])
-		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodPost: func() { updateMembershipStatus(w, r, db, groupID, userID) },
+		})
+
+	case matchRoute(segments, "groups", "*", "members"):
+		groupID := parseGroupID(w, segments[1])
+		if groupID == -1 {
 			return
 		}
-		if r.Method == http.MethodPost {
-			updateMembershipStatus(w, r, db, groupID, userID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "members" {
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodGet: func() { getGroupMembers(w, db, groupID) },
+		})
+
+	case matchRoute(segments, "invitations"):
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodGet: func() { getInvitations(w, r, db) },
+		})
+
+	case matchRoute(segments, "groups", "*", "requests"):
+		groupID := parseGroupID(w, segments[1])
+		if groupID == -1 {
 			return
 		}
-		if r.Method == http.MethodGet {
-			getGroupMembers(w, db, groupID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 1 && segments[0] == "invitations" {
-		if r.Method == http.MethodGet {
-			getInvitations(w, r, db)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "requests" {
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodGet: func() { getJoinRequests(w, r, db, groupID) },
+		})
+
+	case matchRoute(segments, "groups", "*", "events"):
+		groupID := parseGroupID(w, segments[1])
+		if groupID == -1 {
 			return
 		}
-		if r.Method == http.MethodGet {
-			getJoinRequests(w, r, db, groupID)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else if len(segments) == 3 && segments[0] == "groups" && segments[2] == "events" {
-		// Handle /api/groups/{id}/events - group events
-		groupID, err := strconv.Atoi(segments[1])
-		if err != nil {
-			http.Error(w, "Invalid group ID", http.StatusBadRequest)
-			return
-		}
-		switch r.Method {
-		case http.MethodPost:
-			createGroupEventInGroups(w, r, db, groupID)
-		case http.MethodGet:
-			getGroupEventsInGroups(w, db, groupID)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	} else {
+		handleMethodRoute(w, r, map[string]func(){
+			http.MethodPost: func() { createGroupEventInGroups(w, r, db, groupID) },
+			http.MethodGet:  func() { getGroupEventsInGroups(w, db, groupID) },
+		})
+
+	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
+}
+
+// Helper functions for cleaner routing
+func matchRoute(segments []string, pattern ...string) bool {
+	if len(segments) != len(pattern) {
+		return false
+	}
+	for i, part := range pattern {
+		if part != "*" && segments[i] != part {
+			return false
+		}
+	}
+	return true
+}
+
+func handleMethodRoute(w http.ResponseWriter, r *http.Request, handlers map[string]func()) {
+	if handler, exists := handlers[r.Method]; exists {
+		handler()
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func parseGroupID(w http.ResponseWriter, idStr string) int {
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return -1
+	}
+	return id
+}
+
+func parseUserID(w http.ResponseWriter, idStr string) int {
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return -1
+	}
+	return id
 }
 
 func createGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
@@ -159,87 +167,79 @@ func createGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 	}
 
 	// Parse multipart form data for file upload support
-	err = r.ParseMultipartForm(10 << 20) // 10MB max
-	if err != nil {
+	if err = r.ParseMultipartForm(10 << 20); err != nil { // 10MB max
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Could not parse form")
 		return
 	}
 
-	// Extract form values
+	// Extract and validate form values
 	title := r.FormValue("title")
 	description := r.FormValue("description")
-
-	// Validate required fields
 	if title == "" || description == "" {
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Title and description are required")
 		return
 	}
 
-	// Create group struct
+	// Create group
 	group := dbTools.Group{
 		Title:       title,
 		Description: description,
 		CreatorID:   int(userID),
 	}
 
-	// Create the group first to get the group ID
 	createdGroup, err := db.CreateGroup(&group)
 	if err != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to create group")
 		return
 	}
 
-	// Handle avatar upload if provided
-	file, handler, err := r.FormFile("avatar")
-	if err == nil {
-		defer file.Close()
-		fileMeta := &dbTools.File{
-			UploaderID:   int(userID),
-			FilenameOrig: handler.Filename,
-			ParentType:   "group",
-			ParentID:     createdGroup.GroupID,
-			CreatedAt:    time.Now(),
-		}
-		uploadErr := db.FileUpload(file, fileMeta, r, w)
-		if uploadErr != nil {
-			// Log error but don't fail group creation
-			log.Printf("Failed to upload group avatar: %v", uploadErr)
-		} else {
-			// Set avatar path for response
-			createdGroup.Avatar = "/uploads/" + fileMeta.FilenameNew
-		}
-	} else if err != http.ErrMissingFile {
-		log.Printf("Error getting avatar file: %v", err)
-	}
+	// Handle optional avatar upload
+	handleAvatarUpload(r, db, createdGroup, int(userID))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(createdGroup)
 }
 
-func getAllGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
-	if db == nil {
-		log.Println("Database connection is nil")
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Database unavailable")
+func handleAvatarUpload(r *http.Request, db *dbTools.DB, group *dbTools.Group, userID int) {
+	file, handler, err := r.FormFile("avatar")
+	if err == http.ErrMissingFile {
+		return // No file uploaded, which is fine
+	}
+	if err != nil {
+		log.Printf("Error getting avatar file: %v", err)
 		return
 	}
+	defer file.Close()
 
-	// Get userID if authenticated (optional)
+	fileMeta := &dbTools.File{
+		UploaderID:   userID,
+		FilenameOrig: handler.Filename,
+		ParentType:   "group",
+		ParentID:     group.GroupID,
+		CreatedAt:    time.Now(),
+	}
+
+	if uploadErr := db.FileUpload(file, fileMeta, r, nil); uploadErr != nil {
+		log.Printf("Failed to upload group avatar: %v", uploadErr)
+	} else {
+		group.Avatar = "/uploads/" + fileMeta.FilenameNew
+	}
+}
+
+func getAllGroups(w http.ResponseWriter, r *http.Request, db *dbTools.DB) {
 	userID, _ := utils.GetUserIDFromSession(db.GetDB(), r)
 
-	log.Println("Calling db.GetAllGroups() with userID:", userID)
 	groups, err := db.GetAllGroups(int(userID))
-
 	if err != nil {
-		log.Println("Error retrieving groups:", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve groups")
 		return
 	}
-	log.Println("Groups retrieved successfully")
+
 	if groups == nil {
-		log.Println("Groups result is nil, initializing empty slice")
 		groups = []map[string]interface{}{}
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(groups)
 }
@@ -282,13 +282,8 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 		return
 	}
 
-	isMember, err := db.IsGroupMember(groupID, int(userID))
-	if err != nil {
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check permissions")
-		return
-	}
-	if !isMember {
-		utils.SendErrorResponse(w, http.StatusForbidden, "Only group members can invite")
+	// Check membership permission
+	if !checkGroupMembership(w, db, groupID, int(userID), "Only group members can invite") {
 		return
 	}
 
@@ -300,24 +295,13 @@ func inviteToGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, group
 		return
 	}
 
-	err = db.InviteToGroup(groupID, int(userID), invite.InviteeID)
-	if err != nil {
+	if err = db.InviteToGroup(groupID, int(userID), invite.InviteeID); err != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to send invitation")
 		return
 	}
 
-	// Create group invitation notification
-	group, err := db.GetGroupByID(groupID)
-	if err != nil {
-		log.Printf("Failed to get group details for notification: %v", err)
-	} else {
-		notificationHelpers := dbTools.NewNotificationHelpers(db)
-		err = notificationHelpers.CreateGroupInvitationNotification(int(userID), invite.InviteeID, groupID, group.Title)
-		if err != nil {
-			log.Printf("Failed to create notification for group invitation: %v", err)
-			// Don't fail the request if notification creation fails
-		}
-	}
+	// Create notification
+	createGroupInviteNotification(db, int(userID), invite.InviteeID, groupID)
 
 	utils.SendSuccessResponse(w, map[string]interface{}{"message": "Invitation sent"})
 }
@@ -329,7 +313,7 @@ func requestToJoinGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, 
 		return
 	}
 
-	// Get group details to find the creator
+	// Get group details
 	group, err := db.GetGroupByID(groupID)
 	if err != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve group")
@@ -340,20 +324,13 @@ func requestToJoinGroup(w http.ResponseWriter, r *http.Request, db *dbTools.DB, 
 		return
 	}
 
-	// Create the join request
-	err = db.RequestToJoinGroup(groupID, int(userID))
-	if err != nil {
+	if err = db.RequestToJoinGroup(groupID, int(userID)); err != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to request join")
 		return
 	}
 
 	// Create notification for group creator
-	notificationHelpers := dbTools.NewNotificationHelpers(db)
-	err = notificationHelpers.CreateGroupJoinRequestNotification(int(userID), group.CreatorID, groupID, group.Title)
-	if err != nil {
-		log.Printf("Failed to create notification: %v", err)
-		// Don't fail the request if notification creation fails
-	}
+	createGroupJoinRequestNotification(db, int(userID), group.CreatorID, groupID, group.Title)
 
 	utils.SendSuccessResponse(w, map[string]interface{}{"message": "Join request sent"})
 }
@@ -378,59 +355,8 @@ func updateMembershipStatus(w http.ResponseWriter, r *http.Request, db *dbTools.
 		return
 	}
 
-	// Check if the user is the creator (for approving requests) or the target user (for responding to invitations)
-	isCreator, err := db.IsGroupCreator(groupID, int(userID))
-	if err != nil {
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check permissions")
-		return
-	}
-
-	if isCreator && (request.Status == "accepted" || request.Status == "declined") {
-		// Creator approving or declining a join request
-		err = db.UpdateMembershipStatus(groupID, targetUserID, request.Status)
-		if err != nil {
-			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to update membership")
-			return
-		}
-
-		// Update the original join request notification status
-		notificationHelpers := dbTools.NewNotificationHelpers(db)
-		notificationStatus := utils.GetNotificationStatus(request.Status)
-		err = notificationHelpers.UpdateGroupJoinRequestNotificationStatus(groupID, targetUserID, userID, notificationStatus)
-		if err != nil {
-			log.Printf("Failed to update group join request notification status: %v", err)
-			// Don't fail the request if notification update fails
-		}
-
-		// Create notification for the user whose request was processed
-		group, err := db.GetGroupByID(groupID)
-		if err != nil {
-			log.Printf("Failed to get group details for notification: %v", err)
-		} else {
-			accepted := request.Status == "accepted"
-			err = notificationHelpers.CreateGroupRequestResponseNotification(int(userID), targetUserID, groupID, group.Title, accepted)
-			if err != nil {
-				log.Printf("Failed to create notification for join request response: %v", err)
-				// Don't fail the request if notification creation fails
-			}
-		}
-	} else if int(userID) == targetUserID && (request.Status == "accepted" || request.Status == "declined") {
-		// User responding to an invitation
-		err = db.UpdateMembershipStatus(groupID, int(userID), request.Status)
-		if err != nil {
-			utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to update membership")
-			return
-		}
-
-		// Update the notification status when user responds to group invitation
-		notificationHelpers := dbTools.NewNotificationHelpers(db)
-		notificationStatus := utils.GetNotificationStatus(request.Status)
-		err = notificationHelpers.UpdateGroupInvitationNotificationStatus(groupID, int(userID), notificationStatus)
-		if err != nil {
-			log.Printf("Failed to update group invitation notification status: %v", err)
-			// Don't fail the request if notification update fails
-		}
-	} else {
+	// Check permissions and update accordingly
+	if err = handleMembershipUpdate(db, groupID, int(userID), targetUserID, request.Status); err != nil {
 		utils.SendErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -471,13 +397,8 @@ func getJoinRequests(w http.ResponseWriter, r *http.Request, db *dbTools.DB, gro
 		return
 	}
 
-	isCreator, err := db.IsGroupCreator(groupID, int(userID))
-	if err != nil {
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check permissions")
-		return
-	}
-	if !isCreator {
-		utils.SendErrorResponse(w, http.StatusForbidden, "Only group creator can view requests")
+	// Check creator permission
+	if !checkGroupCreator(w, db, groupID, int(userID), "Only group creator can view requests") {
 		return
 	}
 
@@ -497,54 +418,29 @@ func createGroupEventInGroups(w http.ResponseWriter, r *http.Request, db *dbTool
 		return
 	}
 
-	isMember, err := db.IsGroupMember(groupID, int(userID))
-	if err != nil {
-		log.Printf("Error checking membership for user %d in group %d: %v", userID, groupID, err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check membership")
-		return
-	}
-	if !isMember {
-		log.Printf("User %d is not a member of group %d", userID, groupID)
-		utils.SendErrorResponse(w, http.StatusForbidden, "Only group members can create events")
+	// Check membership permission
+	if !checkGroupMembership(w, db, groupID, int(userID), "Only group members can create events") {
 		return
 	}
 
 	var event dbTools.Event
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-		log.Printf("Error decoding request body: %v", err)
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	log.Printf("Decoded event: %+v", event)
-
 	event.GroupID = groupID
 	event.CreatorID = int(userID)
-	event.Status = "upcoming" // Set default status
-
-	log.Printf("Final event before DB insert: %+v", event)
+	event.Status = "upcoming"
 
 	createdEvent, err := db.CreateEvent(&event)
 	if err != nil {
-		log.Printf("Error creating event in database: %v", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to create event")
 		return
 	}
 
-	log.Printf("Successfully created event: %+v", createdEvent)
-
-	// Create notifications for all group members
-	group, err := db.GetGroupByID(groupID)
-	if err != nil {
-		log.Printf("Failed to get group details for event notification: %v", err)
-	} else {
-		notificationHelpers := dbTools.NewNotificationHelpers(db)
-		err = notificationHelpers.CreateGroupEventNotification(int(userID), groupID, createdEvent.EventID, group.Title, createdEvent.Title)
-		if err != nil {
-			log.Printf("Failed to create event notifications: %v", err)
-			// Don't fail the request if notification creation fails
-		}
-	}
+	// Create notifications for group members
+	createGroupEventNotification(db, int(userID), groupID, createdEvent.EventID, createdEvent.Title)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -560,4 +456,70 @@ func getGroupEventsInGroups(w http.ResponseWriter, db *dbTools.DB, groupID int) 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(events)
+}
+
+// Helper functions to reduce repetition
+func checkGroupMembership(w http.ResponseWriter, db *dbTools.DB, groupID, userID int, errorMsg string) bool {
+	isMember, err := db.IsGroupMember(groupID, userID)
+	if err != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check permissions")
+		return false
+	}
+	if !isMember {
+		utils.SendErrorResponse(w, http.StatusForbidden, errorMsg)
+		return false
+	}
+	return true
+}
+
+func checkGroupCreator(w http.ResponseWriter, db *dbTools.DB, groupID, userID int, errorMsg string) bool {
+	isCreator, err := db.IsGroupCreator(groupID, userID)
+	if err != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to check permissions")
+		return false
+	}
+	if !isCreator {
+		utils.SendErrorResponse(w, http.StatusForbidden, errorMsg)
+		return false
+	}
+	return true
+}
+
+func handleMembershipUpdate(db *dbTools.DB, groupID, userID, targetUserID int, status string) error {
+	isCreator, err := db.IsGroupCreator(groupID, userID)
+	if err != nil {
+		return err
+	}
+
+	if isCreator || userID == targetUserID {
+		return db.UpdateMembershipStatus(groupID, targetUserID, status)
+	}
+
+	return errors.New("Forbidden")
+}
+
+// Notification helper functions
+func createGroupInviteNotification(db *dbTools.DB, inviterID, inviteeID, groupID int) {
+	if group, err := db.GetGroupByID(groupID); err == nil {
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		if err := notificationHelpers.CreateGroupInvitationNotification(inviterID, inviteeID, groupID, group.Title); err != nil {
+			log.Printf("Failed to create notification for group invitation: %v", err)
+		}
+	}
+}
+
+func createGroupJoinRequestNotification(db *dbTools.DB, requesterID, creatorID, groupID int, groupTitle string) {
+	notificationHelpers := dbTools.NewNotificationHelpers(db)
+	if err := notificationHelpers.CreateGroupJoinRequestNotification(requesterID, creatorID, groupID, groupTitle); err != nil {
+		log.Printf("Failed to create notification: %v", err)
+	}
+}
+
+func createGroupEventNotification(db *dbTools.DB, creatorID, groupID, eventID int, eventTitle string) {
+	if group, err := db.GetGroupByID(groupID); err == nil {
+		notificationHelpers := dbTools.NewNotificationHelpers(db)
+		if err := notificationHelpers.CreateGroupEventNotification(creatorID, groupID, eventID, group.Title, eventTitle); err != nil {
+			log.Printf("Failed to create event notifications: %v", err)
+		}
+	}
 }
