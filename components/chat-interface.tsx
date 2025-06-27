@@ -24,7 +24,6 @@ interface ChatInterfaceProps {
   messages: Message[]
   onSendMessage: (message: Omit<Message, "id" | "timestamp">) => void
   onClose: () => void
-  open: boolean // <-- Add this line
 }
 
 const EMOJIS = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👋", "🤚", "🖐️", "✋", "🖖", "👏", "🙌", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "", "☮️", "✝️", "☪️", "🕉️", "☸️", "✡️", "🔯", "🕎", "☯️", "☦️", "🛐"]
@@ -36,7 +35,6 @@ export function ChatInterface({
   messages: liveMessages,
   onSendMessage,
   onClose,
-  open, // <-- Add this line
 }: ChatInterfaceProps) {
     console.log('chat messages:', liveMessages)
   const [newMessage, setNewMessage] = useState("")
@@ -113,18 +111,16 @@ export function ChatInterface({
       console.error("fetchMessages:", err)
     }
   }
-  
+
+  useEffect(() => {
+    fetchMessages()
+  }, [user.user_uuid])
+
   useEffect(() => {
     console.log("Adding message:", chatMessages[chatMessages.length - 1])
     scrollToBottom()
     setFocus()
   }, [chatMessages])
-
-  useEffect(() => {
-    if (open) {
-      fetchMessages()
-    }
-  }, [open, user.user_uuid])
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
