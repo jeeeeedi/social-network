@@ -40,6 +40,7 @@ export function ChatInterface({
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [history, setHistory] = useState<Message[]>([])
+  const [currentUserNumericId, setCurrentUserNumericId] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -58,6 +59,20 @@ export function ChatInterface({
   const setFocus = () => {
     inputRef.current?.focus()
   }
+
+  const fetchCurrentUserNumericId = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/session-check`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success && data.user) {
+        setCurrentUserNumericId(data.user.user_id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user numeric ID:', error);
+    }
+  };
 
   const fetchMessages = async () => {
     try {
@@ -113,6 +128,7 @@ export function ChatInterface({
   }
 
   useEffect(() => {
+    fetchCurrentUserNumericId();
     fetchMessages()
   }, [user.user_uuid])
 
@@ -125,7 +141,7 @@ export function ChatInterface({
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       onSendMessage({
-        senderId: "You",
+        senderId: String(currentUserNumericId),
         otherUserName: user.first_name,
         otherUserAvatar: user.avatar,
         content: newMessage,
@@ -139,7 +155,7 @@ export function ChatInterface({
 
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
-      senderId: "You",
+      senderId: String(currentUserNumericId),
       otherUserName: user.first_name,
       otherUserAvatar: user.avatar,
       content: emoji,
@@ -156,6 +172,10 @@ export function ChatInterface({
       handleSendMessage()
     }
   }
+
+  console.log("ChatInterface rendered with user:", user);
+  console.log("User object keys:", Object.keys(user));
+  console.log("what is messages:", chatMessages);
 
   return (
     <Card className="fixed bottom-4 right-4 w-80 h-96 shadow-lg z-50 flex flex-col">
@@ -174,13 +194,30 @@ export function ChatInterface({
             </AvatarFallback>
           </Avatar> */}
           <div>
-            <h4 className="text-sm font-semibold"><pre>{user.first_name} {user.last_name}</pre></h4>
+            <h4 className="text-sm font-semibold">
+              <pre>
+                {user.first_name} {user.last_name}
+              </pre>
+            </h4>
             <p className="text-xs text-muted-foreground">
+              {/* {user.isOnline ? (
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  Online
+                </span>
+              ) : (
+                `Last seen ${user.lastSeen ? user.lastSeen.toLocaleTimeString() : "recently"}`
+              )} */}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onClose}
+          >
             <X className="h-3 w-3" />
           </Button>
         </div>
@@ -189,44 +226,59 @@ export function ChatInterface({
       {/* Messages Area */}
       <CardContent className="flex flex-col flex-1 p-0 min-h-0">
         <div className="flex-1 overflow-y-auto px-4">
-          <div className="space-y-4 py-4"> {/* Scrollarea */}
-            {chatMessages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-2 ${message.otherUserName === user.first_name ? "justify-end" : "justify-start"}`}
-              >
-                {message.otherUserName !== user.first_name && (
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage 
-                      src={
-                        message.otherUserAvatar
-                          ? message.otherUserAvatar.startsWith("http")
-                            ? message.otherUserAvatar
-                            : `${API_URL}${message.otherUserAvatar}`
-                          : "/placeholder.svg"
-                      } 
-                      alt={message.otherUserName} 
-                    />
-                    <AvatarFallback className="text-xs">
-                      {message.otherUserName
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+          <div className="space-y-4 py-4">
+            {" "}
+            {/* Scrollarea */}
+            {chatMessages.map((message) => {
+              const isCurrentUser = currentUserNumericId && Number(message.senderId) === currentUserNumericId;
+              console.log(`Message ID: ${message.id}, SenderId: ${message.senderId} (type: ${typeof message.senderId}), User ID: ${currentUserNumericId} (type: ${typeof currentUserNumericId}), isCurrentUser: ${isCurrentUser}`);
+              return (
                 <div
-                  className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${message.otherUserName === user.first_name ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
+                  key={message.id}
+                  className={`flex gap-2 ${
+                    isCurrentUser ? "justify-end" : "justify-start"
+                  }`}
                 >
+                  {!isCurrentUser && (
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage
+                        src={
+                          user.avatar
+                            ? user.avatar.startsWith("http")
+                              ? user.avatar
+                              : `${API_URL}${user.avatar}`
+                            : "/placeholder.svg"
+                        }
+                        alt={`${user.first_name} ${user.last_name}`}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {user.first_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div
+                    className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${
+                      isCurrentUser
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
                   {message.messageType === "emoji" ? (
                     <span className="text-2xl">{message.content}</span>
                   ) : (
-                    <p className="break-all whitespace-pre-wrap">{message.content}</p>
+                    <p className="break-all whitespace-pre-wrap">
+                      {message.content}
+                    </p>
                   )}
                   <p
-                    className={`text-xs mt-1 ${message.otherUserName === user.first_name ? "text-primary-foreground/70" : "text-muted-foreground"
-                      }`}
+                    className={`text-xs mt-1 ${
+                      isCurrentUser
+                        ? "text-primary-foreground/70"
+                        : "text-muted-foreground"
+                    }`}
                   >
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
@@ -235,7 +287,7 @@ export function ChatInterface({
                   </p>
                 </div>
               </div>
-            ))}
+            )})}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -276,11 +328,15 @@ export function ChatInterface({
             onKeyDown={handleKeyDown}
             className="flex-1"
           />
-          <Button size="icon" onClick={handleSendMessage} disabled={!newMessage.trim()}>
+          <Button
+            size="icon"
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim()}
+          >
             <Send className="h-4 w-4" />
           </Button>
         </div>
       </div>
     </Card>
-  )
+  );
 }
