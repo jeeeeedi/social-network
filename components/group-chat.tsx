@@ -90,8 +90,6 @@ const EMOJIS = [
   "💔",
 ]
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
 export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChatProps) {
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -225,7 +223,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
     setShowEmojiPicker(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
@@ -240,17 +238,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={
-                group.avatar
-                  ? group.avatar.startsWith("http")
-                    ? group.avatar
-                    : `${API_URL}${group.avatar}`
-                  : "/placeholder.svg"
-              }
-              alt={group.title}
-              className="object-cover"
-            />
+            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} className="object-cover"/>
             <AvatarFallback>
               {group.title
                 .split(" ")
@@ -280,17 +268,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                 {groupMessages.map((message) => (
                   <div key={message.id} className="flex gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage
-                        src={
-                          message.otherUserAvatar
-                            ? message.otherUserAvatar.startsWith("http")
-                              ? message.otherUserAvatar
-                              : `${API_URL}${message.otherUserAvatar}`
-                            : "/placeholder.svg"
-                        }
-                        alt={message.otherUserName}
-                        className="object-cover"
-                      />
+                      <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} className="object-cover"/>
                       <AvatarFallback className="text-xs">
                         {message.otherUserName
                           .split(" ")
@@ -354,7 +332,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                 placeholder="Type a message..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
+                onKeyPress={handleKeyPress}
                 className="flex-1"
               />
               <Button size="icon" onClick={handleSendMessage} disabled={!newMessage.trim()}>

@@ -1,190 +1,32 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import { useState, useRef, useEffect } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { X, Send, Smile } from "lucide-react";
-import type { Message, ChatUser } from "@/hooks/useWebSocket";
+import { useState, useRef, useEffect } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { X, Send, Smile } from "lucide-react"
+import type { Message, ChatUser } from "@/hooks/useWebSocket"
 
 interface ChatInterfaceProps {
   user: {
     user_uuid: string;
-    user_id?: number;
     id: string;
     first_name: string;
     last_name: string;
     avatar: string;
-  };
-  messages: Message[];
-  onSendMessage: (message: Omit<Message, "id" | "timestamp">) => void;
-  onClose: () => void;
+  }
+  messages: Message[]
+  onSendMessage: (message: Omit<Message, "id" | "timestamp">) => void
+  onClose: () => void
 }
 
-const EMOJIS = [
-  "😀",
-  "😃",
-  "😄",
-  "😁",
-  "😆",
-  "😅",
-  "😂",
-  "🤣",
-  "😊",
-  "😇",
-  "🙂",
-  "🙃",
-  "😉",
-  "😌",
-  "😍",
-  "🥰",
-  "😘",
-  "😗",
-  "😙",
-  "😚",
-  "😋",
-  "😛",
-  "😝",
-  "😜",
-  "🤪",
-  "🤨",
-  "🧐",
-  "🤓",
-  "😎",
-  "🤩",
-  "🥳",
-  "😏",
-  "😒",
-  "😞",
-  "😔",
-  "😟",
-  "😕",
-  "🙁",
-  "☹️",
-  "😣",
-  "😖",
-  "😫",
-  "😩",
-  "🥺",
-  "😢",
-  "😭",
-  "😤",
-  "😠",
-  "😡",
-  "🤬",
-  "🤯",
-  "😳",
-  "🥵",
-  "🥶",
-  "😱",
-  "😨",
-  "😰",
-  "😥",
-  "😓",
-  "🤗",
-  "🤔",
-  "🤭",
-  "🤫",
-  "🤥",
-  "😶",
-  "😐",
-  "😑",
-  "😬",
-  "🙄",
-  "😯",
-  "😦",
-  "😧",
-  "😮",
-  "😲",
-  "🥱",
-  "😴",
-  "🤤",
-  "😪",
-  "😵",
-  "🤐",
-  "🥴",
-  "🤢",
-  "🤮",
-  "🤧",
-  "😷",
-  "🤒",
-  "🤕",
-  "🤑",
-  "🤠",
-  "😈",
-  "👍",
-  "👎",
-  "👌",
-  "✌️",
-  "🤞",
-  "🤟",
-  "🤘",
-  "🤙",
-  "👈",
-  "👉",
-  "👆",
-  "🖕",
-  "👇",
-  "☝️",
-  "👋",
-  "🤚",
-  "🖐️",
-  "✋",
-  "🖖",
-  "👏",
-  "🙌",
-  "🤲",
-  "🤝",
-  "🙏",
-  "✍️",
-  "💅",
-  "🤳",
-  "💪",
-  "🦾",
-  "🦿",
-  "❤️",
-  "🧡",
-  "💛",
-  "💚",
-  "💙",
-  "💜",
-  "🖤",
-  "🤍",
-  "🤎",
-  "💔",
-  "❣️",
-  "💕",
-  "💞",
-  "💓",
-  "💗",
-  "💖",
-  "💘",
-  "💝",
-  "��",
-  "☮️",
-  "✝️",
-  "☪️",
-  "🕉️",
-  "☸️",
-  "✡️",
-  "🔯",
-  "🕎",
-  "☯️",
-  "☦️",
-  "🛐",
-];
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const EMOJIS = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👋", "🤚", "🖐️", "✋", "🖖", "👏", "🙌", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "��", "☮️", "✝️", "☪️", "🕉️", "☸️", "✡️", "🔯", "🕎", "☯️", "☦️", "🛐"]
 
 export function ChatInterface({
   user,
@@ -192,73 +34,54 @@ export function ChatInterface({
   onSendMessage,
   onClose,
 }: ChatInterfaceProps) {
-  console.log("chat messages:", liveMessages);
-  const [newMessage, setNewMessage] = useState("");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [history, setHistory] = useState<Message[]>([]);
-  const [currentUserNumericId, setCurrentUserNumericId] = useState<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+    console.log('chat messages:', liveMessages)
+  const [newMessage, setNewMessage] = useState("")
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [history, setHistory] = useState<Message[]>([])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const chatSpec = `private_${user.user_uuid}`;
+  const chatSpec = `private_${user.user_uuid}`
   const chatMessages = [
     ...history,
     ...liveMessages.filter(
-      (msg) =>
-        msg.chatId === chatSpec && !history.some((hist) => hist.id === msg.id)
+      msg => msg.chatId === chatSpec && !history.some(hist => hist.id === msg.id)
     ),
-  ];
+  ]
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   const setFocus = () => {
-    inputRef.current?.focus();
-  };
-
-  const fetchCurrentUserNumericId = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/session-check`, {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (data.success && data.user) {
-        setCurrentUserNumericId(data.user.user_id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch current user numeric ID:', error);
-    }
-  };
+    inputRef.current?.focus()
+  }
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch(
-        `${API_URL}/api/messages/${chatSpec}`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(`http://localhost:8080/api/messages/${chatSpec}`, {
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       type Raw = {
-        id: number;
-        requesterId: number;
-        senderId: number;
-        otherUserName: string;
-        otherUserAvatar: string | null;
-        receiverId?: number;
-        groupId?: number;
-        content: string;
-        timestamp: string;
-        messageType: "text" | "emoji";
-        chatType: "private" | "group";
-      };
-      console.log("Fetching chat messages...");
-      const raw: Raw[] = await res.json();
+        id: number
+        requesterId: number
+        senderId: number
+        otherUserName: string
+        otherUserAvatar: string | null
+        receiverId?: number
+        groupId?: number
+        content: string
+        timestamp: string
+        messageType: "text" | "emoji"
+        chatType: "private" | "group"
+      }
+      console.log("Fetching chat messages...")
+      const raw: Raw[] = await res.json()
 
       const mapped: Message[] = raw.map((msg) => {
         console.log(
-          `          id: ${String(msg.id)},
+`          id: ${String(msg.id)},
           chatId: ${chatSpec},
           senderId: ${String(msg.senderId)},
           otherUserName: ${msg.otherUserName},
@@ -267,7 +90,7 @@ export function ChatInterface({
           timestamp: ${new Date(msg.timestamp)},
           messageType: ${msg.messageType},
           chatType: ${msg.chatType},`
-        );
+      )
         return {
           id: String(msg.id),
           chatId: chatSpec,
@@ -278,66 +101,59 @@ export function ChatInterface({
           timestamp: new Date(msg.timestamp),
           messageType: msg.messageType,
           chatType: msg.chatType,
-        };
-      });
+        }
+      })
 
-      setHistory(mapped);
+      setHistory(mapped)
     } catch (err) {
-      console.error("fetchMessages:", err);
+      console.error("fetchMessages:", err)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchCurrentUserNumericId();
-    fetchMessages();
-  }, [user.user_uuid]);
+    fetchMessages()
+  }, [user.user_uuid])
 
   useEffect(() => {
-    console.log("Adding message:", chatMessages[chatMessages.length - 1]);
-    scrollToBottom();
-    setFocus();
-  }, [chatMessages]);
+    console.log("Adding message:", chatMessages[chatMessages.length - 1])
+    scrollToBottom()
+    setFocus()
+  }, [chatMessages])
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
-      const userNumericId = user.user_id || currentUserNumericId;
       onSendMessage({
-        senderId: String(userNumericId),
+        senderId: "You",
         otherUserName: user.first_name,
         otherUserAvatar: user.avatar,
         content: newMessage,
         messageType: "text",
         chatId: `private_${user.user_uuid}`,
         chatType: "private",
-      });
-      setNewMessage("");
+      })
+      setNewMessage("")
     }
-  };
+  }
 
   const handleEmojiSelect = (emoji: string) => {
-    const userNumericId = user.user_id || currentUserNumericId;
     onSendMessage({
-      senderId: String(userNumericId),
+      senderId: "You",
       otherUserName: user.first_name,
       otherUserAvatar: user.avatar,
       content: emoji,
       messageType: "emoji",
       chatId: `private_${user.user_uuid}`,
       chatType: "private",
-    });
-    setShowEmojiPicker(false);
-  };
+    })
+    setShowEmojiPicker(false)
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+      e.preventDefault()
+      handleSendMessage()
     }
-  };
-
-  console.log("ChatInterface rendered with user:", user);
-  console.log("User object keys:", Object.keys(user));
-  console.log("what is messages:", chatMessages);
+  }
 
   return (
     <Card className="fixed bottom-4 right-4 w-80 h-96 shadow-lg z-50 flex flex-col">
@@ -356,11 +172,7 @@ export function ChatInterface({
             </AvatarFallback>
           </Avatar> */}
           <div>
-            <h4 className="text-sm font-semibold">
-              <pre>
-                {user.first_name} {user.last_name}
-              </pre>
-            </h4>
+            <h4 className="text-sm font-semibold"><pre>{user.first_name} {user.last_name}</pre></h4>
             <p className="text-xs text-muted-foreground">
               {/* {user.isOnline ? (
                 <span className="flex items-center gap-1">
@@ -374,12 +186,7 @@ export function ChatInterface({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={onClose}
-          >
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
             <X className="h-3 w-3" />
           </Button>
         </div>
@@ -388,60 +195,35 @@ export function ChatInterface({
       {/* Messages Area */}
       <CardContent className="flex flex-col flex-1 p-0 min-h-0">
         <div className="flex-1 overflow-y-auto px-4">
-          <div className="space-y-4 py-4">
-            {" "}
-            {/* Scrollarea */}
-            {chatMessages.map((message) => {
-              const userNumericId = user.user_id || currentUserNumericId;
-              const isCurrentUser = userNumericId && Number(message.senderId) === userNumericId;
-              console.log(`Message ID: ${message.id}, SenderId: ${message.senderId} (type: ${typeof message.senderId}), User ID: ${userNumericId} (type: ${typeof userNumericId}), isCurrentUser: ${isCurrentUser}`);
-              return (
+          <div className="space-y-4 py-4"> {/* Scrollarea */}
+            {chatMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex gap-2 ${message.otherUserName === user.first_name ? "justify-end" : "justify-start"}`}
+              >
+                {message.otherUserName !== user.first_name && (
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} />
+                    <AvatarFallback className="text-xs">
+                      {message.otherUserName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
                 <div
-                  key={message.id}
-                  className={`flex gap-2 ${
-                    isCurrentUser ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {!isCurrentUser && (
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage
-                        src={
-                          user.avatar
-                            ? user.avatar.startsWith("http")
-                              ? user.avatar
-                              : `${API_URL}${user.avatar}`
-                            : "/placeholder.svg"
-                        }
-                        alt={`${user.first_name} ${user.last_name}`}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {user.first_name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div
-                    className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${
-                      isCurrentUser
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
+                  className={`max-w-[70%] rounded-lg px-3 py-2 text-sm ${message.otherUserName === user.first_name ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}
-                  >
+                >
                   {message.messageType === "emoji" ? (
                     <span className="text-2xl">{message.content}</span>
                   ) : (
-                    <p className="break-all whitespace-pre-wrap">
-                      {message.content}
-                    </p>
+                    <p className="break-all whitespace-pre-wrap">{message.content}</p>
                   )}
                   <p
-                    className={`text-xs mt-1 ${
-                      isCurrentUser
-                        ? "text-primary-foreground/70"
-                        : "text-muted-foreground"
-                    }`}
+                    className={`text-xs mt-1 ${message.otherUserName === user.first_name ? "text-primary-foreground/70" : "text-muted-foreground"
+                      }`}
                   >
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
@@ -450,7 +232,7 @@ export function ChatInterface({
                   </p>
                 </div>
               </div>
-            )})}
+            ))}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -488,18 +270,14 @@ export function ChatInterface({
             placeholder="Type a message..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyPress={handleKeyPress}
             className="flex-1"
           />
-          <Button
-            size="icon"
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim()}
-          >
+          <Button size="icon" onClick={handleSendMessage} disabled={!newMessage.trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
       </div>
     </Card>
-  );
+  )
 }

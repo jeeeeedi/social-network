@@ -47,10 +47,10 @@ export default function SocialNetworkPage() {
   useEffect(() => {
     if (!currentUser) return;
 
-    // Helper to fetch the user's groups with member counts
+    // Helper to fetch the user's groups
     const fetchGroups = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/groups/`, {
+        const res = await fetch(`${API_URL}/api/groups/my-groups`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -61,11 +61,7 @@ export default function SocialNetworkPage() {
           throw new Error("Failed to fetch groups");
         }
         const data = await res.json();
-        // Only include groups where the user is a member
-        const myGroups = Array.isArray(data)
-          ? (data as any[]).filter((g) => g.user_status === 'accepted')
-          : [];
-        setGroups(myGroups);
+        setGroups(data || []);
       } catch (err) {
         console.error("Failed to load groups:", err);
       }
@@ -335,6 +331,11 @@ export default function SocialNetworkPage() {
                       </div>
                       <div>
                         <p className="font-medium text-sm">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.isOnline
+                            ? "Online"
+                            : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -376,16 +377,7 @@ export default function SocialNetworkPage() {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage
-                          src={
-                            group.avatar
-                              ? group.avatar.startsWith("http")
-                                ? group.avatar
-                                : `${API_URL}${group.avatar}`
-                              : "/placeholder.svg"
-                          }
-                          alt={group.title}
-                        />
+                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} />
                         <AvatarFallback>
                           {group.title
                             .split(" ")
@@ -396,10 +388,13 @@ export default function SocialNetworkPage() {
                       <div>
                         <p className="font-medium text-sm">{group.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {group.member_count} members
+                          {group.members?.length || 0} members
                         </p>
                       </div>
                     </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {group.members?.filter((m: any) => m.isOnline).length || 0} online
+                    </Badge>
                   </div>
                 ))
               ) : (
