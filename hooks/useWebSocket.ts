@@ -53,7 +53,9 @@ export function useWebSocket() {
   const retryRef = useRef(RECONNECT_DELAY)
 
   const connect = useCallback(() => {
-    ws.current = new WebSocket(serverUrl)
+    if (!ws.current || ws.current.readyState === WebSocket.CLOSED || ws.current.readyState === WebSocket.CLOSING) {
+      ws.current = new WebSocket(serverUrl)
+    }
 
     ws.current.onopen = () => {
       console.log("WS connected")
