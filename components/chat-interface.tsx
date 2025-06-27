@@ -174,14 +174,6 @@ export function ChatInterface({
           <div>
             <h4 className="text-sm font-semibold"><pre>{user.first_name} {user.last_name}</pre></h4>
             <p className="text-xs text-muted-foreground">
-              {/* {user.isOnline ? (
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  Online
-                </span>
-              ) : (
-                `Last seen ${user.lastSeen ? user.lastSeen.toLocaleTimeString() : "recently"}`
-              )} */}
             </p>
           </div>
         </div>

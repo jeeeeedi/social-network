@@ -340,7 +340,6 @@ export default function GroupDetailPage() {
         name: formatUserName(member.user!),
         username: member.user!.nickname || member.user!.first_name,
         avatar: getUserAvatarUrl(member.user!),
-        isOnline: false, // TODO: Implement online status
         isFollowing: false,
         isFollowedBy: false,
       })),

@@ -27,7 +27,7 @@ interface Group {
   member_count: number;
   title: string;
   avatar: string;
-  members?: any[]; // Optional - used for online count
+  members?: any[];
 }
 
 export default function SocialNetworkPage() {
@@ -111,7 +111,6 @@ export default function SocialNetworkPage() {
                 ? u.avatar
                 : `${API_URL}${u.avatar}`
               : "/placeholder.svg",
-            isOnline: false, // TODO: integrate with websocket presence
             isFollowing: followingUUIDs.has(u.user_uuid),
             isFollowedBy: followerUUIDs.has(u.user_uuid),
             lastSeen: undefined,
@@ -299,11 +298,7 @@ export default function SocialNetworkPage() {
               <h3 className="font-semibold flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 Messages
-                {isConnected && (
-                  <Badge variant="secondary" className="text-xs">
-                    Online
-                  </Badge>
-                )}
+                {isConnected}
               </h3>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -325,17 +320,9 @@ export default function SocialNetworkPage() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        {user.isOnline && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
-                        )}
                       </div>
                       <div>
                         <p className="font-medium text-sm">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.isOnline
-                            ? "Online"
-                            : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
-                        </p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -392,9 +379,6 @@ export default function SocialNetworkPage() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {group.members?.filter((m: any) => m.isOnline).length || 0} online
-                    </Badge>
                   </div>
                 ))
               ) : (

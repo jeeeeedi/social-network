@@ -38,7 +38,6 @@ export interface ChatUser {
   name: string
   username: string
   avatar: string
-  isOnline: boolean
   isFollowing: boolean
   isFollowedBy: boolean
   lastSeen?: Date
@@ -50,7 +49,6 @@ const RECONNECT_DELAY = 2000
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
-  const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])
   const ws = useRef<WebSocket | null>(null)
   const retryRef = useRef(RECONNECT_DELAY)
 
@@ -135,8 +133,6 @@ export function useWebSocket() {
   return {
     isConnected,
     messages,
-    onlineUsers,
     sendMessage,
-    setOnlineUsers,
   }
 }
