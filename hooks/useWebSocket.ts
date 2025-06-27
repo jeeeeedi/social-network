@@ -1,20 +1,39 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 export interface Message {
-  id: string
-  senderId: string
-  senderName: string
-  senderAvatar: string
+  id: string | null
+  chatId: string
+  senderId: string | null
+  otherUserName: string
+  otherUserAvatar: string | null
   content: string
   timestamp: Date
-  type: "text" | "emoji"
-  chatId: string
+  messageType: "text" | "emoji"
   chatType: "private" | "group"
 }
 
+interface RawMessage {
+  id: number; // good
+  chatId: string; // good
+  senderId: number; // good
+  requesterId: number; // good
+  groupId?: number; // Missing in backend
+  otherUserName: string; // good
+  otherUserAvatar?: string | null; // include avatar
+  otherUserID: number | null; // good
+  content: string; // good
+  timestamp: string; // good
+  messageType: "text" | "emoji"; // good
+  chatType: "private" | "group"; // good
+}
+
 export interface ChatUser {
+  user_uuid: string
+  first_name: string
+  last_name: string
+
   id: string
   name: string
   username: string
@@ -25,71 +44,93 @@ export interface ChatUser {
   lastSeen?: Date
 }
 
+const serverUrl = "ws://localhost:8080/api/ws"
+const RECONNECT_DELAY = 2000
+
 export function useWebSocket() {
-  const serverUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/api/ws"
   const [isConnected, setIsConnected] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])
   const ws = useRef<WebSocket | null>(null)
+  const retryRef = useRef(RECONNECT_DELAY)
 
-  useEffect(() => {
-
-    // 1) Create the WebSocket
+  const connect = useCallback(() => {
     ws.current = new WebSocket(serverUrl)
 
-    // 2) When connection opens
     ws.current.onopen = () => {
       console.log("WS connected")
       setIsConnected(true)
-      // Optionally, you can notify server who you are:
-      // ws.current!.send(JSON.stringify({ type: "hello", userId: "…" }))
+      retryRef.current = RECONNECT_DELAY
     }
 
-    // 3) When a message comes in
-    ws.current.onmessage = (event) => {
+    ws.current.onmessage = (ev: MessageEvent) => {
+      console.log("Got message!!")
       try {
-        const incoming: Message = JSON.parse(event.data)
-        setMessages(prev => [...prev, incoming])
+        const raw = JSON.parse(ev.data) as RawMessage
+        console.log("This is the message:")
+        console.log(raw)
+        console.log("Just checked if message was private or group")
+        const msg: Message = {
+          id: String(raw.id),
+          chatId: raw.chatId,
+          senderId: String(raw.senderId),
+          otherUserName: raw.otherUserName,
+          otherUserAvatar: raw.otherUserAvatar || null,
+          content: raw.content,
+          timestamp: new Date(raw.timestamp),
+          messageType: raw.messageType,
+          chatType: raw.chatType,
+        }
+        console.log("Finally, adding message to messages:", msg)
+        setMessages(prev => [...prev, msg])
       } catch (err) {
-        console.error("Failed to parse WS message", err)
+        console.error("Failed to parse WS message:", err, ev.data)
       }
     }
 
-    // 4) Handle errors
     ws.current.onerror = (err) => {
-      console.error("WS error", err)
-      // you might setIsConnected(false) or show UI feedback
+      console.error("WS error:", err)
     }
 
-    // 5) Handle close
     ws.current.onclose = () => {
       console.log("WS closed")
       setIsConnected(false)
-      // optionally: try to reconnect after a delay
-    }
+      ws.current = null
 
-    // 6) Cleanup on unmount
+      setTimeout(() => {
+        // exponential backoff up to 30s
+        retryRef.current = Math.min(retryRef.current * 2, 30000)
+        connect()
+      }, retryRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    connect()
     return () => {
-      ws.current?.close()
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        console.log('closing websocket');
+        ws.current.close();
+      }
     }
-  }, [serverUrl])
+  }, [connect])
+// figure out how to send the group messages to the backend
+  const sendMessage = useCallback(
+    (msg: Omit<Message, "id" | "timestamp">) => {
+      const outgoing: Message = {
+        ...msg,
+        id: Date.now().toString(),
+        timestamp: new Date(),
+      }
 
-  // 7) Sending a message
-  const sendMessage = (msg: Omit<Message, "id" | "timestamp">) => {
-    const newMessage: Message = {
-      ...msg,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-    }
-    // 7a) Add to local state
-    setMessages(prev => [...prev, newMessage])
-    // 7b) Send to server
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(newMessage))
-    } else {
-      console.warn("WS not open; cannot send")
-    }
-  }
+      if (ws.current?.readyState === WebSocket.OPEN) {
+        ws.current.send(JSON.stringify(outgoing))
+      } else {
+        console.warn("WS not open; cannot send")
+      }
+    },
+    []
+  )
 
   return {
     isConnected,

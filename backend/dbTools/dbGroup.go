@@ -5,6 +5,18 @@ import (
 	"time"
 )
 
+// 		type GroupStruct struct {
+// 				group_id     int
+// 			title      string
+// 			description  string
+// 			creator_id   int
+// 			creator_name string
+// 			created_at   time.Time
+// 			member_count int
+// 			avatar string
+// 			user_status *string
+// }
+
 // CreateGroup creates a new group in the database
 func (db *DB) CreateGroup(g *Group) (*Group, error) {
 	query := `INSERT INTO groups (title, description, creator_id) VALUES (?, ?, ?)`
@@ -120,6 +132,8 @@ func (db *DB) GetAllGroups(userID ...int) ([]map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+
+
 
 		group := map[string]interface{}{
 			"group_id":     groupID,

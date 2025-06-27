@@ -80,6 +80,56 @@ func (d *DB) FetchUserByID(userID int) (*UserAPI, error) {
 	return &user, nil
 }
 
+// FetchUserByUUID fetches a single active user by their UUID
+func (d *DB) FetchUserByUUID(userUUID string) (*User, error) {
+	const query = `
+        SELECT
+          user_id,
+          user_uuid,
+          email,
+          password,
+          first_name,
+          last_name,
+          date_of_birth,
+          COALESCE(nickname, '')   AS nickname,
+          COALESCE(about_me, '')   AS about_me,
+          COALESCE(avatar, '')     AS avatar,
+          privacy,
+          role,
+          status,
+          created_at,
+          updated_at,
+          COALESCE(updater_id, 0)  AS updater_id
+        FROM users
+        WHERE user_uuid = ?
+          AND status = 'active'
+    `
+
+	var u User
+	err := d.db.QueryRow(query, userUUID).Scan(
+		&u.UserID,
+		&u.UserUUID,
+		&u.Email,
+		&u.Password,
+		&u.FirstName,
+		&u.LastName,
+		&u.DateOfBirth,
+		&u.Nickname,
+		&u.AboutMe,
+		&u.Avatar,
+		&u.Privacy,
+		&u.Role,
+		&u.Status,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.UpdaterID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 // FetchUsersByIDs fetches multiple users by their IDs
 func (d *DB) FetchUsersByIDs(userIDs []int) ([]UserAPI, error) {
 	if len(userIDs) == 0 {
