@@ -61,7 +61,7 @@ export function ChatInterface({
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/messages/${chatSpec}`, {
+      const res = await fetch(`${API_URL}/api/messages/${chatSpec}`, {
         credentials: "include",
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

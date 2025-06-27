@@ -177,7 +177,7 @@ export default function GroupDetailPage() {
     // Simple fetch on modal open - reuse existing API
     try {
       console.log('🔍 Fetching users for invitation...');
-      const response = await fetch('http://localhost:8080/api/users', {
+      const response = await fetch(`${API_URL}/api/users`, {
         credentials: 'include',
       });
       console.log('📡 Users API response status:', response.status);
