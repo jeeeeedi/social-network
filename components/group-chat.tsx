@@ -15,8 +15,9 @@ import type { Message, ChatUser } from "@/hooks/useWebSocket"
 
 interface GroupChatProps {
   group: {
-    id: string
-    name: string
+    group_id: number
+    member_count: number
+    title: string
     avatar: string
     members: ChatUser[]
     description?: string
@@ -92,34 +93,117 @@ const EMOJIS = [
 export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChatProps) {
   const [newMessage, setNewMessage] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [history, setHistory] = useState<Message[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const chatSpec = `group_${group.group_id}`
+  // const groupMessages = [
+  //   ...history,
+  //   ...messages.filter(
+  //     msg => msg.chatId === chatSpec && !history.some(hist => hist.id === msg.id)
+  //   ),
+  // ]
+
+  const combinedMessages = [...history, ...messages];
+  const seen = new Set();
+  const groupMessages = combinedMessages
+  .filter(msg => msg.chatId === chatSpec)
+  .filter(msg => {
+    if (seen.has(msg.id)) return false;
+    seen.add(msg.id);
+    return true;
+  });
 
   // Safety checks
   if (!group) {
     return null
   }
-
-  const groupMessages = messages?.filter((msg) => msg.chatId === `group_${group.id}`) || []
+  // const groupMessages = messages?.filter((msg) => msg.chatId === `group_${group.group_id}`) || []
+  console.log('groupMessages:', groupMessages)
   const members = group.members || []
-  const groupName = group.name || "Unknown Group"
+  const groupName = group.title || "Unknown Group"
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
+  const setFocus = () => {
+    inputRef.current?.focus()
+  }
+
+  const fetchMessages = async () => {
+  try {
+    const res = await fetch(`http://localhost:8080/api/messages/${chatSpec}`, {
+      credentials: "include",
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    type Raw = {
+      id: number
+      requesterId: number
+      senderId: number
+      otherUserName: string
+      otherUserAvatar: string | null
+      receiverId?: number
+      groupId?: number
+      content: string
+      timestamp: string
+      messageType: "text" | "emoji"
+      chatType: "private" | "group"
+    }
+    console.log("Fetching chat messages...")
+    const raw: Raw[] = await res.json()
+
+    const mapped: Message[] = raw.map((msg) => {
+      console.log(
+`          id: ${String(msg.id)},
+        chatId: ${chatSpec},
+        senderId: ${String(msg.senderId)},
+        otherUserName: ${msg.otherUserName},
+        otherUserAvatar: ${msg.otherUserAvatar},
+        content: ${msg.content},
+        timestamp: ${new Date(msg.timestamp)},
+        messageType: ${msg.messageType},
+        chatType: ${msg.chatType},`
+    )
+      return {
+        id: String(msg.id),
+        chatId: chatSpec,
+        senderId: String(msg.senderId),
+        otherUserName: msg.otherUserName,
+        otherUserAvatar: msg.otherUserAvatar,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        messageType: msg.messageType,
+        chatType: msg.chatType,
+      }
+    })
+
+      setHistory(mapped)
+    } catch (err) {
+      console.error("fetchMessages:", err)
+    }
+  }
+
+  useEffect(() => {
+    fetchMessages()
+  }, [group.group_id])
+
   useEffect(() => {
     scrollToBottom()
+    setFocus()
   }, [groupMessages])
+
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       onSendMessage({
         senderId: "you",
-        senderName: "You",
-        senderAvatar: "/placeholder.svg?height=40&width=40",
+        otherUserName: group.title,
+        otherUserAvatar: group.avatar,
         content: newMessage,
-        type: "text",
-        chatId: `group_${group.id}`,
+        messageType: "text",
+        chatId: `group_${group.group_id}`,
         chatType: "group",
       })
       setNewMessage("")
@@ -129,11 +213,11 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
   const handleEmojiSelect = (emoji: string) => {
     onSendMessage({
       senderId: "you",
-      senderName: "You",
-      senderAvatar: "/placeholder.svg?height=40&width=40",
+      otherUserName: group.title,
+      otherUserAvatar: group.avatar,
       content: emoji,
-      type: "emoji",
-      chatId: `group_${group.id}`,
+      messageType: "emoji",
+      chatId: `group_${group.group_id}`,
       chatType: "group",
     })
     setShowEmojiPicker(false)
@@ -146,25 +230,27 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
     }
   }
 
+  console.log('group messages:', groupMessages)
+  // groupMessages=history
   return (
     <Card className="fixed bottom-4 right-96 w-80 h-96 shadow-lg z-50 flex flex-col">
       {/* Group Chat Header */}
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} className="object-cover"/>
+            <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} className="object-cover"/>
             <AvatarFallback>
-              {group.name
+              {group.title
                 .split(" ")
                 .map((n) => n[0])
                 .join("")}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h4 className="text-sm font-semibold">{group.name}</h4>
+            <h4 className="text-sm font-semibold">{group.title}</h4>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Users className="h-3 w-3" />
-              {group.members.length} members
+              {group.member_count} members
             </p>
           </div>
         </div>
@@ -176,15 +262,15 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
       </CardHeader>
 
       {/* Messages Area */}
-      <CardContent className="flex-1 p-0">
-            <ScrollArea className="h-full px-4">
+      <CardContent className="flex flex-col flex-1 p-0 min-h-0">
+            <div className="flex-1 overflow-y-auto px-4">
               <div className="space-y-4 py-4">
                 {groupMessages.map((message) => (
                   <div key={message.id} className="flex gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={message.senderAvatar || "/placeholder.svg"} alt={message.senderName} className="object-cover"/>
+                      <AvatarImage src={message.otherUserAvatar || "/placeholder.svg"} alt={message.otherUserName} className="object-cover"/>
                       <AvatarFallback className="text-xs">
-                        {message.senderName
+                        {message.otherUserName
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
@@ -192,7 +278,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium">{message.senderName}</span>
+                        <span className="text-xs font-medium">{message.otherUserName}</span>
                         <span className="text-xs text-muted-foreground">
                           {message.timestamp.toLocaleTimeString([], {
                             hour: "2-digit",
@@ -201,7 +287,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                         </span>
                       </div>
                       <div className="bg-muted rounded-lg px-3 py-2 text-sm">
-                        {message.type === "emoji" ? (
+                        {message.messageType === "emoji" ? (
                           <span className="text-2xl">{message.content}</span>
                         ) : (
                           <p>{message.content}</p>
@@ -212,7 +298,7 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
                 ))}
                 <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
           </CardContent>
 
           <Separator />

@@ -56,6 +56,9 @@ func setHandlers(db *dbTools.DB) {
 	http.HandleFunc("/api/users/batch", func(w http.ResponseWriter, r *http.Request) {
 		handlers.BatchUsersHandler(db, w, r)
 	}) // Handle batch user requests
+	http.HandleFunc("/api/messages/", func(w http.ResponseWriter, r *http.Request) {
+		handlers.MessageHandler(db, w, r)
+	})
 	http.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		handlers.WebSocketsHandler(db, w, r)
 	})

@@ -1,142 +1,171 @@
-"use client"
+"use client";
+
+import { useState, useEffect } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MessageCircle, User, Users as UsersIcon, Calendar } from "lucide-react";
+import { ChatInterface } from "@/components/chat-interface";
+import { GroupChat } from "@/components/group-chat";
+import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket";
+import { useAuth } from "@/contexts/AuthContext";
+import { Feed } from "@/components/feed";
+import { useRouter } from "next/navigation";
+import { EventCard } from "@/components/event-card"
+import {
+  getUserEvents,
+  enrichEvents,
+  respondToEvent,
+  type EventWithDetails,
+} from "@/utils/user-group-api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { MessageCircle, User, Users as UsersIcon, Calendar } from "lucide-react"
-import { ChatInterface } from "@/components/chat-interface"
-import { GroupChat } from "@/components/group-chat"
-import { EventCard } from "@/components/event-card"
-import { useWebSocket, type ChatUser } from "@/hooks/useWebSocket"
-import { useAuth } from "@/contexts/AuthContext"
-import { Feed } from "@/components/feed"
-import { useRouter } from "next/navigation"
-import { getUserEvents, enrichEvents, respondToEvent, type EventWithDetails } from "@/utils/user-group-api"
+interface Group {
+  group_id: number;
+  member_count: number;
+  title: string;
+  avatar: string;
+  members?: any[]; // Optional - used for online count
+}
 
 export default function SocialNetworkPage() {
-  const router = useRouter()
-  const { currentUser, loading: authLoading } = useAuth()
-  const [userEvents, setUserEvents] = useState<EventWithDetails[]>([])
-  const [eventsLoading, setEventsLoading] = useState(false)
-  const [userRSVPs, setUserRSVPs] = useState<Record<number, string>>({})
+  const router = useRouter();
+  const { currentUser, loading: authLoading } = useAuth();
+  const [groups, setGroups] = useState<Group[]>([]);
+  const { messages, sendMessage, isConnected } = useWebSocket();
+  const [activeChat, setActiveChat] = useState<ChatUser | null>(null);
+  const [activeGroupChat, setActiveGroupChat] = useState<any>(null);
+  const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
 
-  const { messages, sendMessage, isConnected } = useWebSocket()
-  const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
-  const [activeGroupChat, setActiveGroupChat] = useState<any>(null)
+  const [userRSVPs, setUserRSVPs] = useState<{ [key: number]: "going" | "not_going" }>({});
+  const [userEvents, setUserEvents] = useState<EventWithDetails[]>([]);
+  const [eventsLoading, setEventsLoading] = useState<boolean>(true);
 
-  // Mock users data - in real app, fetch from backend
-  const [chatUsers] = useState<ChatUser[]>([
-    {
-      id: "1",
-      name: "Emma Wilson",
-      username: "emmaw",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isOnline: true,
-      isFollowing: true,
-      isFollowedBy: true,
-      lastSeen: new Date(),
-    },
-    {
-      id: "2",
-      name: "David Kim",
-      username: "davidk",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isOnline: false,
-      isFollowing: false,
-      isFollowedBy: true,
-      lastSeen: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    },
-    {
-      id: "3",
-      name: "Lisa Brown",
-      username: "lisab",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isOnline: true,
-      isFollowing: true,
-      isFollowedBy: false,
-      lastSeen: new Date(),
-    },
-    {
-      id: "4",
-      name: "Michael Chen",
-      username: "michaelc",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isOnline: false,
-      isFollowing: true,
-      isFollowedBy: true,
-      lastSeen: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    },
-  ])
-
-  // Mock groups data
-  const [groups] = useState([
-    {
-      id: "1",
-      name: "Design Team",
-      avatar: "/placeholder.svg?height=40&width=40",
-      members: chatUsers.slice(0, 3),
-      description: "Design discussions and updates",
-    },
-    {
-      id: "2",
-      name: "Photography Club",
-      avatar: "/placeholder.svg?height=40&width=40",
-      members: chatUsers.slice(1, 4),
-      description: "Share your best shots!",
-    },
-  ])
-
-  // Fetch events when user is authenticated
+  // NEW: Fetch groups, chat users and events once the current user is available
   useEffect(() => {
-    const fetchEvents = async () => {
-      if (!currentUser || authLoading) return;
-      
-      setEventsLoading(true);
+    if (!currentUser) return;
+
+    // Helper to fetch the user's groups
+    const fetchGroups = async () => {
       try {
+        const res = await fetch(`${API_URL}/api/groups/my-groups`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) {
+          throw new Error("Failed to fetch groups");
+        }
+        const data = await res.json();
+        setGroups(data || []);
+      } catch (err) {
+        console.error("Failed to load groups:", err);
+      }
+    };
+
+    // Helper to fetch users that can participate in private chats (followers / following)
+    const fetchChatUsers = async () => {
+      try {
+        const [allUsersRes, followersRes, followingRes] = await Promise.all([
+          fetch(`${API_URL}/api/users`, { credentials: "include" }),
+          fetch(`${API_URL}/api/followers/${currentUser.user_uuid}`, { credentials: "include" }),
+          fetch(`${API_URL}/api/following/${currentUser.user_uuid}`, { credentials: "include" }),
+        ]);
+
+        if (!allUsersRes.ok) {
+          throw new Error("Failed to fetch users");
+        }
+
+        const allUsersData = await allUsersRes.json();
+        const allUsers = allUsersData.users || allUsersData;
+
+        const followersData = followersRes.ok ? await followersRes.json() : { followers: [] };
+        const followingData = followingRes.ok ? await followingRes.json() : { followers: [] };
+
+        const followerUUIDs = new Set<string>(
+          (followersData.followers || []).map((f: any) => f.user_uuid)
+        );
+        const followingUUIDs = new Set<string>(
+          (followingData.followers || followingData.following || []).map((f: any) => f.user_uuid)
+        );
+
+        const transformed = (allUsers as any[])
+          .filter((u) =>
+            // exclude self and keep only followers or following
+            u.user_uuid !== currentUser.user_uuid &&
+            (followingUUIDs.has(u.user_uuid) || followerUUIDs.has(u.user_uuid))
+          )
+          .map((u) => ({
+            user_uuid: u.user_uuid,
+            first_name: u.first_name,
+            last_name: u.last_name,
+            id: u.user_uuid,
+            name: `${u.first_name} ${u.last_name}`.trim(),
+            username: u.nickname || u.first_name,
+            avatar: u.avatar
+              ? u.avatar.startsWith("http")
+                ? u.avatar
+                : `${API_URL}${u.avatar}`
+              : "/placeholder.svg",
+            isOnline: false, // TODO: integrate with websocket presence
+            isFollowing: followingUUIDs.has(u.user_uuid),
+            isFollowedBy: followerUUIDs.has(u.user_uuid),
+            lastSeen: undefined,
+          }));
+
+        setChatUsers(transformed);
+      } catch (err) {
+        console.error("Failed to load chat users:", err);
+      }
+    };
+
+    // Helper to fetch and enrich events
+    const fetchEvents = async () => {
+      try {
+        setEventsLoading(true);
         const events = await getUserEvents();
-        const enrichedEvents = await enrichEvents(events);
-        setUserEvents(enrichedEvents);
-      } catch (error) {
-        console.error('Failed to fetch events:', error);
-        setUserEvents([]);
+        const enriched = await enrichEvents(events);
+        setUserEvents(enriched);
+      } catch (err) {
+        console.error("Failed to load events:", err);
       } finally {
         setEventsLoading(false);
       }
     };
+
+    fetchGroups();
+    fetchChatUsers();
     fetchEvents();
-  }, [currentUser, authLoading]);
+  }, [currentUser]);
 
   const handleEventResponse = async (eventId: number, response: "going" | "not_going") => {
     if (!currentUser) return;
-    
+
     try {
       const success = await respondToEvent(eventId, response);
       if (success) {
-        setUserRSVPs(prev => ({ ...prev, [eventId]: response }));
+        setUserRSVPs((prev) => ({ ...prev, [eventId]: response }));
       } else {
-        alert('Failed to update RSVP. Please try again.');
+        alert("Failed to update RSVP. Please try again.");
       }
     } catch (error) {
-      console.error('Failed to update RSVP:', error);
-      alert('Failed to update RSVP. Please try again.');
+      console.error("Failed to update RSVP:", error);
+      alert("Failed to update RSVP. Please try again.");
     }
-  }
+  };
 
   const handleUserClick = (user: ChatUser) => {
-    if (user.isFollowing || user.isFollowedBy) {
-      setActiveChat(user);
-    }
-  }
+    setActiveChat(user);
+  };
 
   const handleGroupClick = (group: any) => {
     setActiveGroupChat(group);
-  }
+  };
 
-  // Show loading while AuthContext is checking session
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -145,13 +174,30 @@ export default function SocialNetworkPage() {
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  // Redirect to login if not authenticated
   if (!currentUser) {
-    router.push('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardHeader>
+            <h2 className="text-3xl font-bold text-center">Welcome to SocialHub</h2>
+            <p className="text-center text-muted-foreground">
+              Connect with friends and the world around you.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button className="w-full" onClick={() => router.push("/login")}>
+              Login
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => router.push("/register")}>
+              Register
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -163,31 +209,45 @@ export default function SocialNetworkPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage 
-                    src={currentUser?.avatar && currentUser.avatar.trim() !== '' ? `${API_URL}${currentUser.avatar}` : "/placeholder.svg?height=48&width=48"} 
-                    alt={currentUser?.nickname || "User"} 
+                  <AvatarImage
+                    src={
+                      currentUser?.avatar && currentUser.avatar.trim() !== ""
+                        ? `${API_URL}${currentUser.avatar}`
+                        : "/placeholder.svg?height=48&width=48"
+                    }
+                    alt={currentUser?.nickname || "User"}
                     className="object-cover"
                   />
                   <AvatarFallback>
-                    {currentUser ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0) : "YU"}
+                    {currentUser
+                      ? currentUser.first_name?.charAt(0) + currentUser.last_name?.charAt(0)
+                      : "YU"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="font-semibold">
-                    {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : "Your Name"}
+                    {currentUser
+                      ? `${currentUser.first_name} ${currentUser.last_name}`
+                      : "Your Name"}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    @{currentUser?.nickname || ""}
-                  </p>
+                  <p className="text-sm text-muted-foreground">@{currentUser?.nickname || ""}</p>
                 </div>
               </div>
 
               <nav className="space-y-2">
-                <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/profile/me'}>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3"
+                  onClick={() => window.location.href = "/profile/me"}
+                >
                   <User className="h-5 w-5" />
                   Profile
                 </Button>
-                <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => window.location.href = '/groups'}>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3"
+                  onClick={() => window.location.href = "/groups"}
+                >
                   <UsersIcon className="h-5 w-5" />
                   Groups
                 </Button>
@@ -251,9 +311,7 @@ export default function SocialNetworkPage() {
                 chatUsers.map((user) => (
                   <div
                     key={user.id}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                      user.isFollowing || user.isFollowedBy ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
-                    }`}
+                    className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                     onClick={() => handleUserClick(user)}
                   >
                     <div className="flex items-center gap-3">
@@ -274,7 +332,9 @@ export default function SocialNetworkPage() {
                       <div>
                         <p className="font-medium text-sm">{user.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {user.isOnline ? "Online" : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
+                          {user.isOnline
+                            ? "Online"
+                            : `Last seen ${user.lastSeen?.toLocaleTimeString()}`}
                         </p>
                       </div>
                     </div>
@@ -284,15 +344,17 @@ export default function SocialNetworkPage() {
                           {user.isFollowing && user.isFollowedBy
                             ? "Friends"
                             : user.isFollowing
-                              ? "Following"
-                              : "Follower"}
+                            ? "Following"
+                            : "Follower"}
                         </Badge>
                       )}
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No chats available</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No chats available
+                </p>
               )}
             </CardContent>
           </Card>
@@ -309,23 +371,25 @@ export default function SocialNetworkPage() {
               {groups.length > 0 ? (
                 groups.map((group) => (
                   <div
-                    key={group.id}
+                    key={group.group_id}
                     className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                     onClick={() => handleGroupClick(group)}
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.name} />
+                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} />
                         <AvatarFallback>
-                          {group.name
+                          {group.title
                             .split(" ")
                             .map((n: string) => n[0])
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-sm">{group.name}</p>
-                        <p className="text-xs text-muted-foreground">{group.members?.length || 0} members</p>
+                        <p className="font-medium text-sm">{group.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {group.members?.length || 0} members
+                        </p>
                       </div>
                     </div>
                     <Badge variant="secondary" className="text-xs">
@@ -361,5 +425,5 @@ export default function SocialNetworkPage() {
         />
       )}
     </div>
-  )
+  );
 }
