@@ -1,0 +1,34 @@
+# .gitignore for Next.js
+
+# Node modules
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS-specific files
+.DS_Store
+
+# Optional: VS Code settings
+.vscode/
+
+# DB
+./backend/db/socnet.db
+# Development/testing files
+cookies.txt
+test-cookies.txt
+*.cookies
