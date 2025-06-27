@@ -27,17 +27,17 @@ type inMessage struct {
 }
 
 type outMessage struct {
-	ID          int    `json:"id"`          // good
-	ChatID      string `json:"chatId"`      // good
-	SenderID    int    `json:"senderId"`    // good
-	RequesterID int    `json:"requesterId"` // good
-	// GroupID missing
-	OtherUserName string    `json:"otherUserName"` // good
-	OtherUserID   int       `json:"otherUserID"`   // good
-	Content       string    `json:"content"`       // good
-	Timestamp     time.Time `json:"timestamp"`     // good
-	MessageType   string    `json:"messageType"`   // "text" | "emoji" // good
-	ChatType      string    `json:"chatType"`      // "private" | "group" // good
+	ID              int       `json:"id"`
+	ChatID          string    `json:"chatId"`
+	SenderID        int       `json:"senderId"`
+	RequesterID     int       `json:"requesterId"`
+	OtherUserName   string    `json:"otherUserName"`
+	OtherUserAvatar string    `json:"otherUserAvatar"`
+	OtherUserID     int       `json:"otherUserID"`
+	Content         string    `json:"content"`
+	Timestamp       time.Time `json:"timestamp"`
+	MessageType     string    `json:"messageType"`
+	ChatType        string    `json:"chatType"`
 }
 
 var (
@@ -69,24 +69,23 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("err getting all groups:", err)
 	}
 
+	// Protect group membership map writes
+	groupsMutex.Lock()
 	for _, group := range listOfAllGroups {
-		// grId := strconv.Itoa(group.GroupID)
 		groupID_G, ok := group["group_id"].(int)
 		if !ok {
-			// handle error or invalid type
 			log.Println("group_id is not an int")
+			groupsMutex.Unlock()
 			return
 		}
 		listOfAllGroupMemberIDs, err := db.GetGroupMembers(groupID_G)
 		if err != nil {
 			log.Println("getting group members failed:", err)
+			continue
 		}
 		for _, grMember := range listOfAllGroupMemberIDs {
-			fmt.Println("membership id:", grMember.MembershipID)
 			if grMember.MemberID == userID {
-				//Add to group connection
 				grId := strconv.Itoa(grMember.GroupID)
-				fmt.Println("Adding a user to the group:", grId)
 				if allGroups[grId] == nil {
 					allGroups[grId] = make(map[*websocket.Conn]bool)
 				}
@@ -94,6 +93,8 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	groupsMutex.Unlock()
+
 	clientsMutex.Lock()
 	clients[conn] = userID
 	clientsMutex.Unlock()
@@ -114,6 +115,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 		fmt.Println("incomingMsg:", incomingMsg)
 		var recieverName string
+		var recieverAvatar string
 		var receiverID, groupID int
 		if incomingMsg.ChatType == "private" { // Reduntant if .ChatType is consistent
 			otherUserUUID := strings.TrimPrefix(incomingMsg.ChatID, "private_")
@@ -125,6 +127,7 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			}
 			receiverID = reciever.UserID
 			recieverName = reciever.FirstName
+			recieverAvatar = reciever.Avatar
 		} else {
 			groupIdString = strings.TrimPrefix(incomingMsg.ChatID, "group_")
 			groupID, err = strconv.Atoi(groupIdString)
@@ -133,17 +136,6 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				log.Println("Error converting to int:", err)
 				continue
 			}
-
-			// ensure this conn is in the group
-			// CHANGE THIS, NEED TO ENSURE USER IS SEEN AS PART OF GROUP EVEN IF THEY HAVEN'T SENT A MESSAGE
-
-			// // Redundant
-			// groupsMutex.Lock()
-			// if allGroups[groupIdString] == nil {
-			// 	allGroups[groupIdString] = make(map[*websocket.Conn]bool)
-			// }
-			// allGroups[groupIdString][conn] = true
-			// groupsMutex.Unlock()
 		}
 
 		senderID, err := utils.GetUserIDFromSession(db.GetDB(), r)
@@ -188,8 +180,10 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Broadcast to all connections in the group
 			groupsMutex.RLock()
-			for groupMemberConn := range allGroups[groupIdString] {
-				recipientConnections = append(recipientConnections, groupMemberConn)
+			if memberMap := allGroups[groupIdString]; memberMap != nil {
+				for groupMemberConn := range memberMap {
+					recipientConnections = append(recipientConnections, groupMemberConn)
+				}
 			}
 			groupsMutex.RUnlock()
 		}
@@ -214,17 +208,30 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				outChatID = fmt.Sprintf("private_%s", senderUser.UserUUID)
 			}
 
+			// Determine other user info: receiver for private, sender for group
+			otherName := ""
+			otherAvatar := ""
+			otherID := receiverID
+			if incomingMsg.ChatType == "private" {
+				otherName = recieverName
+				otherAvatar = recieverAvatar
+			} else {
+				otherName = senderUser.FirstName
+				otherAvatar = senderUser.Avatar
+				otherID = 0
+			}
 			msg := outMessage{
-				ID:            chatID,
-				ChatID:        outChatID,
-				RequesterID:   incomingMsg.RequesterID,
-				SenderID:      senderID,
-				OtherUserName: recieverName,
-				OtherUserID:   receiverID,
-				Content:       incomingMsg.Content,
-				Timestamp:     incomingMsg.Timestamp,
-				MessageType:   incomingMsg.MessageType,
-				ChatType:      incomingMsg.ChatType,
+				ID:              chatID,
+				ChatID:          outChatID,
+				RequesterID:     incomingMsg.RequesterID,
+				SenderID:        senderID,
+				OtherUserName:   otherName,
+				OtherUserAvatar: otherAvatar,
+				OtherUserID:     otherID,
+				Content:         incomingMsg.Content,
+				Timestamp:       incomingMsg.Timestamp,
+				MessageType:     incomingMsg.MessageType,
+				ChatType:        incomingMsg.ChatType,
 			}
 			payload, err := json.Marshal(msg)
 			if err != nil {
@@ -238,9 +245,12 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 				log.Println("WS: write error, dropping conn:", err)
 				recipientConn.Close()
 				delete(clients, recipientConn)
-				if room := allGroups[incomingMsg.ChatID]; room != nil {
+				// Remove from allGroups map using groupIdString
+				groupsMutex.Lock()
+				if room := allGroups[groupIdString]; room != nil {
 					delete(room, recipientConn)
 				}
+				groupsMutex.Unlock()
 				clientsMutex.Unlock()
 				clientsMutex.RLock()
 			}

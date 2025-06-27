@@ -21,6 +21,7 @@ interface RawMessage {
   requesterId: number; // good
   groupId?: number; // Missing in backend
   otherUserName: string; // good
+  otherUserAvatar?: string | null; // include avatar
   otherUserID: number | null; // good
   content: string; // good
   timestamp: string; // good
@@ -74,7 +75,7 @@ export function useWebSocket() {
           chatId: raw.chatId,
           senderId: String(raw.senderId),
           otherUserName: raw.otherUserName,
-          otherUserAvatar: null,
+          otherUserAvatar: raw.otherUserAvatar || null,
           content: raw.content,
           timestamp: new Date(raw.timestamp),
           messageType: raw.messageType,

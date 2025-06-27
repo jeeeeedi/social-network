@@ -84,29 +84,45 @@ func MessageHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]messageResponse, len(rawMsgs))
 	for i, msg := range rawMsgs {
+		var msgSenderUser *dbTools.UserAPI
 		var msgOtherUser *dbTools.UserAPI
+
+		// Always fetch the sender information
+		msgSenderUser, err = db.FetchUserByID(msg.SenderID)
+		if err != nil {
+			log.Println("Error fetching sender when fetching messages:", err)
+			continue
+		}
+
 		if chatType == "private" {
 			msgOtherUser, err = db.FetchUserByID(msg.ReceiverID)
 			if err != nil {
-				log.Println("Error fetching user when fetching messages:", err)
+				log.Println("Error fetching receiver when fetching messages:", err)
+				continue
 			}
 		}
+
 		resp[i] = messageResponse{
-			ID:              msg.ChatID,
-			ChatID:          chatSpecifications, // or however you track it? CHANGE LATER
-			RequesterID:     userID,
-			SenderID:        msg.SenderID,
-			OtherUserUUID:   msgOtherUser.UserUUID,
-			OtherUserName:   msgOtherUser.FirstName,
-			OtherUserAvatar: msgOtherUser.Avatar,
-			Content:         msg.Content,
-			Timestamp:       msg.CreatedAt,
-			MessageType:     "text",
+			ID:          msg.ChatID,
+			ChatID:      chatSpecifications,
+			RequesterID: userID,
+			SenderID:    msg.SenderID,
+			Content:     msg.Content,
+			Timestamp:   msg.CreatedAt,
+			MessageType: "text",
 		}
+
 		if chatType == "private" {
+			resp[i].OtherUserUUID = msgOtherUser.UserUUID
+			resp[i].OtherUserName = msgOtherUser.FirstName
+			resp[i].OtherUserAvatar = msgOtherUser.Avatar
 			resp[i].ReceiverID = msg.ReceiverID
 			resp[i].ChatType = "private"
 		} else {
+			// For group messages, use sender information as the "other user"
+			resp[i].OtherUserUUID = msgSenderUser.UserUUID
+			resp[i].OtherUserName = msgSenderUser.FirstName
+			resp[i].OtherUserAvatar = msgSenderUser.Avatar
 			resp[i].GroupID = msg.GroupID
 			resp[i].ChatType = "group"
 		}

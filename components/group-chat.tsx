@@ -98,12 +98,22 @@ export function GroupChat({ group, messages, onSendMessage, onClose }: GroupChat
   const inputRef = useRef<HTMLInputElement>(null)
 
   const chatSpec = `group_${group.group_id}`
-  const groupMessages = [
-    ...history,
-    ...messages.filter(
-      msg => msg.chatId === chatSpec && !history.some(hist => hist.id === msg.id)
-    ),
-  ]
+  // const groupMessages = [
+  //   ...history,
+  //   ...messages.filter(
+  //     msg => msg.chatId === chatSpec && !history.some(hist => hist.id === msg.id)
+  //   ),
+  // ]
+
+  const combinedMessages = [...history, ...messages];
+  const seen = new Set();
+  const groupMessages = combinedMessages
+  .filter(msg => msg.chatId === chatSpec)
+  .filter(msg => {
+    if (seen.has(msg.id)) return false;
+    seen.add(msg.id);
+    return true;
+  });
 
   // Safety checks
   if (!group) {
