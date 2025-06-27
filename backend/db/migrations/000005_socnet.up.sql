@@ -31,32 +31,32 @@ INSERT INTO group_members (inviter_id, member_id, group_id, status, created_at, 
 (1, 1, 1, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (1, 2, 1, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (2, 2, 2, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(2, 3, 2, 'invited', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(3, 3, 3, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+(2, 3, 2, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 3, 3, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 4, 4, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(5, 5, 5, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);;
 
 -- Insert sample posts
 INSERT INTO posts (post_uuid, poster_id, group_id, content, privacy, updated_at) VALUES
-('post-uuid-001', 1, 1, 'Just captured an amazing sunset at the beach! Check out this shot.', 'public', CURRENT_TIMESTAMP),
-('post-uuid-002', 2, 2, 'Anyone working with React 18? Would love to discuss the new concurrent features.', 'semi-private', CURRENT_TIMESTAMP),
-('post-uuid-003', 3, NULL, 'Finished my morning run - 5km in 25 minutes! Feeling great.', 'public', CURRENT_TIMESTAMP),
+('post-uuid-001', 1, NULL, 'Just captured an amazing sunset at the beach! Check out this shot.', 'public', CURRENT_TIMESTAMP),
+('post-uuid-002', 2, NULL, 'Anyone working with React 18? Would love to discuss the new concurrent features.', 'semi-private', CURRENT_TIMESTAMP),
+('post-uuid-003', 3, NULL, 'Finished my morning walk! Feeling great.', 'public', CURRENT_TIMESTAMP),
 ('post-uuid-004', 4, NULL, 'Working on a new painting series inspired by nature. Excited to share progress!', 'private', CURRENT_TIMESTAMP),
-('post-uuid-005', 5, 5, 'Just got back from Tokyo! The food was incredible. AMA about Japan travel.', 'public', CURRENT_TIMESTAMP);
+('post-uuid-005', 5, NULL, 'Just got back from Tokyo! The food was incredible. AMA about Japan travel.', 'public', CURRENT_TIMESTAMP),
+('post-uuid-006', 1, 1, 'Did you see my public post?', 'semi-private', CURRENT_TIMESTAMP);
 
 -- Insert sample post_private_viewers (for private posts)
 INSERT INTO post_private_viewers (post_id, user_id) VALUES
-(4, 1),
-(4, 2),
-(4, 3),
-(4, 5),
-(4, 4);
+(4, 1);
 
 -- Insert sample comments
 INSERT INTO comments (commenter_id, post_id, group_id, content, post_privacy, updated_at) VALUES
-(2, 1, 1, 'Wow, that lighting is perfect! What camera settings did you use?', 'public', CURRENT_TIMESTAMP),
-(3, 1, 1, 'Beautiful shot! The colors are amazing.', 'public', CURRENT_TIMESTAMP),
-(1, 2, 2, 'I have been experimenting with Suspense. The performance improvements are noticeable!', 'semi-private', CURRENT_TIMESTAMP),
-(4, 3, NULL, 'Great pace! Keep up the good work.', 'public', CURRENT_TIMESTAMP),
-(1, 5, 5, 'Would love to hear about the best ramen spots you found!', 'public', CURRENT_TIMESTAMP);
+(2, 1, NULL, 'Wow, that lighting is perfect! What camera settings did you use?', 'public', CURRENT_TIMESTAMP),
+(3, 1, NULL, 'Beautiful shot! The colors are amazing.', 'public', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'I have been experimenting with Suspense. The performance improvements are noticeable!', 'semi-private', CURRENT_TIMESTAMP),
+(4, 3, NULL, 'Great job! Keep up the good work.', 'public', CURRENT_TIMESTAMP),
+(1, 5, NULL, 'Would love to hear about the best ramen spots you found!', 'public', CURRENT_TIMESTAMP),
+(2, 6, 1, 'I did!', 'semi-private', CURRENT_TIMESTAMP);
 
 -- Insert sample files
 INSERT INTO files (file_uuid, uploader_id, filename_orig, filename_new, parent_type, parent_id, updated_at) VALUES
@@ -66,19 +66,12 @@ INSERT INTO files (file_uuid, uploader_id, filename_orig, filename_new, parent_t
 ('file-uuid-004', 4, 'painting_wip.png', '7702ed02-0647-4c6a-b670-3917aaa0bf45.png', 'post', 4, CURRENT_TIMESTAMP),
 ('file-uuid-005', 5, 'tokyo_food.jpg', 'f5_tokyo_food_20250626.jpg', 'post', 5, CURRENT_TIMESTAMP);
 
--- Insert sample interactions
-INSERT INTO interactions (user_id, interaction_type, parent_type, parent_id, updated_at) VALUES
-(2, 'like', 'post', 1, CURRENT_TIMESTAMP),
-(3, 'like', 'post', 1, CURRENT_TIMESTAMP),
-(4, 'like', 'post', 3, CURRENT_TIMESTAMP),
-(1, 'like', 'comment', 1, CURRENT_TIMESTAMP),
-(5, 'dislike', 'comment', 2, CURRENT_TIMESTAMP);
-
 -- Insert sample follows
 INSERT INTO follows (followed_user_id, follower_user_id, status, updated_at) VALUES
 (1, 2, 'accepted', CURRENT_TIMESTAMP),
+(2, 1, 'accepted', CURRENT_TIMESTAMP),
 (1, 3, 'accepted', CURRENT_TIMESTAMP),
-(2, 4, 'pending', CURRENT_TIMESTAMP),
+(2, 4, 'accepted', CURRENT_TIMESTAMP),
 (3, 5, 'accepted', CURRENT_TIMESTAMP),
 (4, 1, 'accepted', CURRENT_TIMESTAMP);
 
@@ -93,53 +86,55 @@ INSERT INTO events (creator_id, group_id, title, description, event_date_time, u
 -- Insert sample event RSVPs
 INSERT INTO event_rsvp (event_id, responder_id, response, updated_at) VALUES
 (1, 2, 'going', CURRENT_TIMESTAMP),
-(1, 3, 'going', CURRENT_TIMESTAMP),
-(2, 1, 'going', CURRENT_TIMESTAMP),
-(3, 4, 'not_going', CURRENT_TIMESTAMP),
-(4, 5, 'going', CURRENT_TIMESTAMP);
+(2, 2, 'going', CURRENT_TIMESTAMP),
+(2, 3, 'not_going', CURRENT_TIMESTAMP),
+(4, 4, 'going', CURRENT_TIMESTAMP);
 
 -- Insert sample chat messages
 INSERT INTO chat_messages (sender_id, receiver_id, group_id, content, updated_at) VALUES
+-- Private chat between users 1 and 2
 (1, 2, NULL, 'Nice shot! Camera settings? 📸', CURRENT_TIMESTAMP),
 (2, 1, NULL, 'Magic and expensive lens 😎💰', CURRENT_TIMESTAMP),
-(3, NULL, 3, 'Who wants to suffer? 🏃‍♂️😤', CURRENT_TIMESTAMP),
-(4, 5, NULL, 'Tokyo ramen = life goals 🍜❤️', CURRENT_TIMESTAMP),
-(5, 4, NULL, 'Sending you secret spots! 🤫📍', CURRENT_TIMESTAMP),
-(1, 3, NULL, 'Teach me your speed! ⚡🏃', CURRENT_TIMESTAMP),
-(3, 1, NULL, 'Coffee. Lots of coffee. ☕☕☕', CURRENT_TIMESTAMP),
-(2, NULL, 2, 'Next.js 14 anyone? 🚀💻', CURRENT_TIMESTAMP),
-(4, NULL, 2, 'It broke my brain! 🤯💥', CURRENT_TIMESTAMP),
-(5, NULL, 5, 'Vietnam recommendations please! 🇻🇳✈️', CURRENT_TIMESTAMP),
-(1, NULL, 5, 'Street food = happiness 🥟😋', CURRENT_TIMESTAMP),
-(2, 4, NULL, 'Your painting rocks! 🎨🔥', CURRENT_TIMESTAMP),
-(4, 2, NULL, 'Thanks! Paint everywhere though. 🖌️🤷', CURRENT_TIMESTAMP),
-(3, NULL, 3, 'Yoga = pretzel practice 🥨🧘‍♀️', CURRENT_TIMESTAMP),
-(4, NULL, 3, 'Same time tomorrow? ⏰🙏', CURRENT_TIMESTAMP),
-(5, 1, NULL, 'Photography tips please! 📷🙏', CURRENT_TIMESTAMP),
-(1, 5, NULL, 'Point camera. Press button. 📸😂', CURRENT_TIMESTAMP),
-(2, 3, NULL, 'Your cat owns you 🐱👑', CURRENT_TIMESTAMP),
-(3, 2, NULL, 'She definitely does! 😹💯', CURRENT_TIMESTAMP),
-(4, NULL, 4, 'Art gallery this weekend? 🖼️🎭', CURRENT_TIMESTAMP),
-(1, NULL, 4, 'Culture me up! 🎨📚', CURRENT_TIMESTAMP),
-(5, NULL, 2, 'React image gallery help? 🖼️⚛️', CURRENT_TIMESTAMP),
-(2, NULL, 2, 'Framer-motion is life! 🎬✨', CURRENT_TIMESTAMP),
-(3, 5, NULL, 'Tokyo photos = jealousy 📸😭', CURRENT_TIMESTAMP),
-(5, 3, NULL, 'Convenience stores are gold! 🏪💎', CURRENT_TIMESTAMP);
-
--- Insert sample post categories
-INSERT INTO post_categories (creator_id, post_id, category_name, updated_at) VALUES
-(1, 1, 'Photography', CURRENT_TIMESTAMP),
-(1, 1, 'Nature', CURRENT_TIMESTAMP),
-(2, 2, 'Technology', CURRENT_TIMESTAMP),
-(3, 3, 'Fitness', CURRENT_TIMESTAMP),
-(5, 5, 'Travel', CURRENT_TIMESTAMP);
-
--- Insert sample notifications
-INSERT INTO notifications (receiver_id, actor_id, action_type, parent_type, parent_id, content, updated_at) VALUES
-(1, 2, 'like', 'post', 1, 'Jane Smith liked your post', CURRENT_TIMESTAMP),
-(1, 3, 'comment', 'post', 1, 'Bob Wilson commented on your post', CURRENT_TIMESTAMP),
-(2, 4, 'follow_request', 'follow', 3, 'Alice Brown wants to follow you', CURRENT_TIMESTAMP),
-(3, 5, 'group_invitation', 'group', 3, 'Charlie Davis invited you to join Fitness Friends', CURRENT_TIMESTAMP),
-(4, 1, 'group_event', 'event', 4, 'John Doe created a new event in Art Appreciation', CURRENT_TIMESTAMP);
+(1, 2, NULL, 'Which lens exactly? 🤔', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Canon 24-70mm f/2.8 📷✨', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'That is pricey! 💸😅', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Worth every penny though! 💯', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Your photos prove it! 🔥', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Thanks! Practice makes perfect 📸', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Any beginner tips? 🙏', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Start with natural light ☀️', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Golden hour is best? 🌅', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Absolutely! Magic happens then ✨', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Weekend photo walk? 🚶‍♂️📷', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Count me in! 🙋‍♀️', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Downtown or beach? 🏖️🏙️', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Beach for sunset! 🌊', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Perfect! Saturday 6pm? ⏰', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'See you there! 👋', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Bring extra battery! 🔋', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Always do! Learned hard way 😂', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Story time? 📖', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Battery died during eclipse! 🌘💀', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Photographer nightmare! 😱', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Now I carry three! ⚡⚡⚡', CURRENT_TIMESTAMP),
+(1, 2, NULL, 'Smart move! 🧠💡', CURRENT_TIMESTAMP),
+(2, 1, NULL, 'Coffee before photo walk? ☕', CURRENT_TIMESTAMP),
+-- Group chat for Photography Club (group_id 1)
+(1, NULL, 1, 'Morning golden hour hunt! 🌅📸', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Epic sunrise colors today! 🔥☀️', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'Share your best shots! 📷✨', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Posted mine in gallery! 🖼️👀', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'Weekend workshop ideas? 🤔💡', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Portrait lighting techniques? 💡👥', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'Great idea! Count me! 🙋‍♂️✨', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Bringing all my gear! 📸⚡', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'Street photography tomorrow? 🏙️📷', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Yes! Downtown at noon? 🕛🚶‍♀️', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'Perfect timing for shadows! 🌞🏢', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Bringing wide angle lens! 📷🌍', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'New camera recommendation anyone? 🤷‍♂️📸', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Canon R5 is amazing! 🔥💯', CURRENT_TIMESTAMP),
+(1, NULL, 1, 'Thanks! Adding to wishlist! 📝💰', CURRENT_TIMESTAMP),
+(2, NULL, 1, 'Worth every penny invested! 💎✨', CURRENT_TIMESTAMP);
 
 PRAGMA foreign_keys=on;
