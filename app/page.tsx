@@ -50,7 +50,7 @@ export default function SocialNetworkPage() {
     // Helper to fetch the user's groups
     const fetchGroups = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/groups/my-groups`, {
+        const res = await fetch(`${API_URL}/api/groups`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -61,7 +61,11 @@ export default function SocialNetworkPage() {
           throw new Error("Failed to fetch groups");
         }
         const data = await res.json();
-        setGroups(data || []);
+        // Filter for groups where the user is a member (accepted status)
+        const myGroups = Array.isArray(data)
+          ? (data as any[]).filter((g) => g.user_status === 'accepted')
+          : [];
+        setGroups(myGroups);
       } catch (err) {
         console.error("Failed to load groups:", err);
       }
@@ -364,7 +368,16 @@ export default function SocialNetworkPage() {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={group.avatar || "/placeholder.svg"} alt={group.title} />
+                        <AvatarImage 
+                          src={
+                            group.avatar
+                              ? group.avatar.startsWith("http")
+                                ? group.avatar
+                                : `${API_URL}${group.avatar}`
+                              : "/placeholder.svg"
+                          } 
+                          alt={group.title} 
+                        />
                         <AvatarFallback>
                           {group.title
                             .split(" ")
@@ -375,7 +388,7 @@ export default function SocialNetworkPage() {
                       <div>
                         <p className="font-medium text-sm">{group.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {group.members?.length || 0} members
+                          {group.member_count || 0} members
                         </p>
                       </div>
                     </div>

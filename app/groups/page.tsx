@@ -134,28 +134,6 @@ export default function GroupsPage() {
     }
   };
 
-  const handleLeaveGroup = async (groupId: string) => {
-    // Note: This is a placeholder as the backend might not have a direct leave endpoint yet
-    try {
-      // Assuming there's a way to leave or update membership status to declined
-      const response = await fetch(`${API_URL}/api/groups/${groupId}/membership/${currentUser.user_id}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'declined' }),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      setGroups(groups.map((group: Group) => group.group_id === parseInt(groupId) ? { ...group, isMember: false, isPending: false } : group));
-    } catch (err) {
-      console.error("Failed to leave group:", err);
-      alert("Failed to leave group. Please try again.");
-    }
-  };
-
   const handleViewGroup = (groupId: string) => {
     router.push(`/groups/${groupId}`);
   };
@@ -226,7 +204,6 @@ export default function GroupsPage() {
                 events: group.events || []
               }} 
               onJoinGroup={handleJoinGroup} 
-              onLeaveGroup={handleLeaveGroup} 
               onViewGroup={handleViewGroup} 
               currentUserId={currentUser?.user_id?.toString() || "0"} 
             />
