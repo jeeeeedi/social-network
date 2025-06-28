@@ -167,13 +167,11 @@ func WebSocketsHandler(db *dbTools.DB, w http.ResponseWriter, r *http.Request) {
 			for clientConn := range clients {
 				if clientConn == conn {
 					recipientConnections = append(recipientConnections, clientConn)
-					break
 				}
 			}
 			for clientConn, clientID := range clients {
 				if clientID == receiverID {
 					recipientConnections = append(recipientConnections, clientConn)
-					break // Break after first recipient is found.
 				}
 			}
 			clientsMutex.RUnlock()
