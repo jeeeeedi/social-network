@@ -286,179 +286,185 @@ export default function MyProfilePage() {
                   <Mail className="h-4 w-4" />
                   {profile.email}
                 </div>
+              {profile.date_of_birth && (
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  Joined {formatDateOnly(profile.created_at)}
+                  Born {formatDateOnly(profile.date_of_birth)}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {followers.length} followers · {following.length} following
-                </div>
-              </div>
-
-              {profile.about_me && (
-                <p className="text-muted-foreground">{profile.about_me}</p>
               )}
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                Joined {formatDateOnly(profile.created_at)}
+              </div>
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                {followers.length} followers · {following.length} following
+              </div>
+            </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="privacy-toggle"
-                    checked={privacy === "private"}
-                    onCheckedChange={async (checked) => {
-                      const newPrivacy = checked ? "private" : "public";
-                      await handlePrivacyToggle(newPrivacy);
-                    }}
-                  />
-                  <Label htmlFor="privacy-toggle">Private Profile</Label>
-                </div>
+            {profile.about_me && (
+              <p className="text-muted-foreground">{profile.about_me}</p>
+            )}
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="privacy-toggle"
+                  checked={privacy === "private"}
+                  onCheckedChange={async (checked) => {
+                    const newPrivacy = checked ? "private" : "public";
+                    await handlePrivacyToggle(newPrivacy);
+                  }}
+                />
+                <Label htmlFor="privacy-toggle">Private Profile</Label>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </CardContent>
+    </Card>
 
-      {/* Profile Content */}
-      <Tabs defaultValue="posts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="posts">Posts ({posts?.length || 0})</TabsTrigger>
-          <TabsTrigger value="followers">
-            Followers ({followers.length})
-          </TabsTrigger>
-          <TabsTrigger value="following">
-            Following ({following.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Profile Content */ }
+  <Tabs defaultValue="posts" className="w-full">
+    <TabsList className="grid w-full grid-cols-3">
+      <TabsTrigger value="posts">Posts ({posts?.length || 0})</TabsTrigger>
+      <TabsTrigger value="followers">
+        Followers ({followers.length})
+      </TabsTrigger>
+      <TabsTrigger value="following">
+        Following ({following.length})
+      </TabsTrigger>
+    </TabsList>
 
-        <TabsContent value="posts" className="space-y-4">
-          {posts?.length > 0 ? (
-            posts.map((post) => (
-              <Card key={post.post_uuid} className="border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center mb-2">
-                    <span className="text-xs text-muted-foreground">
-                      Posted on {formatDateTime(post.created_at)}
-                    </span>
-                    {!post.group_id && (
-                    <Badge variant="outline" className="ml-auto text-xs">
-                      {post.privacy}
-                    </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm mb-3">{post.content}</p>
-                  {post.filename_new && (
-                    <div className="mb-3">
-                      <img
-                        src={`${API_URL}/uploads/${post.filename_new}`}
-                        alt="Post attachment"
-                        className="max-w-xs max-h-48 rounded border object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex gap-4 text-muted-foreground">
-                    <span className="flex items-center gap-1 text-xs hover:text-foreground">
-                      <MessageCircle className="h-3 w-3" />
-                      {post.comments?.length || 0}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No posts yet.
-            </div>
-          )}
-        </TabsContent>
+    <TabsContent value="posts" className="space-y-4">
+      {posts?.length > 0 ? (
+        posts.map((post) => (
+          <Card key={post.post_uuid} className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center mb-2">
+                <span className="text-xs text-muted-foreground">
+                  Posted on {formatDateTime(post.created_at)}
+                </span>
+                {!post.group_id && (
+                  <Badge variant="outline" className="ml-auto text-xs">
+                    {post.privacy}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm mb-3">{post.content}</p>
+              {post.filename_new && (
+                <div className="mb-3">
+                  <img
+                    src={`${API_URL}/uploads/${post.filename_new}`}
+                    alt="Post attachment"
+                    className="max-w-xs max-h-48 rounded border object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex gap-4 text-muted-foreground">
+                <span className="flex items-center gap-1 text-xs hover:text-foreground">
+                  <MessageCircle className="h-3 w-3" />
+                  {post.comments?.length || 0}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          No posts yet.
+        </div>
+      )}
+    </TabsContent>
 
-        <TabsContent value="followers" className="space-y-4">
-          {followers.length > 0 ? (
-            <div className="space-y-3">
-              {followers.map((follower) => (
-                <Link
-                  key={follower.user_uuid}
-                  href={`/profile/${follower.user_uuid}`}
-                  className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={
-                        follower.avatar && follower.avatar.trim() !== ""
-                          ? `${API_URL}${follower.avatar}`
-                          : undefined
-                      }
-                      alt={follower.nickname}
-                      className="object-cover"
-                    />
-                    <AvatarFallback>
-                      {follower.first_name?.charAt(0)}
-                      {follower.last_name?.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {follower.first_name} {follower.last_name}
-                    </p>
-                    {follower.nickname && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        @{follower.nickname || ''}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No followers yet.
-            </div>
-          )}
-        </TabsContent>
+    <TabsContent value="followers" className="space-y-4">
+      {followers.length > 0 ? (
+        <div className="space-y-3">
+          {followers.map((follower) => (
+            <Link
+              key={follower.user_uuid}
+              href={`/profile/${follower.user_uuid}`}
+              className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarImage
+                  src={
+                    follower.avatar && follower.avatar.trim() !== ""
+                      ? `${API_URL}${follower.avatar}`
+                      : undefined
+                  }
+                  alt={follower.nickname}
+                  className="object-cover"
+                />
+                <AvatarFallback>
+                  {follower.first_name?.charAt(0)}
+                  {follower.last_name?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {follower.first_name} {follower.last_name}
+                </p>
+                {follower.nickname && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    @{follower.nickname || ''}
+                  </p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          No followers yet.
+        </div>
+      )}
+    </TabsContent>
 
-        <TabsContent value="following" className="space-y-4">
-          {following.length > 0 ? (
-            <div className="space-y-3">
-              {following.map((follow) => (
-                <Link
-                  key={follow.user_uuid}
-                  href={`/profile/${follow.user_uuid}`}
-                  className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={
-                        follow.avatar && follow.avatar.trim() !== ""
-                          ? `${API_URL}${follow.avatar}`
-                          : undefined
-                      }
-                      alt={follow.nickname}
-                      className="object-cover"
-                    />
-                    <AvatarFallback>
-                      {follow.first_name?.charAt(0)}
-                      {follow.last_name?.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {follow.first_name} {follow.last_name}
-                    </p>
-                    {follow.nickname && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        @{follow.nickname || ''}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Not following anyone yet.
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+    <TabsContent value="following" className="space-y-4">
+      {following.length > 0 ? (
+        <div className="space-y-3">
+          {following.map((follow) => (
+            <Link
+              key={follow.user_uuid}
+              href={`/profile/${follow.user_uuid}`}
+              className="flex items-center gap-3 hover:bg-muted p-2 rounded transition-colors"
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarImage
+                  src={
+                    follow.avatar && follow.avatar.trim() !== ""
+                      ? `${API_URL}${follow.avatar}`
+                      : undefined
+                  }
+                  alt={follow.nickname}
+                  className="object-cover"
+                />
+                <AvatarFallback>
+                  {follow.first_name?.charAt(0)}
+                  {follow.last_name?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {follow.first_name} {follow.last_name}
+                </p>
+                {follow.nickname && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    @{follow.nickname || ''}
+                  </p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          Not following anyone yet.
+        </div>
+      )}
+    </TabsContent>
+  </Tabs>
+    </div >
   );
 }
